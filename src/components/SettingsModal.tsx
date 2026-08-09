@@ -1,0 +1,212 @@
+import React, { useState } from 'react';
+import { audioEngine } from '../lib/audioSynth';
+import {
+  X,
+  Volume2,
+  VolumeX,
+  Music,
+  Sliders,
+  RotateCcw,
+  Sparkles,
+  Info,
+  Radio,
+  Check
+} from 'lucide-react';
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onResetCamera?: () => void;
+}
+
+export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, onResetCamera }) => {
+  const [bgmOn, setBgmOn] = useState<boolean>(audioEngine.isBgmOn());
+  const [bgmVol, setBgmVol] = useState<number>(Math.round(audioEngine.getBgmVolume() * 100));
+  const [sfxOn, setSfxOn] = useState<boolean>(audioEngine.isEnabled());
+
+  if (!isOpen) return null;
+
+  const handleToggleBgm = () => {
+    const nextState = audioEngine.toggleBgm();
+    setBgmOn(nextState);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    setBgmVol(val);
+    audioEngine.setBgmVolume(val / 100);
+    if (!bgmOn && val > 0) {
+      audioEngine.toggleBgm(true);
+      setBgmOn(true);
+    }
+  };
+
+  const handleToggleSfx = () => {
+    const nextState = !sfxOn;
+    audioEngine.setSoundEnabled(nextState);
+    setSfxOn(nextState);
+    if (nextState) {
+      audioEngine.playSfx('click');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-slate-950 border-2 border-amber-500 rounded-3xl p-6 shadow-2xl text-slate-100 font-sans">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-400">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-serif font-black text-lg text-amber-400">
+                Configurações
+              </h2>
+              <p className="text-[11px] text-slate-400 font-serif">Áudio, Música e Interface</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              audioEngine.playSfx('click');
+              onClose();
+            }}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-slate-900 border border-transparent hover:border-amber-500/30 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          
+          {/* Background Music Toggle & Volume */}
+          <div className="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bgmOn ? 'bg-amber-500/20 text-amber-400 border border-amber-400' : 'bg-slate-800 text-slate-500'}`}>
+                  <Music className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-serif font-bold text-slate-200">
+                    Música Ambiente
+                  </div>
+                  <div className="text-[10px] text-slate-400">Trilha Épica (/br/musica-bg.mp3)</div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleToggleBgm}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-serif transition flex items-center gap-1.5 border ${
+                  bgmOn
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20'
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                }`}
+              >
+                {bgmOn ? <Check className="w-3.5 h-3.5" /> : null}
+                <span>{bgmOn ? 'Ligada' : 'Desligada'}</span>
+              </button>
+            </div>
+
+            {/* Volume Slider */}
+            <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-300">
+                <span className="flex items-center gap-1">
+                  <Radio className="w-3 h-3 text-amber-400" /> Volume da Música
+                </span>
+                <span className="text-amber-400 font-bold">{bgmVol}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={bgmVol}
+                onChange={handleVolumeChange}
+                className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-400 border border-slate-800"
+              />
+            </div>
+          </div>
+
+          {/* Sound Effects Toggle */}
+          <div className="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${sfxOn ? 'bg-amber-500/20 text-amber-400 border border-amber-400' : 'bg-slate-800 text-slate-500'}`}>
+                {sfxOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </div>
+              <div>
+                <div className="text-xs font-serif font-bold text-slate-200">
+                  Efeitos Sonoros (SFX)
+                </div>
+                <div className="text-[10px] text-slate-400">Sons de cliques, vitórias e passos</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleToggleSfx}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-serif transition flex items-center gap-1.5 border ${
+                sfxOn
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md shadow-amber-500/20'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+              }`}
+            >
+              {sfxOn ? <Check className="w-3.5 h-3.5" /> : null}
+              <span>{sfxOn ? 'Ativado' : 'Silenciado'}</span>
+            </button>
+          </div>
+
+          {/* Camera / View Action */}
+          {onResetCamera && (
+            <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-800 text-amber-400 flex items-center justify-center border border-slate-700">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-serif font-bold text-slate-200">
+                    Posição da Câmera
+                  </div>
+                  <div className="text-[10px] text-slate-400">Resetar zoom e enquadramento do mapa</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onResetCamera();
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 text-amber-300 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/30 text-xs font-bold font-serif transition"
+              >
+                Resetar
+              </button>
+            </div>
+          )}
+
+          {/* Instructions Hint */}
+          <div className="bg-amber-950/30 rounded-2xl p-3.5 border border-amber-500/20 text-[11px] text-amber-200/90 flex items-start gap-2.5 font-serif italic">
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              Dica: Navegue pelo Mapa do Brasil interativo. Ao aproximar ou passar o mouse, o mar apresenta movimento em paralaxe e os brasões ganham destaque.
+            </span>
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 pt-3 border-t border-slate-800 text-center">
+          <button
+            onClick={() => {
+              audioEngine.playSfx('click');
+              onClose();
+            }}
+            className="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-serif font-black text-xs uppercase tracking-wider hover:bg-amber-400 transition shadow-lg shadow-amber-500/20"
+          >
+            Salvar e Fechar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};

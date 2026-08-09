@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <defs>
+    <!-- Water Gradient -->
+    <radialGradient id="oceanGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0369a1"/>
+      <stop offset="60%" stop-color="#0c4a6e"/>
+      <stop offset="100%" stop-color="#082f49"/>
+    </radialGradient>
+
+    <!-- Region Gradients for Brazil Illustrated Map -->
+    <linearGradient id="norteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#166534"/>
+    </linearGradient>
+    <linearGradient id="nordesteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="centroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <linearGradient id="sudesteGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="sulGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+
+    <!-- Map Glow -->
+    <filter id="mapShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="15" stdDeviation="15" flood-color="#000000" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- Ocean Background -->
+  <rect width="1000" height="1000" fill="url(#oceanGrad)"/>
+
+  <!-- Ocean Wave Lines & Topography Grid -->
+  <path d="M 50 150 Q 200 130 350 160 T 650 140 T 950 170" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.25"/>
+  <path d="M 100 350 Q 300 330 500 360 T 850 340" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.2"/>
+  <path d="M 50 650 Q 250 630 450 660 T 850 640" fill="none" stroke="#38bdf8" stroke-width="1" opacity="0.25"/>
+
+  <!-- Main Continental Brazil Landmass Outer Silhouette with Glow -->
+  <g filter="url(#mapShadow)">
+    <!-- Base Land Shape -->
+    <path d="
+      M 310,80 
+      L 450,110 L 600,120 L 730,190 L 880,240 L 920,300 L 890,400 L 800,480 
+      L 770,620 L 750,730 L 650,750 L 580,820 L 520,950 L 450,910 L 480,820 
+      L 500,740 L 380,620 L 250,420 L 100,380 L 80,260 L 220,180 Z
+    " fill="#0f172a" stroke="#fbbf24" stroke-width="4"/>
+
+    <!-- NORTE REGION (Green Canopy) -->
+    <path d="
+      M 310,80 L 450,110 L 600,120 L 640,240 L 590,380 L 420,440 L 250,420 L 100,380 L 80,260 L 220,180 Z
+    " fill="url(#norteGrad)" stroke="#4ade80" stroke-width="2" opacity="0.95"/>
+
+    <!-- NORDESTE REGION (Amber Gold) -->
+    <path d="
+      M 600,120 L 730,190 L 880,240 L 920,300 L 890,400 L 800,480 L 680,450 L 590,380 L 640,240 Z
+    " fill="url(#nordesteGrad)" stroke="#fef08a" stroke-width="2" opacity="0.95"/>
+
+    <!-- CENTRO-OESTE REGION (Savannah Yellow) -->
+    <path d="
+      M 250,420 L 420,440 L 590,380 L 680,450 L 620,620 L 420,640 L 380,620 Z
+    " fill="url(#centroGrad)" stroke="#fef08a" stroke-width="2" opacity="0.95"/>
+
+    <!-- SUDESTE REGION (Cobalt Coast) -->
+    <path d="
+      M 680,450 L 800,480 L 770,620 L 750,730 L 580,720 L 620,620 Z
+    " fill="url(#sudesteGrad)" stroke="#38bdf8" stroke-width="2" opacity="0.95"/>
+
+    <!-- SUL REGION (Emerald Highlands) -->
+    <path d="
+      M 420,640 L 620,620 L 580,720 L 580,820 L 520,950 L 450,910 L 480,820 L 500,740 L 380,620 Z
+    " fill="url(#sulGrad)" stroke="#34d399" stroke-width="2" opacity="0.95"/>
+
+    <!-- Illustrated Rivers (Rio Amazonas, Rio São Francisco, Rio Paraná, Rio Paranaíba) -->
+    <path d="M 90 270 Q 250 250 450 260 Q 550 240 600 130" fill="none" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
+    <path d="M 680 430 Q 750 380 820 370" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 520 600 Q 550 720 540 850" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- State Boundary Line Markings -->
+    <path d="
+      M 250 250 L 390 250 M 510 260 L 510 380 M 650 250 L 720 310 M 810 240 L 880 300 
+      M 750 460 L 670 620 M 540 560 L 600 710 M 550 780 L 520 910
+    " fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+  </g>
+
+  <!-- Compass Rose -->
+  <g transform="translate(140, 780)">
+    <circle cx="0" cy="0" r="45" fill="#020617" stroke="#fbbf24" stroke-width="2" opacity="0.85"/>
+    <path d="M 0 -35 L 8 -8 L 35 0 L 8 8 L 0 35 L -8 8 L -35 0 L -8 -8 Z" fill="#fbbf24"/>
+    <path d="M 0 -35 L 0 0 L 35 0 M 0 35 L 0 0 L -35 0" fill="#78350f"/>
+    <text x="0" y="-40" text-anchor="middle" fill="#fbbf24" font-weight="bold" font-size="12" font-family="serif">N</text>
+    <text x="0" y="52" text-anchor="middle" fill="#fbbf24" font-weight="bold" font-size="10" font-family="serif">S</text>
+    <text x="50" y="4" text-anchor="middle" fill="#fbbf24" font-weight="bold" font-size="10" font-family="serif">L</text>
+    <text x="-50" y="4" text-anchor="middle" fill="#fbbf24" font-weight="bold" font-size="10" font-family="serif">O</text>
+  </g>
+
+  <!-- Region Labels -->
+  <text x="280" y="220" fill="#ffffff" font-size="18" font-weight="900" font-family="serif" letter-spacing="4" opacity="0.7">AMAZÔNIA</text>
+  <text x="730" y="320" fill="#ffffff" font-size="18" font-weight="900" font-family="serif" letter-spacing="4" opacity="0.7">NORDESTE</text>
+  <text x="460" y="540" fill="#ffffff" font-size="18" font-weight="900" font-family="serif" letter-spacing="4" opacity="0.7">CENTRO-OESTE</text>
+  <text x="650" y="670" fill="#ffffff" font-size="18" font-weight="900" font-family="serif" letter-spacing="4" opacity="0.7">SUDESTE</text>
+  <text x="470" y="860" fill="#ffffff" font-size="18" font-weight="900" font-family="serif" letter-spacing="4" opacity="0.7">SUL</text>
+</svg>
