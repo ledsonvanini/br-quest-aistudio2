@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { IsometricMapCanvas } from './components/IsometricMapCanvas';
-import { GuardianDialog } from './components/GuardianDialog';
+import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
 import { GuardianData, UserProgress, Language } from './types';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
+import { GUARDIANS_DATA } from './data/guardiansData';
 import { Sparkles } from 'lucide-react';
 
 export function App() {
@@ -17,20 +18,54 @@ export function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  // Save progress on change & start audio on initial interaction
+  // Synchronize hash URL with state route (e.g., #/state/RS or #/map)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/state/')) {
+        const stateId = hash.replace('#/state/', '').toUpperCase();
+        const found = GUARDIANS_DATA.find((g) => g.id === stateId);
+        if (found) {
+          setActiveGuardian(found);
+          setActiveTab('map');
+          return;
+        }
+      } else if (hash === '#/insignias') {
+        setActiveTab('insignias');
+        setActiveGuardian(null);
+        return;
+      }
+      // Default to map view
+      setActiveGuardian(null);
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Save progress on change
   useEffect(() => {
     saveUserProgress(progress);
   }, [progress]);
-
-  useEffect(() => {
-    audioEngine.autoStartBgmOnFirstInteraction();
-  }, []);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => {
       setNotification(null);
     }, 4500);
+  };
+
+  const handleSelectGuardian = (guardian: GuardianData) => {
+    audioEngine.playSfx('click');
+    setActiveGuardian(guardian);
+    window.location.hash = `#/state/${guardian.id}`;
+  };
+
+  const handleBackToMap = () => {
+    audioEngine.playSfx('click');
+    setActiveGuardian(null);
+    window.location.hash = '#/map';
   };
 
   const handleCompleteQuiz = (xpEarned: number, correctCount: number) => {
@@ -77,7 +112,13 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div
+      className={
+        activeTab === 'map' && !activeGuardian
+          ? 'h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950'
+          : 'min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950'
+      }
+    >
       
       {/* Toast Notification Banner */}
       {notification && (
@@ -91,49 +132,56 @@ export function App() {
       <Header
         progress={progress}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'insignias') {
+            setActiveGuardian(null);
+            window.location.hash = '#/insignias';
+          } else {
+            window.location.hash = '#/map';
+          }
+        }}
         lang={lang}
         setLang={setLang}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col">
+      <main
+        className={
+          activeTab === 'map' && !activeGuardian
+            ? 'flex-1 min-h-0 w-full max-w-7xl mx-auto px-1 sm:px-3 py-1 flex flex-col overflow-hidden relative'
+            : 'flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col'
+        }
+      >
         
-        {/* Interactive RPG Map View */}
-        {activeTab === 'map' && (
-          <div className="flex-1 w-full flex flex-col">
+        {/* State Detail RPG Scene View (Dedicated Route for Selected State) */}
+        {activeGuardian ? (
+          <GuardianRPGScene
+            guardian={activeGuardian}
+            isCompleted={progress.completedStateIds.includes(activeGuardian.id)}
+            hasInsignia={progress.unlockedInsigniaIds.includes(activeGuardian.id)}
+            onBackToMap={handleBackToMap}
+            onCompleteQuiz={handleCompleteQuiz}
+            onUnlockInsignia={handleUnlockInsignia}
+            lang={lang}
+          />
+        ) : activeTab === 'map' ? (
+          /* Interactive RPG Map View (Homepage Route) */
+          <div className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden relative">
             <IsometricMapCanvas
               completedStateIds={progress.completedStateIds}
               unlockedInsigniaIds={progress.unlockedInsigniaIds}
-              onSelectGuardian={(guardian) => setActiveGuardian(guardian)}
+              onSelectGuardian={handleSelectGuardian}
               lang={lang}
               onOpenSettings={() => setIsSettingsOpen(true)}
             />
           </div>
-        )}
-
-        {/* Insignias Sanctuary View */}
-        {activeTab === 'insignias' && (
-          <CodexInsignias
-            progress={progress}
-            lang={lang}
-          />
+        ) : (
+          /* Insignias Sanctuary View (Codex Route) */
+          <CodexInsignias progress={progress} lang={lang} />
         )}
       </main>
-
-      {/* Guardian Interactive Dialog Modal */}
-      {activeGuardian && (
-        <GuardianDialog
-          guardian={activeGuardian}
-          isCompleted={progress.completedStateIds.includes(activeGuardian.id)}
-          hasInsignia={progress.unlockedInsigniaIds.includes(activeGuardian.id)}
-          onClose={() => setActiveGuardian(null)}
-          onCompleteQuiz={handleCompleteQuiz}
-          onUnlockInsignia={handleUnlockInsignia}
-          lang={lang}
-        />
-      )}
 
       {/* Settings & Audio Control Modal */}
       <SettingsModal
@@ -142,15 +190,15 @@ export function App() {
       />
 
       {/* Footer */}
-      <footer className="bg-slate-950 text-slate-400 border-t border-amber-500/30 py-4 px-4 text-center text-xs font-serif">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-medium">
+      <footer className="shrink-0 bg-slate-950 text-slate-400 border-t border-amber-500/30 py-2 px-4 text-center text-xs font-serif">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 font-medium">
           <div className="flex items-center gap-2">
             <span>🇧🇷</span>
-            <span className="font-bold text-amber-400">Símbolos BR</span>
-            <span>— Sistema Gamificado dos 27 Guardiões e Estados Brasileiros</span>
+            <span className="font-bold text-amber-400">BR Quest</span>
+            <span className="hidden sm:inline">— Os Guardiões da Cultura do Brasil (RPG & Mapa Ortogonal 3D)</span>
           </div>
           <div className="text-amber-400/80 text-[11px]">
-            Guerreiros do Conhecimento, Hinos, Bandeiras, Fauna & Culinária
+            Rio Grande do Sul & Pampas • Hinos, Lendas e Insígnias
           </div>
         </div>
       </footer>

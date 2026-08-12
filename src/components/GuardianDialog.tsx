@@ -211,32 +211,20 @@ export const GuardianDialog: React.FC<Props> = ({
         }`}
       >
 
-        {/* --- FULL-BODY / UNBOXED GUARDIAN NPC STANDEE --- */}
-        <div className="w-full md:w-[340px] lg:w-[380px] shrink-0 bg-slate-950/95 border-2 border-amber-500/70 rounded-3xl shadow-2xl p-5 flex flex-col justify-between items-center text-center relative overflow-hidden group">
+        {/* --- UNBOXED GUARDIAN NPC STANDEE (NO DIV BORDER / TRANSPARENT) --- */}
+        <div className="w-full md:w-[340px] lg:w-[380px] shrink-0 flex flex-col justify-end items-center text-center relative overflow-visible group">
           
-          {/* Ambient Background Aura Glow */}
-          <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 via-transparent to-slate-950 pointer-events-none" />
+          {/* Natural Floor Shadow under NPC Feet */}
+          <div className="absolute bottom-20 w-64 h-8 bg-black/80 rounded-[100%] blur-md -z-10" />
 
-          {/* Top Status Banner */}
-          <div className="w-full flex items-center justify-between gap-2 border-b border-amber-500/30 pb-3 z-10">
-            <span className="bg-amber-500/20 text-amber-300 border border-amber-400 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1.5 uppercase tracking-wider">
-              <UserCheck className="w-3.5 h-3.5 text-amber-400" />
-              NPC Guardião
-            </span>
-            <span className="text-xs font-serif font-black text-amber-400 flex items-center gap-1">
-              <span>{guardian.flagSymbol}</span>
-              <span>{guardian.stateNamePt} ({guardian.id})</span>
-            </span>
-          </div>
-
-          {/* Natural Full-Body Character Graphic - Unboxed / Transparent Frame */}
-          <div className="relative my-2 w-full h-80 sm:h-96 md:h-[420px] flex items-center justify-center z-10 group cursor-pointer">
+          {/* Natural Full-Body Character Graphic - Completely Unboxed / Transparent Frame */}
+          <div className="relative my-2 w-full h-80 sm:h-96 md:h-[440px] flex items-end justify-center z-10 group cursor-pointer">
             
             {/* Unboxed Full-Body Character Standee */}
             <img
               src={guardian.id === 'RS' ? '/RS/w-gaucho.png' : guardian.avatarUrl}
               alt={guardian.guardianName}
-              className="max-h-full max-w-full object-contain filter drop-shadow-[0_20px_25px_rgba(0,0,0,0.95)] transition-transform duration-500 group-hover:scale-105"
+              className="max-h-full max-w-full object-contain filter drop-shadow-[0_25px_30px_rgba(0,0,0,0.95)] transition-transform duration-500 group-hover:scale-105"
             />
 
             {/* Floating Official State Flag / Coat of Arms Crest */}
@@ -266,8 +254,8 @@ export const GuardianDialog: React.FC<Props> = ({
             ) : null}
           </div>
 
-          {/* Character Name & Title Box Overlay */}
-          <div className="relative z-20 p-3.5 w-full bg-slate-900/90 rounded-2xl border border-amber-500/40 backdrop-blur-md space-y-1 text-left my-2">
+          {/* Character Name & Title Box Banner */}
+          <div className="relative z-20 p-3.5 w-full bg-slate-950/95 rounded-2xl border-2 border-amber-500/70 backdrop-blur-md space-y-1 text-left my-2 shadow-2xl">
             <div className="text-[10px] text-amber-400 font-bold uppercase tracking-widest font-serif flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-400" />
               {guardian.guardianTitlePt}

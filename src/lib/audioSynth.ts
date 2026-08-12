@@ -14,24 +14,8 @@ class AudioEngine {
   private hasAutoStartedBgm: boolean = false;
 
   public autoStartBgmOnFirstInteraction() {
-    if (this.hasAutoStartedBgm || typeof window === 'undefined') return;
-    
-    const startAudio = () => {
-      if (!this.isBgmPlaying && this.soundEnabled) {
-        this.toggleBgm(true);
-      }
-      window.removeEventListener('click', startAudio);
-      window.removeEventListener('keydown', startAudio);
-      window.removeEventListener('touchstart', startAudio);
-      this.hasAutoStartedBgm = true;
-    };
-
-    window.addEventListener('click', startAudio, { once: true });
-    window.addEventListener('keydown', startAudio, { once: true });
-    window.addEventListener('touchstart', startAudio, { once: true });
-
-    // Try playing immediately if browser allows
-    this.toggleBgm(true);
+    // Soundtrack is disabled by default. User can manually enable BGM in Settings.
+    this.hasAutoStartedBgm = true;
   }
 
   private initCtx() {
