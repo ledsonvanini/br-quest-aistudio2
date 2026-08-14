@@ -9,6 +9,7 @@ import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storag
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
 import { Sparkles } from 'lucide-react';
+import { loadBrazilGeoData } from './lib/geoDataLoader';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -20,6 +21,9 @@ export function App() {
 
   // Synchronize hash URL with state route (e.g., #/state/RS or #/map)
   useEffect(() => {
+    // Preload GeoJSON cartographic data in background
+    loadBrazilGeoData().catch(() => {});
+
     const handleHashChange = () => {
       const hash = window.location.hash;
       if (hash.startsWith('#/state/')) {
@@ -113,17 +117,13 @@ export function App() {
 
   return (
     <div
-      className={
-        activeTab === 'map' && !activeGuardian
-          ? 'h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950'
-          : 'min-h-screen flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950'
-      }
+      className="container-app-principal h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 select-none"
     >
       
       {/* Toast Notification Banner */}
       {notification && (
-        <div className="fixed top-4 right-4 z-50 bg-slate-900/95 backdrop-blur-md text-amber-300 font-bold px-5 py-3.5 rounded-2xl shadow-2xl border-2 border-amber-400 text-xs sm:text-sm animate-in slide-in-from-top-4 duration-200 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+        <div className="banner-notificacao-toast fixed top-4 right-4 z-50 bg-slate-900/95 backdrop-blur-md text-amber-300 font-bold px-4 py-3 rounded-2xl shadow-2xl border-2 border-amber-400 text-xs sm:text-sm animate-in slide-in-from-top-4 duration-200 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
           <span>{notification}</span>
         </div>
       )}
@@ -148,11 +148,11 @@ export function App() {
 
       {/* Main View Container */}
       <main
-        className={
+        className={`container-conteudo-principal flex-1 min-h-0 w-full flex flex-col overflow-hidden relative ${
           activeTab === 'map' && !activeGuardian
-            ? 'flex-1 min-h-0 w-full max-w-7xl mx-auto px-1 sm:px-3 py-1 flex flex-col overflow-hidden relative'
-            : 'flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col'
-        }
+            ? 'p-0 m-0 max-w-none'
+            : 'max-w-7xl mx-auto px-1 sm:px-3 py-1'
+        }`}
       >
         
         {/* State Detail RPG Scene View (Dedicated Route for Selected State) */}
@@ -167,8 +167,8 @@ export function App() {
             lang={lang}
           />
         ) : activeTab === 'map' ? (
-          /* Interactive RPG Map View (Homepage Route) */
-          <div className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden relative">
+          /* Interactive RPG Map View (Homepage Route - Full Game Canvas) */
+          <div className="container-secao-mapa flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden relative">
             <IsometricMapCanvas
               completedStateIds={progress.completedStateIds}
               unlockedInsigniaIds={progress.unlockedInsigniaIds}
@@ -190,7 +190,7 @@ export function App() {
       />
 
       {/* Footer */}
-      <footer className="shrink-0 bg-slate-950 text-slate-400 border-t border-amber-500/30 py-2 px-4 text-center text-xs font-serif">
+      <footer className="rodape-aplicacao shrink-0 bg-slate-950 text-slate-400 border-t border-amber-500/30 py-2 px-4 text-center text-xs font-serif">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 font-medium">
           <div className="flex items-center gap-2">
             <span>🇧🇷</span>

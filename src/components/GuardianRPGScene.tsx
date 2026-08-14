@@ -225,32 +225,55 @@ export const GuardianRPGScene: React.FC<Props> = ({
     }
   };
 
+  // Ref and drag-scroll state for the topic content panel
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isPanelDragging, setIsPanelDragging] = useState<boolean>(false);
+  const panelDragStartY = useRef<number>(0);
+  const panelScrollTopStart = useRef<number>(0);
+
+  const handlePanelMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsPanelDragging(true);
+    panelDragStartY.current = e.clientY;
+    panelScrollTopStart.current = scrollContainerRef.current.scrollTop;
+  };
+
+  const handlePanelMouseMove = (e: React.MouseEvent) => {
+    if (!isPanelDragging || !scrollContainerRef.current) return;
+    const dy = e.clientY - panelDragStartY.current;
+    scrollContainerRef.current.scrollTop = panelScrollTopStart.current - dy;
+  };
+
+  const handlePanelMouseUp = () => {
+    setIsPanelDragging(false);
+  };
+
   const coatOfArms = getCoatOfArmsUrl(guardian.id);
   const characterImgSrc = guardian.id === 'RS' ? '/RS/w-gaucho.png' : guardian.avatarUrl;
 
   return (
-    <div className="relative w-full min-h-[calc(100vh-140px)] flex flex-col bg-slate-950 rounded-3xl border-2 border-amber-500/60 shadow-2xl overflow-hidden p-3 sm:p-6 my-2 text-slate-100">
+    <div className="painel-guardiao-detalhes container-cena-guardiao relative w-full h-[calc(100vh-105px)] max-h-[calc(100vh-105px)] flex flex-col bg-slate-950/95 rounded-3xl border-2 border-amber-500/60 shadow-2xl overflow-hidden p-2 sm:p-4 my-1 text-slate-100 select-none">
       
       {/* ATMOSPHERIC RPG BACKGROUND WITH PARALLAX GLOW */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#1e293b_0%,#0f172a_50%,#020617_100%)] opacity-90 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/br/bg-mapa-br.png')] bg-cover bg-center opacity-25 mix-blend-overlay pointer-events-none" />
+      <div className="camada-brilho-fundo absolute inset-0 bg-[radial-gradient(ellipse_at_top,#1e293b_0%,#0f172a_50%,#020617_100%)] opacity-90 pointer-events-none" />
+      <div className="camada-textura-mapa absolute inset-0 bg-[url('/br/bg-mapa-br.png')] bg-cover bg-center opacity-25 mix-blend-overlay pointer-events-none" />
 
       {/* TOP NAVIGATION BAR */}
-      <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-amber-500/30">
+      <div className="topo-cena-guardiao relative z-20 flex items-center justify-between gap-2 pb-2 mb-2 border-b border-amber-500/30 shrink-0">
         <button
           onClick={() => {
             audioEngine.playSfx('click');
             onBackToMap();
           }}
-          className="bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 hover:text-amber-200 border-2 border-amber-500/60 font-serif font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl flex items-center gap-2 transition shadow-lg group cursor-pointer"
+          className="btn-voltar-mapa-guardiao bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 hover:text-amber-200 border-2 border-amber-500/60 font-serif font-bold text-xs sm:text-sm px-3.5 py-2 rounded-2xl flex items-center gap-2 transition shadow-lg group cursor-pointer"
         >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          <span>Voltar ao Mapa do Brasil</span>
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
+          <span>Voltar ao Mapa</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-slate-900 border border-amber-400 p-1 flex items-center justify-center shrink-0">
-            <span className="text-xl">{guardian.flagSymbol}</span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-900 border border-amber-400 p-1 flex items-center justify-center shrink-0">
+            <span className="text-lg sm:text-xl">{guardian.flagSymbol}</span>
             {coatOfArms && (
               <img
                 src={coatOfArms}
@@ -261,13 +284,13 @@ export const GuardianRPGScene: React.FC<Props> = ({
             )}
           </div>
           <div>
-            <h1 className="font-serif font-black text-lg sm:text-xl text-amber-300 tracking-wide flex items-center gap-2">
+            <h1 className="font-serif font-black text-sm sm:text-lg text-amber-300 tracking-wide flex items-center gap-1.5">
               <span>{guardian.stateNamePt}</span>
-              <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/40 font-mono">
+              <span className="text-[10px] sm:text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/40 font-mono">
                 {guardian.id}
               </span>
             </h1>
-            <p className="text-xs text-slate-400 font-sans">
+            <p className="text-[10px] sm:text-xs text-slate-400 font-sans">
               Capital: <strong className="text-slate-200">{guardian.capitalPt}</strong> • Região:{' '}
               <strong className="text-amber-400 uppercase">{guardian.regionId}</strong>
             </p>
@@ -277,41 +300,41 @@ export const GuardianRPGScene: React.FC<Props> = ({
         {/* Status Badges */}
         <div className="flex items-center gap-2">
           {hasInsignia ? (
-            <div className="bg-amber-500 text-slate-950 font-serif font-black text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg border border-amber-300">
-              <ShieldCheck className="w-4 h-4" />
+            <div className="bg-amber-500 text-slate-950 font-serif font-black text-[11px] sm:text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg border border-amber-300">
+              <ShieldCheck className="w-3.5 h-3.5" />
               <span>Insígnia {guardian.insigniaIcon}</span>
             </div>
           ) : isCompleted ? (
-            <div className="bg-emerald-500 text-slate-950 font-serif font-black text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-lg">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="bg-emerald-500 text-slate-950 font-serif font-black text-[11px] sm:text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg">
+              <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Concluído</span>
             </div>
           ) : null}
         </div>
       </div>
 
-      {/* MAIN RPG ENCOUNTER CANVAS */}
-      <div className="relative z-10 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+      {/* MAIN RPG ENCOUNTER CANVAS (Left: 80% Screen Guardian, Right: Dialogue & Actions) */}
+      <div className="canvas-encontro-guardiao relative z-10 flex-1 flex flex-col lg:flex-row gap-4 items-stretch overflow-hidden min-h-0">
         
-        {/* LEFT COLUMN: UNBOXED FULL-BODY GUARDIAN CHARACTER (NO DIV BORDER / NO CARD FRAME) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-end relative min-h-[380px] sm:min-h-[460px] lg:min-h-[520px] select-none">
+        {/* LEFT COLUMN: ISOLATED FULL-BODY GUARDIAN CHARACTER (80% OF SCREEN HEIGHT, TRANSPARENT BACKGROUND) */}
+        <div className="coluna-personagem-guardiao w-full lg:w-[40%] xl:w-[42%] shrink-0 flex flex-col items-center justify-end relative h-full min-h-[300px] select-none pb-1">
           
-          {/* Subtle Ambient Particle/Glow behind NPC feet */}
-          <div className="absolute bottom-6 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+          {/* Subtle Ambient Particle/Glow behind NPC */}
+          <div className="brilho-aura-personagem absolute bottom-10 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Natural Floor Shadow under NPC Boots */}
-          <div className="absolute bottom-2 w-64 h-8 bg-black/80 rounded-[100%] blur-md pointer-events-none -z-10" />
+          {/* Natural Floor Shadow under NPC */}
+          <div className="sombra-piso-personagem absolute bottom-8 w-72 h-8 bg-black/85 rounded-[100%] blur-md pointer-events-none -z-10" />
 
-          {/* UNBOXED FULL-BODY CHARACTER SPRITE (Free standing, transparent background, facing the dialogue box) */}
-          <div className="relative z-10 w-full h-full flex items-end justify-center group cursor-pointer">
+          {/* UNBOXED FULL-BODY CHARACTER SPRITE: Transparent Background, Free-Standing, 80% Screen */}
+          <div className="sprite-completo-guardiao relative z-10 w-full h-[78vh] max-h-[78vh] flex items-end justify-center group cursor-pointer">
             <img
               src={characterImgSrc}
               alt={guardian.guardianName}
-              className="max-h-[420px] sm:max-h-[480px] lg:max-h-[540px] w-auto object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.95)] transition-transform duration-300 group-hover:scale-105"
+              className="imagem-sprite-guardiao h-full w-auto max-w-full object-contain filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.95)] transition-transform duration-300 group-hover:scale-105"
             />
 
             {/* Floating State Crest Badge next to character */}
-            <div className="absolute top-2 right-4 bg-slate-950/90 border-2 border-amber-400 p-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2">
+            <div className="badge-flutuante-estado absolute top-2 right-4 bg-slate-950/90 border-2 border-amber-400 p-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2">
               <span className="text-xl">{guardian.flagSymbol}</span>
               <span className="text-xs font-serif font-bold text-amber-300 uppercase tracking-wider">
                 {guardian.id}
@@ -320,49 +343,48 @@ export const GuardianRPGScene: React.FC<Props> = ({
           </div>
 
           {/* Floating Character Name & Title Banner below feet */}
-          <div className="relative z-20 mt-3 w-full max-w-sm bg-slate-950/90 border-2 border-amber-500/70 p-3 rounded-2xl shadow-2xl backdrop-blur-md text-center">
-            <div className="text-[10px] text-amber-400 font-bold uppercase tracking-widest font-serif flex items-center justify-center gap-1">
+          <div className="banner-nome-guardiao relative z-20 -mt-4 w-full max-w-xs bg-slate-950/90 border-2 border-amber-500/70 py-2 px-3 rounded-2xl shadow-2xl backdrop-blur-md text-center">
+            <div className="titulo-rpg-guardiao text-[10px] text-amber-400 font-bold uppercase tracking-widest font-serif flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3 text-yellow-400" />
               {guardian.guardianTitlePt}
             </div>
-            <h2 className="font-serif font-black text-lg sm:text-xl text-amber-100 tracking-wide">
+            <h2 className="nome-guardiao-rpg font-serif font-black text-base sm:text-lg text-amber-100 tracking-wide">
               {guardian.guardianName}
             </h2>
           </div>
         </div>
 
-
-        {/* RIGHT COLUMN: DYNAMIC RPG DIALOGUE BOX & INTERACTIVE PANELS */}
-        <div className="lg:col-span-7 flex flex-col justify-between space-y-4">
+        {/* RIGHT COLUMN: DYNAMIC RPG DIALOGUE BOX & INTERACTIVE PANELS WITH MASKED DRAG-SCROLL */}
+        <div className="coluna-dialogo-guardiao flex-1 flex flex-col justify-between overflow-hidden gap-2.5 min-h-0">
           
           {/* TOP RPG DIALOGUE BOX (Caixa de Diálogo Dinâmica) */}
-          <div className="bg-slate-950/95 border-2 border-amber-500/80 rounded-3xl p-5 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          <div className="caixa-dialogo-guardiao bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden backdrop-blur-md shrink-0">
             
             {/* Header Badge */}
-            <div className="flex items-center justify-between pb-3 border-b border-amber-500/30 mb-3">
+            <div className="cabecalho-caixa-dialogo flex items-center justify-between pb-2 border-b border-amber-500/30 mb-2">
               <div className="flex items-center gap-2 text-amber-400 font-serif font-bold text-xs uppercase tracking-wider">
-                <MessageSquare className="w-4 h-4 text-amber-400 animate-pulse" />
-                <span>Caixa de Diálogo Dinâmica do Guardião</span>
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span>Diálogo com o Guardião</span>
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">
+              <span className="nome-autor-fala text-[10px] text-slate-400 font-mono">
                 {guardian.guardianName}
               </span>
             </div>
 
             {/* Speech Bubble / Typewriting Content */}
-            <div className="min-h-[90px] flex items-center">
-              <p className="font-serif text-sm sm:text-base text-amber-100 leading-relaxed italic">
+            <div className="area-texto-fala min-h-[64px] flex items-center">
+              <p className="texto-dialogo-animado font-serif text-xs sm:text-sm text-amber-100 leading-relaxed italic">
                 "{displayedText}"
-                {isTyping && <span className="inline-block w-2 h-4 bg-amber-400 ml-1 animate-pulse" />}
+                {isTyping && <span className="cursor-digitacao inline-block w-2 h-3.5 bg-amber-400 ml-1 animate-pulse" />}
               </p>
             </div>
 
             {/* Next Dialogue Line Button if multiple steps remain */}
             {activeTopic === 'about' && dialogueStep < defaultDialogueLines.length - 1 && (
-              <div className="mt-3 flex justify-end">
+              <div className="mt-2 flex justify-end">
                 <button
                   onClick={handleNextDialogueLine}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-xs px-4 py-2 rounded-xl shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-[11px] px-3 py-1.5 rounded-xl shadow-lg transition flex items-center gap-1 cursor-pointer"
                 >
                   <span>Avançar Fala</span>
                   <span>▶</span>
@@ -372,66 +394,75 @@ export const GuardianRPGScene: React.FC<Props> = ({
           </div>
 
           {/* INTERACTIVE TOPIC CHOICES BAR */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 shrink-0">
             <button
               onClick={() => handleTopicSelect('about')}
-              className={`p-3 rounded-2xl font-serif font-bold text-xs flex items-center justify-center gap-2 transition border ${
+              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
                 activeTopic === 'about'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-xl scale-[1.02]'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
                   : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
               }`}
             >
-              <UserCheck className="w-4 h-4 shrink-0" />
-              <span>História e Lendas</span>
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>História & Lendas</span>
             </button>
 
             <button
               onClick={() => handleTopicSelect('culture')}
-              className={`p-3 rounded-2xl font-serif font-bold text-xs flex items-center justify-center gap-2 transition border ${
+              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
                 activeTopic === 'culture'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-xl scale-[1.02]'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
                   : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
               }`}
             >
-              <Sparkles className="w-4 h-4 shrink-0" />
-              <span>Tradições & Hábitos</span>
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span>Cultura & Tradição</span>
             </button>
 
             <button
               onClick={() => handleTopicSelect('anthems')}
-              className={`p-3 rounded-2xl font-serif font-bold text-xs flex items-center justify-center gap-2 transition border ${
+              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
                 activeTopic === 'anthems'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-xl scale-[1.02]'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
                   : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
               }`}
             >
-              <Music className="w-4 h-4 shrink-0" />
+              <Music className="w-3.5 h-3.5 shrink-0" />
               <span>Hinos Sagrados</span>
             </button>
 
             <button
               onClick={() => handleTopicSelect('quiz')}
-              className={`p-3 rounded-2xl font-serif font-bold text-xs flex items-center justify-center gap-2 transition border ${
+              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
                 activeTopic === 'quiz'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-xl scale-[1.02]'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
                   : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
               }`}
             >
-              <Award className="w-4 h-4 shrink-0" />
+              <Award className="w-3.5 h-3.5 shrink-0" />
               <span>Desafio no Quiz</span>
             </button>
           </div>
 
-          {/* TOPIC CONTENT DETAILS CONTAINER */}
-          <div className="bg-slate-950/90 border-2 border-amber-500/60 rounded-3xl p-5 shadow-2xl min-h-[280px] flex flex-col justify-between">
+          {/* TOPIC CONTENT DETAILS CONTAINER (WITH MASKED DRAG-TO-SCROLL, ZERO NATIVE SCROLLBARS) */}
+          <div
+            ref={scrollContainerRef}
+            onMouseDown={handlePanelMouseDown}
+            onMouseMove={handlePanelMouseMove}
+            onMouseUp={handlePanelMouseUp}
+            onMouseLeave={handlePanelMouseUp}
+            className={`painel-conteudo-topico-guardiao bg-slate-950/90 border-2 border-amber-500/60 rounded-2xl p-4 shadow-2xl flex-1 overflow-y-auto scrollbar-none mask-vertical-fade cursor-${
+              isPanelDragging ? 'grabbing' : 'default'
+            }`}
+          >
             
             {/* 1. ABOUT & LORE TOPIC */}
             {activeTopic === 'about' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="bg-amber-950/40 border border-amber-500/30 p-4 rounded-2xl space-y-2">
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <div className="bg-amber-950/40 border border-amber-500/30 p-3.5 rounded-2xl space-y-1.5">
                   <div className="text-xs text-amber-400 font-serif font-bold uppercase tracking-wider flex items-center gap-1.5">
-                    <Compass className="w-4 h-4 text-amber-300" />
-                    <span>Resumo do Território & Lenda Ancestral</span>
+                    <Compass className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Território & Lenda Ancestral</span>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-serif">
                     {guardian.loreStoryPt}
@@ -439,28 +470,28 @@ export const GuardianRPGScene: React.FC<Props> = ({
                 </div>
 
                 {/* Traje e Armadura */}
-                <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl space-y-1">
+                <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl space-y-1">
                   <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider font-serif">
-                    Armadura e Traje do Guardião:
+                    Armadura e Traje Sagrado:
                   </div>
                   <p className="text-xs text-slate-300 italic font-serif">
                     "{guardian.garbDescriptionPt}"
                   </p>
                 </div>
 
-                {/* Pergaminho Literário / Erico Verissimo */}
+                {/* Pergaminho Literário */}
                 {guardian.literaryPergament && (
-                  <div className="bg-amber-900/20 border border-amber-500/40 p-4 rounded-2xl space-y-2">
+                  <div className="bg-amber-900/20 border border-amber-500/40 p-3 rounded-2xl space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-serif font-bold text-amber-300 flex items-center gap-1.5">
-                        <BookOpen className="w-4 h-4 text-amber-400" />
+                        <BookOpen className="w-3.5 h-3.5 text-amber-400" />
                         Obra: "{guardian.literaryPergament.title}"
                       </span>
                       <span className="text-[11px] text-amber-400/90 font-serif italic">
                         {guardian.literaryPergament.author}
                       </span>
                     </div>
-                    <blockquote className="text-xs italic text-amber-100/90 border-l-2 border-amber-400 pl-3 py-1 font-serif">
+                    <blockquote className="text-xs italic text-amber-100/90 border-l-2 border-amber-400 pl-2.5 py-0.5 font-serif">
                       "{guardian.literaryPergament.excerpt}"
                     </blockquote>
                   </div>
@@ -470,11 +501,11 @@ export const GuardianRPGScene: React.FC<Props> = ({
 
             {/* 2. CULTURE & TRADITIONS TOPIC */}
             {activeTopic === 'culture' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-in fade-in duration-200">
                 {/* Prato Típico */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-2xl space-y-1">
+                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
                   <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Utensils className="w-4 h-4 text-amber-300" /> Culinária Tradicional:
+                    <Utensils className="w-3.5 h-3.5 text-amber-300" /> Culinária Tradicional:
                   </div>
                   <div className="text-xs text-slate-200 font-serif font-semibold">
                     {guardian.typicalDishPt}
@@ -482,9 +513,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
                 </div>
 
                 {/* Fauna */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-2xl space-y-1">
+                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
                   <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Leaf className="w-4 h-4 text-emerald-400" /> Fauna Símbolo:
+                    <Leaf className="w-3.5 h-3.5 text-emerald-400" /> Fauna Símbolo:
                   </div>
                   <div className="text-xs text-slate-200 font-serif font-semibold">
                     {guardian.faunaPt}
@@ -492,9 +523,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
                 </div>
 
                 {/* Flora */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-2xl space-y-1">
+                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
                   <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Feather className="w-4 h-4 text-yellow-400" /> Flora Sagrada:
+                    <Feather className="w-3.5 h-3.5 text-yellow-400" /> Flora Sagrada:
                   </div>
                   <div className="text-xs text-slate-200 font-serif font-semibold">
                     {guardian.floraPt}
@@ -502,9 +533,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
                 </div>
 
                 {/* Ritmos e Tradição */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3.5 rounded-2xl space-y-1">
+                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
                   <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-purple-400" /> Músicas & Tradições:
+                    <Users className="w-3.5 h-3.5 text-purple-400" /> Músicas & Tradições:
                   </div>
                   <div className="text-xs text-slate-200 font-serif font-semibold">
                     {guardian.musicAndCulturePt}
@@ -515,12 +546,12 @@ export const GuardianRPGScene: React.FC<Props> = ({
 
             {/* 3. ANTHEMS TOPIC */}
             {activeTopic === 'anthems' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="space-y-3 animate-in fade-in duration-200">
                 {/* Selector */}
-                <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-2 rounded-2xl border border-slate-800">
+                <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
                   <button
                     onClick={() => setSelectedAnthemType('state')}
-                    className={`px-3 py-1.5 rounded-xl font-serif font-bold text-xs transition ${
+                    className={`px-2.5 py-1 rounded-lg font-serif font-bold text-xs transition ${
                       selectedAnthemType === 'state'
                         ? 'bg-amber-500 text-slate-950 shadow-md'
                         : 'text-slate-300 hover:bg-slate-800'
@@ -530,7 +561,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
                   </button>
                   <button
                     onClick={() => setSelectedAnthemType('national')}
-                    className={`px-3 py-1.5 rounded-xl font-serif font-bold text-xs transition ${
+                    className={`px-2.5 py-1 rounded-lg font-serif font-bold text-xs transition ${
                       selectedAnthemType === 'national'
                         ? 'bg-amber-500 text-slate-950 shadow-md'
                         : 'text-slate-300 hover:bg-slate-800'
@@ -541,13 +572,13 @@ export const GuardianRPGScene: React.FC<Props> = ({
                 </div>
 
                 {/* Player Card */}
-                <div className="bg-amber-950/30 border border-amber-500/40 p-4 rounded-2xl space-y-3">
+                <div className="bg-amber-950/30 border border-amber-500/40 p-3 rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-serif font-bold text-sm text-amber-300">
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-amber-300">
                         {activeAnthem.title}
                       </h4>
-                      <p className="text-[11px] text-slate-400 font-mono">
+                      <p className="text-[10px] text-slate-400 font-mono">
                         Música: {activeAnthem.composers.music} • Letra: {activeAnthem.composers.lyrics}
                       </p>
                     </div>
@@ -555,16 +586,16 @@ export const GuardianRPGScene: React.FC<Props> = ({
                     {mp3Path && (
                       <button
                         onClick={handleToggleMp3}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl transition flex items-center gap-2 text-xs shadow-lg cursor-pointer"
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs shadow-lg cursor-pointer"
                       >
-                        {isPlayingMp3 ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        <span>{isPlayingMp3 ? 'Pausar Hino MP3' : 'Tocar Hino MP3'}</span>
+                        {isPlayingMp3 ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                        <span>{isPlayingMp3 ? 'Pausar' : 'Tocar MP3'}</span>
                       </button>
                     )}
                   </div>
 
                   {/* Lyrics Box */}
-                  <div className="max-h-40 overflow-y-auto pr-2 bg-slate-950/80 p-3 rounded-xl border border-amber-500/20 text-xs font-serif italic leading-relaxed text-amber-100 whitespace-pre-line scrollbar-thin">
+                  <div className="max-h-36 overflow-y-auto pr-2 bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/20 text-xs font-serif italic leading-relaxed text-amber-100 whitespace-pre-line scrollbar-none">
                     {activeAnthem.lyricsPt}
                   </div>
                 </div>
@@ -573,10 +604,10 @@ export const GuardianRPGScene: React.FC<Props> = ({
 
             {/* 4. QUIZ TOPIC */}
             {activeTopic === 'quiz' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="space-y-3 animate-in fade-in duration-200">
                 {!quizFinished ? (
                   <>
-                    <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
+                    <div className="flex items-center justify-between border-b border-amber-500/30 pb-1.5">
                       <span className="text-xs font-serif font-bold text-amber-400 uppercase tracking-wider">
                         Pergunta {currentQIndex + 1} de {guardian.questions.length}
                       </span>
@@ -585,7 +616,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
                       </span>
                     </div>
 
-                    <p className="font-serif text-sm font-bold text-white">
+                    <p className="font-serif text-xs sm:text-sm font-bold text-white">
                       {currentQ.questionPt}
                     </p>
 
@@ -606,9 +637,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
                             key={idx}
                             onClick={() => handleSelectAnswer(idx)}
                             disabled={isAnswered}
-                            className={`p-3 rounded-2xl border text-left text-xs font-serif transition cursor-pointer ${btnStyle}`}
+                            className={`p-2.5 rounded-xl border text-left text-xs font-serif transition cursor-pointer ${btnStyle}`}
                           >
-                            <span className="font-mono text-amber-400 font-bold mr-2">
+                            <span className="font-mono text-amber-400 font-bold mr-1.5">
                               {String.fromCharCode(65 + idx)}.
                             </span>
                             <span>{opt}</span>
@@ -619,12 +650,12 @@ export const GuardianRPGScene: React.FC<Props> = ({
 
                     {isAnswered && (
                       <div className="pt-2 flex items-center justify-between border-t border-amber-500/20">
-                        <p className="text-xs text-amber-200/90 italic font-serif">
+                        <p className="text-[11px] text-amber-200/90 italic font-serif">
                           {currentQ.explanationPt}
                         </p>
                         <button
                           onClick={handleNextQuestion}
-                          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-xs px-4 py-2 rounded-xl transition shadow-lg shrink-0 cursor-pointer"
+                          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-xs px-3.5 py-1.5 rounded-xl transition shadow-lg shrink-0 cursor-pointer"
                         >
                           Próxima ▶
                         </button>
@@ -632,9 +663,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
                     )}
                   </>
                 ) : (
-                  <div className="text-center space-y-3 py-4">
-                    <Award className="w-12 h-12 text-yellow-400 mx-auto animate-bounce" />
-                    <h3 className="font-serif font-black text-lg text-amber-300">
+                  <div className="text-center space-y-2.5 py-3">
+                    <Award className="w-10 h-10 text-yellow-400 mx-auto animate-bounce" />
+                    <h3 className="font-serif font-black text-base text-amber-300">
                       Desafio Concluído!
                     </h3>
                     <p className="text-xs text-slate-300 font-serif">
@@ -642,7 +673,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
                       <strong className="text-amber-400">{score * 100} XP</strong>!
                     </p>
                     {score === guardian.questions.length && (
-                      <div className="bg-amber-500/20 border border-amber-400 p-3 rounded-2xl text-xs text-amber-300 font-bold font-serif">
+                      <div className="bg-amber-500/20 border border-amber-400 p-2.5 rounded-2xl text-xs text-amber-300 font-bold font-serif">
                         🏆 Parabéns! Você conquistou a {guardian.insigniaNamePt}!
                       </div>
                     )}

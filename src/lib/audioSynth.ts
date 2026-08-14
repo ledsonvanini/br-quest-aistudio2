@@ -127,12 +127,16 @@ class AudioEngine {
     });
   }
 
-  public playSfx(type: 'click' | 'step' | 'levelUp' | 'badge' | 'fanfare' | 'scroll') {
+  public playSfx(type: 'click' | 'step' | 'levelUp' | 'badge' | 'fanfare' | 'scroll' | 'hover' | 'travel') {
     if (!this.soundEnabled) return;
     this.initCtx();
 
     if (type === 'click') {
       this.playNote(520, 0.08, 'sine');
+    } else if (type === 'travel') {
+      this.playHymnArpeggio([440, 554, 659, 880]);
+    } else if (type === 'hover') {
+      this.playMenuHover();
     } else if (type === 'step') {
       this.playNote(180, 0.05, 'triangle');
     } else if (type === 'levelUp') {
@@ -143,6 +147,42 @@ class AudioEngine {
       this.playHymnArpeggio([392, 523, 659, 784, 1046]);
     } else if (type === 'scroll') {
       this.playNote(320, 0.15, 'sawtooth');
+    }
+  }
+
+  /**
+   * Discreet, low-volume wooden/parchment menu hover tick
+   */
+  public playMenuHover() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      // Subtle gentle blip
+      osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(330, this.ctx.currentTime + 0.035);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(900, this.ctx.currentTime);
+
+      // Low volume for non-intrusive feedback
+      gain.gain.setValueAtTime(0.025, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.035);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.035);
+    } catch (e) {
+      // ignore
     }
   }
 

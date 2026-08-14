@@ -24,10 +24,10 @@ export const CodexInsignias: React.FC<Props> = ({ progress, lang }) => {
   const unlockedCount = progress.unlockedInsigniaIds.length;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="container-santuario-insignias flex-1 h-full overflow-y-auto scrollbar-none mask-vertical-fade space-y-4 pr-1 animate-in fade-in duration-300">
       
       {/* Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 p-6 sm:p-8 rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 p-4 sm:p-6 rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-2 text-center md:text-left">
           <div className="inline-flex items-center gap-2 bg-amber-500/10 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-bold">
             <Award className="w-4 h-4" />
