@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 @layer utilities {
-  /* Hide scrollbar for Chrome, Safari, Opera, Edge, and Firefox */
+  /* Hide scrollbar when specifically requested */
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
@@ -12,7 +12,7 @@
     scrollbar-width: none;  /* Firefox */
   }
 
-  /* Fade masks for elegant scrolling containers without native scrollbars */
+  /* Fade masks for elegant scrolling containers */
   .mask-vertical-fade {
     mask-image: linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
@@ -27,6 +27,132 @@
     mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, black 65%, transparent 100%);
     -webkit-mask-image: radial-gradient(ellipse 95% 90% at 50% 50%, black 65%, transparent 100%);
   }
+
+  /* Dedicated Gold Horizontal Scrollbar for Carousels & Tracks */
+  .scrollbar-gold-horizontal {
+    scrollbar-width: thin;
+    scrollbar-color: #d97706 rgba(15, 23, 42, 0.6);
+  }
+  .scrollbar-gold-horizontal::-webkit-scrollbar {
+    height: 5px;
+  }
+  .scrollbar-gold-horizontal::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.65);
+    border-radius: 9999px;
+    margin: 0 16px;
+    border: 1px solid rgba(245, 158, 11, 0.1);
+  }
+  .scrollbar-gold-horizontal::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #d97706 100%);
+    border-radius: 9999px;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+  .scrollbar-gold-horizontal::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #f59e0b 0%, #fef08a 50%, #f59e0b 100%);
+    border-color: rgba(254, 240, 138, 0.9);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.7);
+  }
+
+  /* Dedicated Gold Vertical/Universal Scrollbar */
+  .scrollbar-gold,
+  .custom-scrollbar,
+  .custom-scrollbar-gold {
+    scrollbar-width: thin;
+    scrollbar-color: #d97706 rgba(15, 23, 42, 0.6);
+  }
+  .scrollbar-gold::-webkit-scrollbar,
+  .custom-scrollbar::-webkit-scrollbar,
+  .custom-scrollbar-gold::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-gold::-webkit-scrollbar-track,
+  .custom-scrollbar::-webkit-scrollbar-track,
+  .custom-scrollbar-gold::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.65);
+    border-radius: 9999px;
+    margin: 2px;
+    border: 1px solid rgba(245, 158, 11, 0.1);
+  }
+  .scrollbar-gold::-webkit-scrollbar-thumb,
+  .custom-scrollbar::-webkit-scrollbar-thumb,
+  .custom-scrollbar-gold::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #b45309 0%, #f59e0b 50%, #d97706 100%);
+    border-radius: 9999px;
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.35);
+  }
+  .scrollbar-gold::-webkit-scrollbar-thumb:hover,
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  .custom-scrollbar-gold::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #f59e0b 0%, #fef08a 50%, #f59e0b 100%);
+    border-color: rgba(254, 240, 138, 0.9);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.65);
+  }
+}
+
+/* --- Native Browser Elements Customization (Gold/Amber RPG Theme) --- */
+
+/* 1. Global Browser Scrollbar Fallback (All Scrollable Elements) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d97706 rgba(15, 23, 42, 0.6);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #b45309 0%, #f59e0b 50%, #d97706 100%);
+  border-radius: 9999px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #fef08a 50%, #f59e0b 100%);
+  border-color: rgba(254, 240, 138, 0.8);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 2. Text Selection in Gold/Amber Tone */
+::selection {
+  background-color: rgba(245, 158, 11, 0.35);
+  color: #fef08a;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+::-moz-selection {
+  background-color: rgba(245, 158, 11, 0.35);
+  color: #fef08a;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+/* 3. Native Form Controls (Inputs, Focus Rings, Range Sliders) */
+input[type="range"] {
+  accent-color: #f59e0b;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #f59e0b;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(245, 158, 11, 0.65);
+  outline-offset: 1px;
 }
 
 /* Zero native scrollbar on whole window and document */

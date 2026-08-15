@@ -57,15 +57,27 @@ export function calculateLevel(xp: number): { level: number; currentXpInLevel: n
   if (level >= 10) {
     titlePt = 'Supremo Protetor do Brasil';
     titleEn = 'Supreme Protector of Brazil';
+  } else if (level >= 8) {
+    titlePt = 'Protetor dos Biomas Nacionais';
+    titleEn = 'Protector of National Biomes';
   } else if (level >= 7) {
     titlePt = 'Mestre dos Símbolos Sacros';
     titleEn = 'Master of Sacred Symbols';
+  } else if (level >= 6) {
+    titlePt = 'Cavaleiro Farroupilha';
+    titleEn = 'Farroupilha Knight';
   } else if (level >= 5) {
     titlePt = 'Guardião do Conhecimento';
     titleEn = 'Guardian of Knowledge';
+  } else if (level >= 4) {
+    titlePt = 'Sentinela dos Pampas';
+    titleEn = 'Sentinel of the Pampas';
   } else if (level >= 3) {
     titlePt = 'Explorador das Fronteiras';
     titleEn = 'Frontier Explorer';
+  } else if (level >= 2) {
+    titlePt = 'Desbravador';
+    titleEn = 'Pathfinder';
   }
 
   return { level, currentXpInLevel, xpForNextLevel: xpNeeded, titlePt, titleEn };

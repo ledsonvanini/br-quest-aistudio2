@@ -1,32 +1,29 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { GuardianData, Language } from '../types';
+import { GuardianData, UserProgress, Language } from '../types';
+import { calculateLevel } from '../lib/storage';
 import { audioEngine } from '../lib/audioSynth';
-import { triggerConfetti } from '../lib/storage';
 import { getCoatOfArmsUrl } from '../data/coatOfArms';
 import {
-  getAnthemPairForState,
-  NATIONAL_ANTHEM_BRAZIL,
-  AnthemItem,
-} from '../data/anthemsData';
+  CULTURAL_INVENTORY_BY_STATE,
+  CulturalItem,
+} from '../data/culturalInventoryData';
+import { CompassBadgeIcon } from './guardian/GuardianCommon';
+import { GuardianDialogueBox, DialogueNode } from './guardian/GuardianDialogueBox';
+import { GuardianInventoryModal } from './guardian/GuardianInventoryModal';
+import { GuardianAnthemsModal } from './guardian/GuardianAnthemsModal';
+import { GuardianQuizModal } from './guardian/GuardianQuizModal';
+import { GuardianInsigniaCelebrationModal } from './guardian/GuardianInsigniaCelebrationModal';
 import {
   ArrowLeft,
-  MessageSquare,
   Sparkles,
   ShieldCheck,
-  CheckCircle2,
-  Play,
-  Pause,
-  Volume2,
   Award,
-  BookOpen,
   Music,
-  UserCheck,
-  Utensils,
-  Leaf,
-  Users,
-  Feather,
-  Landmark,
-  Compass,
+  Package,
+  Settings,
+  Trophy,
+  ChevronRight,
+  Shield,
 } from 'lucide-react';
 
 interface Props {
@@ -36,654 +33,717 @@ interface Props {
   onBackToMap: () => void;
   onCompleteQuiz: (xpEarned: number, correctCount: number) => void;
   onUnlockInsignia: (insigniaId: string) => void;
+  onReadRelic?: (relicId: string, xpEarned: number) => void;
   lang: Language;
+  userProgress?: UserProgress;
+  onOpenSettings?: () => void;
+  onNavigateToSanctuary?: () => void;
 }
+
+type NpcState = 'idle' | 'dialogando' | 'bau_aberto' | 'hinos' | 'quiz';
 
 export const GuardianRPGScene: React.FC<Props> = ({
   guardian,
-  isCompleted,
   hasInsignia,
   onBackToMap,
   onCompleteQuiz,
   onUnlockInsignia,
+  onReadRelic,
+  userProgress,
+  onOpenSettings,
+  onNavigateToSanctuary,
 }) => {
-  // Dialogue topic: 'about' | 'culture' | 'anthems' | 'quiz'
-  const [activeTopic, setActiveTopic] = useState<'about' | 'culture' | 'anthems' | 'quiz'>('about');
+  // State Machine
+  const [npcState, setNpcState] = useState<NpcState>('idle');
+  const [dialogueNode, setDialogueNode] = useState<DialogueNode>('root');
+  const [isDialogueActive, setIsDialogueActive] = useState<boolean>(true);
+  const [isChestOpen, setIsChestOpen] = useState<boolean>(false);
+  const [isChestTransitioning, setIsChestTransitioning] = useState<boolean>(false);
 
-  // Gaucho dialogue dialogue sequence steps
-  const defaultDialogueLines = useMemo(() => {
-    if (guardian.id === 'RS') {
-      return [
-        'Bah, tchê! Sou o Guardião dos Pampas!',
-        'O que deseja saber da minha terra?',
-        'Tenho orgulho de defender a tradição farroupilha, os campos abertos e o chimarrão sagrado!',
-      ];
-    }
-    return [
-      `Saudações, nobre viajante! Eu sou ${guardian.guardianName}, ${guardian.guardianTitlePt}.`,
-      `Seja muito bem-vindo ao solo sagrado de ${guardian.stateNamePt}!`,
-      'O que desejas conhecer das nossas tradições e história?',
-    ];
-  }, [guardian]);
+  // Celebration modal state
+  const [celebrationData, setCelebrationData] = useState<{
+    titleText: string;
+    subtitleText?: string;
+    insigniaName?: string;
+    insigniaIcon?: string;
+    xpGained?: number;
+    levelReached?: number;
+  } | null>(null);
 
-  const [dialogueStep, setDialogueStep] = useState<number>(0);
-  const [displayedText, setDisplayedText] = useState<string>('');
+  // Typewriting state
+  const [displayedSpeech, setDisplayedSpeech] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const speechTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Anthem Jukebox State
-  const [selectedAnthemType, setSelectedAnthemType] = useState<'state' | 'capital' | 'national'>('state');
-  const [isPlayingMp3, setIsPlayingMp3] = useState<boolean>(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // User player statistics
+  const playerStats = useMemo(() => {
+    if (!userProgress)
+      return {
+        level: 1,
+        currentXpInLevel: 0,
+        xpForNextLevel: 300,
+        titlePt: 'Explorador Cultural',
+        xpPercentage: 0,
+      };
+    const { level, currentXpInLevel, xpForNextLevel, titlePt } = calculateLevel(userProgress.xp);
+    const xpPercentage = Math.min(100, Math.round((currentXpInLevel / xpForNextLevel) * 100));
+    return { level, currentXpInLevel, xpForNextLevel, titlePt, xpPercentage };
+  }, [userProgress]);
 
-  // Quiz state
-  const [currentQIndex, setCurrentQIndex] = useState<number>(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [isAnswered, setIsAnswered] = useState<boolean>(false);
-  const [score, setScore] = useState<number>(0);
-  const [quizFinished, setQuizFinished] = useState<boolean>(false);
+  // Inventory Items
+  const inventoryItems: CulturalItem[] = useMemo(() => {
+    return (
+      CULTURAL_INVENTORY_BY_STATE[guardian.id] ||
+      CULTURAL_INVENTORY_BY_STATE['RS'] ||
+      []
+    );
+  }, [guardian.id]);
 
-  const currentQ = guardian.questions[currentQIndex];
-
-  // Anthems Data
-  const anthemPair = getAnthemPairForState(guardian.id);
-  const activeAnthem: AnthemItem =
-    selectedAnthemType === 'state'
-      ? anthemPair.stateAnthem
-      : selectedAnthemType === 'capital'
-      ? anthemPair.capitalAnthem
-      : NATIONAL_ANTHEM_BRAZIL;
-
-  // MP3 Path Helper
-  const mp3Path = useMemo(() => {
-    if (selectedAnthemType === 'national') {
-      return '/br/hino-nacional-brasileiro.mp3';
-    }
-    if (guardian.id === 'RS' && selectedAnthemType === 'state') {
-      return '/RS/hino-rio-grandense.mp3';
-    }
-    return null;
-  }, [guardian.id, selectedAnthemType]);
-
-  // Handle typing effect for dialogue speech
-  useEffect(() => {
-    const targetText = defaultDialogueLines[dialogueStep] || defaultDialogueLines[0];
-    setDisplayedText('');
+  // Speech function with smooth typewriter effect
+  const speak = (text: string) => {
+    if (speechTimerRef.current) clearInterval(speechTimerRef.current);
+    setDisplayedSpeech('');
     setIsTyping(true);
 
-    let charIndex = 0;
-    const interval = setInterval(() => {
-      charIndex++;
-      setDisplayedText(targetText.slice(0, charIndex));
-      if (charIndex >= targetText.length) {
+    let i = 0;
+    const speed = 14;
+    speechTimerRef.current = setInterval(() => {
+      i++;
+      setDisplayedSpeech(text.slice(0, i));
+      if (i >= text.length) {
         setIsTyping(false);
-        clearInterval(interval);
+        if (speechTimerRef.current) clearInterval(speechTimerRef.current);
       }
-    }, 28);
+    }, speed);
+  };
 
-    return () => clearInterval(interval);
-  }, [dialogueStep, defaultDialogueLines]);
-
-  // Clean up audio on unmount or anthem change
+  // Initial greeting
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsPlayingMp3(false);
-  }, [selectedAnthemType, activeTopic]);
-
-  useEffect(() => {
+    speak(
+      guardian.id === 'RS'
+        ? '“Bah, tchê! Sou o Guardião dos Pampas. O que tu desejas desvendar da nossa querência?”'
+        : `“Saudações, nobre viajante! Eu sou ${guardian.guardianName}. O que desejas desvendar?”`
+    );
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+      if (speechTimerRef.current) clearInterval(speechTimerRef.current);
     };
-  }, []);
+  }, [guardian]);
 
-  const handleToggleMp3 = () => {
-    if (!mp3Path) return;
+  // Restore/open dialogue helper
+  const handleRestoreDialogue = () => {
+    if (npcState === 'idle') {
+      setIsDialogueActive(true);
+      setDialogueNode('root');
+      speak(
+        guardian.id === 'RS'
+          ? '“Bah, tchê! Sou o Guardião dos Pampas. O que tu desejas desvendar da nossa querência?”'
+          : `“Saudações, nobre viajante! Eu sou ${guardian.guardianName}. O que desejas desvendar?”`
+      );
+    }
+  };
 
-    if (isPlayingMp3) {
-      audioRef.current?.pause();
-      setIsPlayingMp3(false);
-    } else {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(mp3Path);
+  // Chest Toggle
+  const handleChestClick = () => {
+    if (isChestTransitioning) return;
+    audioEngine.playSfx('badge');
+    setIsChestTransitioning(true);
+
+    const nextOpen = !isChestOpen;
+
+    setTimeout(() => {
+      setIsChestOpen(nextOpen);
+      setIsChestTransitioning(false);
+
+      if (nextOpen) {
+        setNpcState('bau_aberto');
+        setIsDialogueActive(false);
+        speak(
+          '“Bah, tchê! Abriste o Baú de Relíquias! Examine cada item com carinho, pois nele mora o fogo sagrado do nosso povo!”'
+        );
       } else {
-        audioRef.current.src = mp3Path;
+        setNpcState('idle');
+        setIsDialogueActive(true);
+        speak('“Baú guardado com honra! O que mais tu desejas saber da nossa querência?”');
       }
-      audioRef.current.onended = () => setIsPlayingMp3(false);
-      audioRef.current
-        .play()
-        .then(() => setIsPlayingMp3(true))
-        .catch((err) => console.error('Audio playback error:', err));
-    }
+    }, 250);
   };
 
-  const handleTopicSelect = (topic: 'about' | 'culture' | 'anthems' | 'quiz') => {
-    audioEngine.playSfx('click');
-    setActiveTopic(topic);
-
-    if (topic === 'about') {
-      setDialogueStep(0);
-    } else if (topic === 'culture') {
-      setDisplayedText(
-        `A cultura de ${guardian.stateNamePt} é viva e cheia de bravura! Saboreie nosso ${guardian.typicalDishPt} e viva a tradição.`
-      );
-      setIsTyping(false);
-    } else if (topic === 'anthems') {
-      setDisplayedText(
-        `Escute com atenção os acordes sagrados dos nossos hinos. Aqui cantamos o orgulho e a história do nosso povo!`
-      );
-      setIsTyping(false);
-    } else if (topic === 'quiz') {
-      setDisplayedText(
-        `Prepare sua mente, guerreiro! Responda às perguntas sobre ${guardian.stateNamePt} para conquistar a ${guardian.insigniaNamePt}!`
-      );
-      setIsTyping(false);
-    }
-  };
-
-  const handleNextDialogueLine = () => {
-    if (dialogueStep < defaultDialogueLines.length - 1) {
-      audioEngine.playSfx('click');
-      setDialogueStep((s) => s + 1);
-    }
-  };
-
-  const handleSelectAnswer = (index: number) => {
-    if (isAnswered) return;
-    setSelectedAnswer(index);
-    setIsAnswered(true);
-
-    const isCorrect = index === currentQ.correctIndex;
-    if (isCorrect) {
-      audioEngine.playSfx('badge');
-      setScore((s) => s + 1);
+  // Handle Reading Completion & Rewards
+  const handleCompleteItemReading = (itemId: string, xpEarned: number) => {
+    if (onReadRelic) {
+      onReadRelic(itemId, xpEarned);
     } else {
-      audioEngine.playSfx('step');
+      onCompleteQuiz(xpEarned, 0);
     }
-  };
 
-  const handleNextQuestion = () => {
-    if (currentQIndex + 1 < guardian.questions.length) {
-      setCurrentQIndex((i) => i + 1);
-      setSelectedAnswer(null);
-      setIsAnswered(false);
-    } else {
-      setQuizFinished(true);
-      const finalScore = score + (selectedAnswer === currentQ.correctIndex ? 1 : 0);
-      const xp = finalScore * 100;
+    if (userProgress) {
+      const oldLevelInfo = calculateLevel(userProgress.xp);
+      const newLevelInfo = calculateLevel(userProgress.xp + xpEarned);
 
-      onCompleteQuiz(xp, finalScore);
-
-      if (finalScore === guardian.questions.length) {
-        onUnlockInsignia(guardian.id);
-        triggerConfetti();
-        audioEngine.playSfx('fanfare');
+      // Check if user gained a new title or level up
+      if (newLevelInfo.titlePt !== oldLevelInfo.titlePt || newLevelInfo.level > oldLevelInfo.level) {
+        setCelebrationData({
+          titleText: `Você acaba de conquistar o título ${newLevelInfo.titlePt}!`,
+          subtitleText: `Pelo estudo dedicado das tradições e relíquias do Brasil, você alcançou o Nível ${newLevelInfo.level}!`,
+          xpGained: xpEarned,
+          levelReached: newLevelInfo.level,
+        });
       }
     }
   };
 
-  // Ref and drag-scroll state for the topic content panel
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const [isPanelDragging, setIsPanelDragging] = useState<boolean>(false);
-  const panelDragStartY = useRef<number>(0);
-  const panelScrollTopStart = useRef<number>(0);
-
-  const handlePanelMouseDown = (e: React.MouseEvent) => {
-    if (!scrollContainerRef.current) return;
-    setIsPanelDragging(true);
-    panelDragStartY.current = e.clientY;
-    panelScrollTopStart.current = scrollContainerRef.current.scrollTop;
+  // Handle Insignia Unlocked
+  const handleInsigniaEarned = (insigniaId: string) => {
+    onUnlockInsignia(insigniaId);
+    setCelebrationData({
+      titleText: `Insígnia Sagrada de ${guardian.stateNamePt} Conquistada!`,
+      subtitleText: `Você desvendou os enigmas dos pampas e provou sua honra com bravura!`,
+      insigniaName: guardian.insigniaNamePt,
+      insigniaIcon: guardian.insigniaIcon,
+      xpGained: 300,
+    });
   };
 
-  const handlePanelMouseMove = (e: React.MouseEvent) => {
-    if (!isPanelDragging || !scrollContainerRef.current) return;
-    const dy = e.clientY - panelDragStartY.current;
-    scrollContainerRef.current.scrollTop = panelScrollTopStart.current - dy;
-  };
+  // Check if center is engaged (showing dialogue, inventory, quiz or anthems)
+  const isEngaged =
+    isDialogueActive ||
+    npcState === 'bau_aberto' ||
+    npcState === 'hinos' ||
+    npcState === 'quiz';
 
-  const handlePanelMouseUp = () => {
-    setIsPanelDragging(false);
-  };
+  const isToolbarMode = npcState === 'bau_aberto';
 
   const coatOfArms = getCoatOfArmsUrl(guardian.id);
-  const characterImgSrc = guardian.id === 'RS' ? '/RS/w-gaucho.png' : guardian.avatarUrl;
+  const characterImgSrc = guardian.id === 'RS' ? '/RS/itens/w-gaucho.png' : guardian.avatarUrl;
+  const chestImgSrc = isChestOpen ? '/RS/itens/bau1-a.png' : '/RS/itens/bau1.png';
 
   return (
-    <div className="painel-guardiao-detalhes container-cena-guardiao relative w-full h-[calc(100vh-105px)] max-h-[calc(100vh-105px)] flex flex-col bg-slate-950/95 rounded-3xl border-2 border-amber-500/60 shadow-2xl overflow-hidden p-2 sm:p-4 my-1 text-slate-100 select-none">
-      
-      {/* ATMOSPHERIC RPG BACKGROUND WITH PARALLAX GLOW */}
-      <div className="camada-brilho-fundo absolute inset-0 bg-[radial-gradient(ellipse_at_top,#1e293b_0%,#0f172a_50%,#020617_100%)] opacity-90 pointer-events-none" />
-      <div className="camada-textura-mapa absolute inset-0 bg-[url('/br/bg-mapa-br.png')] bg-cover bg-center opacity-25 mix-blend-overlay pointer-events-none" />
+    <div
+      id="container-tela-detalhes-estado"
+      className="container-tela-detalhes-estado w-full h-screen h-dvh flex flex-row bg-slate-950 text-slate-100 select-none overflow-hidden"
+    >
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* 1. SIDEBAR LATERAL SÓBRIA COM TRANSIÇÃO PARA TOOLBAR       */}
+      {/* ────────────────────────────────────────────────────────── */}
+      <aside
+        id="sidebar-lateral-detalhes-estado"
+        className={`sidebar-lateral-detalhes-estado h-full bg-slate-950 border-r border-amber-500/30 flex flex-col justify-between z-30 shadow-2xl shrink-0 overflow-y-auto custom-scrollbar-gold transition-all duration-500 ease-in-out ${
+          isToolbarMode
+            ? 'w-[56px] sm:w-[64px] min-w-[56px] sm:min-w-[64px] p-2 items-center'
+            : 'w-[260px] sm:w-[280px] min-w-[260px] sm:min-w-[280px] p-3.5'
+        }`}
+      >
+        <div className={`space-y-3 w-full ${isToolbarMode ? 'flex flex-col items-center' : ''}`}>
+          {/* 1.1 APP LOGO + SETTINGS */}
+          {isToolbarMode ? (
+            <div className="flex flex-col items-center gap-2 py-1">
+              <div
+                className="icone-logo-brasil w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-sm font-black text-slate-950 shadow cursor-pointer"
+                title="Símbolos BR - RPG Cívico"
+              >
+                🇧🇷
+              </div>
+              {onOpenSettings && (
+                <button
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onOpenSettings();
+                  }}
+                  className="btn-abrir-ajustes p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 hover:border-amber-400 transition cursor-pointer"
+                  title="Configurações & Áudio"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grupo-logotipo-sidebar flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-amber-500/30 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="icone-logo-brasil w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-sm font-black text-slate-950 shadow">
+                  🇧🇷
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="titulo-app font-serif font-black text-xs text-amber-400 tracking-wider">
+                      SÍMBOLOS BR
+                    </h1>
+                    <span className="badge-genero-rpg bg-amber-500/20 text-amber-300 border border-amber-400/50 text-[9px] font-bold px-1.5 py-0.2 rounded font-serif">
+                      RPG
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-slate-400 font-serif">Guardiões da Cultura</p>
+                </div>
+              </div>
 
-      {/* TOP NAVIGATION BAR */}
-      <div className="topo-cena-guardiao relative z-20 flex items-center justify-between gap-2 pb-2 mb-2 border-b border-amber-500/30 shrink-0">
-        <button
-          onClick={() => {
-            audioEngine.playSfx('click');
-            onBackToMap();
-          }}
-          className="btn-voltar-mapa-guardiao bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 hover:text-amber-200 border-2 border-amber-500/60 font-serif font-bold text-xs sm:text-sm px-3.5 py-2 rounded-2xl flex items-center gap-2 transition shadow-lg group cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
-          <span>Voltar ao Mapa</span>
-        </button>
+              {onOpenSettings && (
+                <button
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onOpenSettings();
+                  }}
+                  className="btn-abrir-ajustes p-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-amber-400 border border-slate-800 hover:border-amber-400 transition cursor-pointer"
+                  title="Configurações & Áudio"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-slate-900 border border-amber-400 p-1 flex items-center justify-center shrink-0">
-            <span className="text-lg sm:text-xl">{guardian.flagSymbol}</span>
-            {coatOfArms && (
-              <img
-                src={coatOfArms}
-                alt={guardian.stateNamePt}
-                className="absolute inset-0 w-full h-full object-contain p-1"
-                onError={(e) => (e.currentTarget.style.display = 'none')}
-              />
+          {/* 1.2 XP PROGRESS & PLAYER LEVEL */}
+          {userProgress && (
+            isToolbarMode ? (
+              <div
+                className="painel-xp-sidebar-compact p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center w-full shadow-inner"
+                title={`Nível ${playerStats.level} (${userProgress.xp} XP) - ${playerStats.titlePt}`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-400 mb-0.5" />
+                <span className="text-[10px] font-mono font-bold text-amber-300">
+                  {playerStats.level}
+                </span>
+              </div>
+            ) : (
+              <div className="painel-xp-sidebar p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-serif font-bold">
+                  <div className="flex items-center gap-1.5 text-amber-300">
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Nível {playerStats.level}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {userProgress.xp} XP
+                  </span>
+                </div>
+                <div className="barra-progresso-xp w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                  <div
+                    className="preenchimento-progresso-xp bg-amber-400 h-full transition-all duration-300"
+                    style={{ width: `${playerStats.xpPercentage}%` }}
+                  />
+                </div>
+                <div className="text-[9px] text-amber-400/80 font-serif truncate">
+                  {playerStats.titlePt}
+                </div>
+              </div>
+            )
+          )}
+
+          {/* 1.3 MAIN NAVIGATION BUTTONS */}
+          <div className={`space-y-1.5 w-full ${isToolbarMode ? 'flex flex-col items-center' : ''}`}>
+            <button
+              onClick={() => {
+                audioEngine.playSfx('click');
+                onBackToMap();
+              }}
+              className={`btn-acao-voltar-mapa group transition-all duration-200 cursor-pointer ${
+                isToolbarMode
+                  ? 'p-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-amber-400 border border-amber-500/40 hover:border-amber-400 flex items-center justify-center w-full'
+                  : 'w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-amber-300 hover:text-amber-200 border border-amber-500/40 hover:border-amber-400'
+              }`}
+              title="Voltar ao Mapa do Brasil"
+            >
+              <div className="flex items-center gap-2">
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-400" />
+                {!isToolbarMode && <span className="font-serif font-bold text-xs">Voltar ao Mapa</span>}
+              </div>
+              {!isToolbarMode && (
+                <ChevronRight className="w-3.5 h-3.5 text-amber-400 transition-transform group-hover:translate-x-0.5" />
+              )}
+            </button>
+
+            {onNavigateToSanctuary && (
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onNavigateToSanctuary();
+                }}
+                className={`btn-ir-santuario group transition-all duration-200 cursor-pointer ${
+                  isToolbarMode
+                    ? 'p-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-amber-400 border border-slate-800 hover:border-amber-500/40 flex items-center justify-center w-full'
+                    : 'w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-slate-200 hover:text-amber-200 border border-slate-800 hover:border-amber-500/40'
+                }`}
+                title={`Santuário de Insígnias (${userProgress?.unlockedInsigniaIds.length || 0}/27)`}
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  {!isToolbarMode && <span className="font-serif font-bold text-xs">Santuário de Insígnias</span>}
+                </div>
+                {!isToolbarMode && (
+                  <span className="text-[10px] text-amber-400 font-mono font-bold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-400/30">
+                    {userProgress?.unlockedInsigniaIds.length || 0}/27
+                  </span>
+                )}
+              </button>
             )}
           </div>
-          <div>
-            <h1 className="font-serif font-black text-sm sm:text-lg text-amber-300 tracking-wide flex items-center gap-1.5">
-              <span>{guardian.stateNamePt}</span>
-              <span className="text-[10px] sm:text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/40 font-mono">
-                {guardian.id}
-              </span>
-            </h1>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-sans">
-              Capital: <strong className="text-slate-200">{guardian.capitalPt}</strong> • Região:{' '}
-              <strong className="text-amber-400 uppercase">{guardian.regionId}</strong>
-            </p>
+
+          {/* 1.4 STATE IDENTITY CARD */}
+          {isToolbarMode ? (
+            <div
+              className="card-brasao-estado-toolbar p-1 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center cursor-pointer shadow"
+              title={`${guardian.stateNamePt} (${guardian.id}) - Cap. ${guardian.capitalPt}`}
+            >
+              <div className="w-8 h-8 rounded-lg p-0.5 bg-slate-950 border border-amber-500/40 flex items-center justify-center">
+                <img
+                  src={coatOfArms}
+                  alt={`Brasão de ${guardian.stateNamePt}`}
+                  className="w-full h-full object-contain filter drop-shadow"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="card-brasao-estado-sidebar p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg p-0.5 bg-slate-950 border border-amber-500/40 flex items-center justify-center shrink-0">
+                <img
+                  src={coatOfArms}
+                  alt={`Brasão de ${guardian.stateNamePt}`}
+                  className="w-full h-full object-contain filter drop-shadow"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold">{guardian.flagSymbol}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-amber-400 font-mono font-bold">
+                    {guardian.id} • {guardian.regionId.toUpperCase()}
+                  </span>
+                </div>
+                <h2 className="font-serif font-bold text-xs text-amber-200 truncate">
+                  {guardian.stateNamePt}
+                </h2>
+                <p className="text-[10px] text-slate-400 font-serif truncate">
+                  Cap. {guardian.capitalPt}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 1.5 ACTIONS */}
+          <div className={`space-y-1.5 pt-1 w-full ${isToolbarMode ? 'flex flex-col items-center' : ''}`}>
+            {/* Abrir Baú */}
+            <button
+              onClick={handleChestClick}
+              className={`item-menu-lateral-bau group transition-all duration-200 cursor-pointer ${
+                isToolbarMode
+                  ? `p-2 rounded-xl border flex items-center justify-center w-full ${
+                      isChestOpen
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow'
+                        : 'bg-slate-900 hover:bg-slate-850 text-amber-400 border-slate-800 hover:border-amber-500/40'
+                    }`
+                  : `w-full flex items-center justify-between p-2 rounded-xl border ${
+                      isChestOpen
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow'
+                        : 'bg-slate-900 hover:bg-slate-850 text-slate-200 border-slate-800 hover:border-amber-500/40'
+                    }`
+              }`}
+              title={isChestOpen ? 'Fechar Baú de Relíquias' : 'Abrir Baú de Relíquias'}
+            >
+              <div className="flex items-center gap-2">
+                <Package className={`w-4 h-4 ${isChestOpen ? 'text-slate-950' : 'text-amber-400'}`} />
+                {!isToolbarMode && (
+                  <span className="font-serif font-bold text-xs">
+                    {isChestOpen ? 'Fechar Baú' : 'Abrir Baú de Relíquias'}
+                  </span>
+                )}
+              </div>
+              {!isToolbarMode && (
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                    isChestOpen ? 'bg-slate-950 text-amber-300' : 'bg-slate-950 text-slate-400'
+                  }`}
+                >
+                  {inventoryItems.length}
+                </span>
+              )}
+            </button>
+
+            {/* Hinos */}
+            <button
+              onClick={() => {
+                audioEngine.playSfx('click');
+                setNpcState('hinos');
+                speak('“Ouça com orgulho os hinos sagrados que contam nossa história!”');
+              }}
+              className={`item-menu-lateral-hinos group transition-all duration-200 cursor-pointer ${
+                isToolbarMode
+                  ? 'p-2 rounded-xl border flex items-center justify-center w-full bg-slate-900 hover:bg-slate-850 text-amber-400 border-slate-800 hover:border-amber-500/40'
+                  : `w-full flex items-center justify-between p-2 rounded-xl border ${
+                      npcState === 'hinos'
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow'
+                        : 'bg-slate-900 hover:bg-slate-850 text-slate-200 border-slate-800 hover:border-amber-500/40'
+                    }`
+              }`}
+              title="Hinos Sagrados do Estado"
+            >
+              <div className="flex items-center gap-2">
+                <Music className={`w-4 h-4 ${!isToolbarMode && npcState === 'hinos' ? 'text-slate-950' : 'text-amber-400'}`} />
+                {!isToolbarMode && <span className="font-serif font-bold text-xs">Hinos Sagrados</span>}
+              </div>
+              {!isToolbarMode && <ChevronRight className="w-3.5 h-3.5 text-amber-400/80" />}
+            </button>
+
+            {/* Quiz */}
+            <button
+              onClick={() => {
+                audioEngine.playSfx('click');
+                setNpcState('quiz');
+                speak('“Prepare-se para o Desafio de Honra! Teste seus conhecimentos e conquiste a Insígnia!”');
+              }}
+              className={`item-menu-lateral-quiz group transition-all duration-200 cursor-pointer ${
+                isToolbarMode
+                  ? 'p-2 rounded-xl border flex items-center justify-center w-full bg-slate-900 hover:bg-slate-850 text-amber-400 border-slate-800 hover:border-amber-500/40'
+                  : `w-full flex items-center justify-between p-2 rounded-xl border ${
+                      npcState === 'quiz'
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow'
+                        : 'bg-slate-900 hover:bg-slate-850 text-slate-200 border-slate-800 hover:border-amber-500/40'
+                    }`
+              }`}
+              title="Desafio de Honra (Quiz +300 XP)"
+            >
+              <div className="flex items-center gap-2">
+                <Award className={`w-4 h-4 ${!isToolbarMode && npcState === 'quiz' ? 'text-slate-950' : 'text-amber-400'}`} />
+                {!isToolbarMode && <span className="font-serif font-bold text-xs">Desafio de Honra</span>}
+              </div>
+              {!isToolbarMode && (
+                <span className="text-[10px] text-amber-400 font-mono font-bold bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                  +300 XP
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Status Badges */}
-        <div className="flex items-center gap-2">
-          {hasInsignia ? (
-            <div className="bg-amber-500 text-slate-950 font-serif font-black text-[11px] sm:text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg border border-amber-300">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Insígnia {guardian.insigniaIcon}</span>
+        {/* 1.6 BOTTOM INSIGNIA STATUS */}
+        <div className={`pt-2 border-t border-slate-800 w-full ${isToolbarMode ? 'flex justify-center' : ''}`}>
+          {isToolbarMode ? (
+            <div
+              className={`p-1.5 rounded-xl border flex items-center justify-center cursor-pointer ${
+                hasInsignia
+                  ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                  : 'bg-slate-900 border-slate-800 text-slate-500'
+              }`}
+              title={hasInsignia ? 'Insígnia Sagrada Conquistada!' : 'Insígnia Sagrada Pendente (Faça o Quiz)'}
+            >
+              {hasInsignia ? (
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-slate-500" />
+              )}
             </div>
-          ) : isCompleted ? (
-            <div className="bg-emerald-500 text-slate-950 font-serif font-black text-[11px] sm:text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-lg">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Concluído</span>
+          ) : hasInsignia ? (
+            <div className="card-insignia-conquistada flex items-center gap-2 p-2 rounded-xl bg-amber-500/15 border border-amber-400/50 text-amber-300 text-xs font-serif font-bold">
+              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Insígnia Sagrada Conquistada</span>
             </div>
-          ) : null}
+          ) : (
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-serif">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+              <span>Complete o Quiz para a Insígnia</span>
+            </div>
+          )}
         </div>
-      </div>
+      </aside>
 
-      {/* MAIN RPG ENCOUNTER CANVAS (Left: 80% Screen Guardian, Right: Dialogue & Actions) */}
-      <div className="canvas-encontro-guardiao relative z-10 flex-1 flex flex-col lg:flex-row gap-4 items-stretch overflow-hidden min-h-0">
-        
-        {/* LEFT COLUMN: ISOLATED FULL-BODY GUARDIAN CHARACTER (80% OF SCREEN HEIGHT, TRANSPARENT BACKGROUND) */}
-        <div className="coluna-personagem-guardiao w-full lg:w-[40%] xl:w-[42%] shrink-0 flex flex-col items-center justify-end relative h-full min-h-[300px] select-none pb-1">
-          
-          {/* Subtle Ambient Particle/Glow behind NPC */}
-          <div className="brilho-aura-personagem absolute bottom-10 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* 2. PALCO PRINCIPAL RPG COM ANIMAÇÃO SEPARADORA DINÂMICA    */}
+      {/* ────────────────────────────────────────────────────────── */}
+      <main
+        id="conteudo-principal-cena-rpg"
+        className="conteudo-principal-cena-rpg flex-1 h-full relative overflow-hidden flex flex-col justify-end"
+      >
+        {/* Deep Slate Atmospheric Backdrop */}
+        <div className="absolute inset-0 bg-slate-950 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.08),transparent_70%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/br/bg-mapa-br.png')] bg-cover bg-center opacity-5 mix-blend-overlay pointer-events-none" />
 
-          {/* Natural Floor Shadow under NPC */}
-          <div className="sombra-piso-personagem absolute bottom-8 w-72 h-8 bg-black/85 rounded-[100%] blur-md pointer-events-none -z-10" />
+        {/* Floor Shadow Contact */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90%] h-12 bg-black/70 rounded-[100%] blur-2xl pointer-events-none -z-10" />
 
-          {/* UNBOXED FULL-BODY CHARACTER SPRITE: Transparent Background, Free-Standing, 80% Screen */}
-          <div className="sprite-completo-guardiao relative z-10 w-full h-[78vh] max-h-[78vh] flex items-end justify-center group cursor-pointer">
+        {/* ────────────────────────────────────────────────────────── */}
+        {/* CENTER INTERACTION AREA: DIALOGUE OR COMPACT PANELS        */}
+        {/* ────────────────────────────────────────────────────────── */}
+        {isDialogueActive && npcState === 'idle' && (
+          <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-30 animate-in fade-in zoom-in-95 duration-500">
+            <GuardianDialogueBox
+              guardian={guardian}
+              dialogueNode={dialogueNode}
+              setDialogueNode={setDialogueNode}
+              displayedSpeech={displayedSpeech}
+              isTyping={isTyping}
+              onOpenChest={handleChestClick}
+              onStartQuiz={() => {
+                setNpcState('quiz');
+                speak('“Prepare-se para o Desafio de Honra!”');
+              }}
+              onSpeak={speak}
+              onCloseDialogue={() => setIsDialogueActive(false)}
+            />
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────── */}
+        {/* STAGE: GUARDIAN & CHEST APPROACH / SEPARATE DYNAMICALLY     */}
+        {/* ────────────────────────────────────────────────────────── */}
+        <div
+          id="palco-guardiao-cenario"
+          className="palco-guardiao-cenario relative w-full h-[90vh] max-h-[90vh] flex items-end justify-center pointer-events-auto"
+        >
+          {/* 1. O GUARDIÃO:
+              - Quando o diálogo está aberto: afasta-se suavemente para o canto esquerdo
+              - Quando o diálogo fecha: aproxima-se do centro ao lado do Baú
+              - Quando o inventário está aberto: recolhe-se suavemente para foco no acervo */}
+          <div
+            onClick={handleRestoreDialogue}
+            onMouseEnter={handleRestoreDialogue}
+            className={`personagem-guardiao-destaque absolute bottom-0 h-[92%] sm:h-[95%] flex flex-col items-start justify-end group cursor-pointer z-10 transition-all duration-700 ease-in-out ${
+              npcState === 'bau_aberto'
+                ? 'opacity-0 pointer-events-none scale-75 -translate-x-24 left-0'
+                : isDialogueActive && npcState === 'idle'
+                ? 'left-0 sm:left-2 md:left-4 translate-x-0 scale-95 opacity-100'
+                : 'left-1/2 -translate-x-[85%] sm:-translate-x-[75%] md:-translate-x-[68%] scale-100 opacity-100'
+            }`}
+            title="Clique ou passe o mouse no Guardião para abrir o Diálogo"
+          >
+            {/* Character Full-Body Graphic */}
             <img
               src={characterImgSrc}
               alt={guardian.guardianName}
-              className="imagem-sprite-guardiao h-full w-auto max-w-full object-contain filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.95)] transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-auto max-w-full object-contain object-bottom-left filter drop-shadow-[0_20px_40px_rgba(0,0,0,0.95)] group-hover:scale-[1.01] transition-transform duration-300"
             />
 
-            {/* Floating State Crest Badge next to character */}
-            <div className="badge-flutuante-estado absolute top-2 right-4 bg-slate-950/90 border-2 border-amber-400 p-2 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2">
-              <span className="text-xl">{guardian.flagSymbol}</span>
-              <span className="text-xs font-serif font-bold text-amber-300 uppercase tracking-wider">
-                {guardian.id}
+            {/* Name Banner at Feet */}
+            <div className="banner-nome-pes -mt-3 ml-2 sm:ml-4 bg-slate-900/95 border border-amber-500/60 px-3 py-1 rounded-xl shadow-2xl text-center z-20 backdrop-blur-sm">
+              <span className="text-xs font-serif font-bold text-amber-200 whitespace-nowrap">
+                {guardian.guardianName} ({guardian.guardianTitlePt})
               </span>
             </div>
           </div>
 
-          {/* Floating Character Name & Title Banner below feet */}
-          <div className="banner-nome-guardiao relative z-20 -mt-4 w-full max-w-xs bg-slate-950/90 border-2 border-amber-500/70 py-2 px-3 rounded-2xl shadow-2xl backdrop-blur-md text-center">
-            <div className="titulo-rpg-guardiao text-[10px] text-amber-400 font-bold uppercase tracking-widest font-serif flex items-center justify-center gap-1">
-              <Sparkles className="w-3 h-3 text-yellow-400" />
-              {guardian.guardianTitlePt}
-            </div>
-            <h2 className="nome-guardiao-rpg font-serif font-black text-base sm:text-lg text-amber-100 tracking-wide">
-              {guardian.guardianName}
-            </h2>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: DYNAMIC RPG DIALOGUE BOX & INTERACTIVE PANELS WITH MASKED DRAG-SCROLL */}
-        <div className="coluna-dialogo-guardiao flex-1 flex flex-col justify-between overflow-hidden gap-2.5 min-h-0">
-          
-          {/* TOP RPG DIALOGUE BOX (Caixa de Diálogo Dinâmica) */}
-          <div className="caixa-dialogo-guardiao bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden backdrop-blur-md shrink-0">
-            
-            {/* Header Badge */}
-            <div className="cabecalho-caixa-dialogo flex items-center justify-between pb-2 border-b border-amber-500/30 mb-2">
-              <div className="flex items-center gap-2 text-amber-400 font-serif font-bold text-xs uppercase tracking-wider">
-                <MessageSquare className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span>Diálogo com o Guardião</span>
-              </div>
-              <span className="nome-autor-fala text-[10px] text-slate-400 font-mono">
-                {guardian.guardianName}
-              </span>
-            </div>
-
-            {/* Speech Bubble / Typewriting Content */}
-            <div className="area-texto-fala min-h-[64px] flex items-center">
-              <p className="texto-dialogo-animado font-serif text-xs sm:text-sm text-amber-100 leading-relaxed italic">
-                "{displayedText}"
-                {isTyping && <span className="cursor-digitacao inline-block w-2 h-3.5 bg-amber-400 ml-1 animate-pulse" />}
-              </p>
-            </div>
-
-            {/* Next Dialogue Line Button if multiple steps remain */}
-            {activeTopic === 'about' && dialogueStep < defaultDialogueLines.length - 1 && (
-              <div className="mt-2 flex justify-end">
-                <button
-                  onClick={handleNextDialogueLine}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-[11px] px-3 py-1.5 rounded-xl shadow-lg transition flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Avançar Fala</span>
-                  <span>▶</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* INTERACTIVE TOPIC CHOICES BAR */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 shrink-0">
-            <button
-              onClick={() => handleTopicSelect('about')}
-              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
-                activeTopic === 'about'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
-                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5 shrink-0" />
-              <span>História & Lendas</span>
-            </button>
-
-            <button
-              onClick={() => handleTopicSelect('culture')}
-              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
-                activeTopic === 'culture'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
-                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>Cultura & Tradição</span>
-            </button>
-
-            <button
-              onClick={() => handleTopicSelect('anthems')}
-              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
-                activeTopic === 'anthems'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
-                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
-              }`}
-            >
-              <Music className="w-3.5 h-3.5 shrink-0" />
-              <span>Hinos Sagrados</span>
-            </button>
-
-            <button
-              onClick={() => handleTopicSelect('quiz')}
-              className={`p-2.5 rounded-xl font-serif font-bold text-xs flex items-center justify-center gap-1.5 transition border ${
-                activeTopic === 'quiz'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-lg scale-[1.02]'
-                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-amber-500/50 hover:bg-slate-800'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5 shrink-0" />
-              <span>Desafio no Quiz</span>
-            </button>
-          </div>
-
-          {/* TOPIC CONTENT DETAILS CONTAINER (WITH MASKED DRAG-TO-SCROLL, ZERO NATIVE SCROLLBARS) */}
+          {/* 2. O BAÚ DE RELÍQUIAS:
+              - Quando o diálogo está aberto: afasta-se para a direita
+              - Quando o diálogo fecha: aproxima-se do centro ao lado do Guardião
+              - Ao abrir: destaca-se com aura dourada */}
           <div
-            ref={scrollContainerRef}
-            onMouseDown={handlePanelMouseDown}
-            onMouseMove={handlePanelMouseMove}
-            onMouseUp={handlePanelMouseUp}
-            onMouseLeave={handlePanelMouseUp}
-            className={`painel-conteudo-topico-guardiao bg-slate-950/90 border-2 border-amber-500/60 rounded-2xl p-4 shadow-2xl flex-1 overflow-y-auto scrollbar-none mask-vertical-fade cursor-${
-              isPanelDragging ? 'grabbing' : 'default'
+            onClick={handleChestClick}
+            className={`elemento-bau-reliquias absolute bottom-3 sm:bottom-4 flex flex-col items-center justify-end group cursor-pointer z-20 transition-all duration-700 ease-in-out ${
+              npcState === 'bau_aberto'
+                ? 'right-2 sm:right-6 md:right-10 translate-x-0'
+                : isDialogueActive && npcState === 'idle'
+                ? 'right-2 sm:right-6 md:right-10 translate-x-0'
+                : 'left-1/2 translate-x-[15%] sm:translate-x-[22%] md:translate-x-[28%]'
             }`}
+            title="Clique para abrir ou fechar o Baú de Relíquias"
           >
-            
-            {/* 1. ABOUT & LORE TOPIC */}
-            {activeTopic === 'about' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                <div className="bg-amber-950/40 border border-amber-500/30 p-3.5 rounded-2xl space-y-1.5">
-                  <div className="text-xs text-amber-400 font-serif font-bold uppercase tracking-wider flex items-center gap-1.5">
-                    <Compass className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Território & Lenda Ancestral</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-serif">
-                    {guardian.loreStoryPt}
-                  </p>
-                </div>
+            {/* Treasure Glow */}
+            <div
+              className={`absolute bottom-2 w-44 sm:w-56 h-20 sm:h-24 rounded-full blur-xl transition-all duration-500 pointer-events-none ${
+                isChestOpen
+                  ? 'bg-amber-400/50 shadow-[0_0_35px_rgba(245,158,11,0.6)]'
+                  : 'bg-amber-500/20 group-hover:bg-amber-400/35'
+              }`}
+            />
 
-                {/* Traje e Armadura */}
-                <div className="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl space-y-1">
-                  <div className="text-[11px] text-amber-400 font-bold uppercase tracking-wider font-serif">
-                    Armadura e Traje Sagrado:
-                  </div>
-                  <p className="text-xs text-slate-300 italic font-serif">
-                    "{guardian.garbDescriptionPt}"
-                  </p>
-                </div>
+            {/* Floating Action Badge */}
+            <div className="absolute -top-7 bg-amber-500 text-slate-950 text-[10px] font-black font-serif px-2.5 py-0.5 rounded-full shadow-lg border border-amber-300 flex items-center gap-1 group-hover:scale-105 transition-transform whitespace-nowrap">
+              <Sparkles className="w-3 h-3 text-slate-950" />
+              <span>
+                {isChestTransitioning
+                  ? 'Abrindo...'
+                  : isChestOpen
+                  ? 'Baú de Relíquias Aberto'
+                  : 'Abrir Baú de Relíquias'}
+              </span>
+            </div>
 
-                {/* Pergaminho Literário */}
-                {guardian.literaryPergament && (
-                  <div className="bg-amber-900/20 border border-amber-500/40 p-3 rounded-2xl space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-serif font-bold text-amber-300 flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                        Obra: "{guardian.literaryPergament.title}"
-                      </span>
-                      <span className="text-[11px] text-amber-400/90 font-serif italic">
-                        {guardian.literaryPergament.author}
-                      </span>
-                    </div>
-                    <blockquote className="text-xs italic text-amber-100/90 border-l-2 border-amber-400 pl-2.5 py-0.5 font-serif">
-                      "{guardian.literaryPergament.excerpt}"
-                    </blockquote>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Proportional Large Chest Graphic */}
+            <div className="relative w-44 sm:w-56 md:w-64 h-32 sm:h-40 md:h-48 flex items-center justify-center">
+              <img
+                src={chestImgSrc}
+                alt={isChestOpen ? 'Baú Cultural Aberto' : 'Baú Cultural Fechado'}
+                className={`w-full h-full object-contain filter transition-all duration-300 drop-shadow-[0_12px_20px_rgba(0,0,0,0.85)] ${
+                  isChestTransitioning
+                    ? 'opacity-75 scale-95'
+                    : isChestOpen
+                    ? 'scale-105 drop-shadow-[0_0_20px_rgba(245,158,11,0.7)]'
+                    : 'group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                }`}
+              />
+            </div>
 
-            {/* 2. CULTURE & TRADITIONS TOPIC */}
-            {activeTopic === 'culture' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-in fade-in duration-200">
-                {/* Prato Típico */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
-                  <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Utensils className="w-3.5 h-3.5 text-amber-300" /> Culinária Tradicional:
-                  </div>
-                  <div className="text-xs text-slate-200 font-serif font-semibold">
-                    {guardian.typicalDishPt}
-                  </div>
-                </div>
-
-                {/* Fauna */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
-                  <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Leaf className="w-3.5 h-3.5 text-emerald-400" /> Fauna Símbolo:
-                  </div>
-                  <div className="text-xs text-slate-200 font-serif font-semibold">
-                    {guardian.faunaPt}
-                  </div>
-                </div>
-
-                {/* Flora */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
-                  <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Feather className="w-3.5 h-3.5 text-yellow-400" /> Flora Sagrada:
-                  </div>
-                  <div className="text-xs text-slate-200 font-serif font-semibold">
-                    {guardian.floraPt}
-                  </div>
-                </div>
-
-                {/* Ritmos e Tradição */}
-                <div className="bg-slate-900/90 border border-amber-500/30 p-3 rounded-2xl space-y-1">
-                  <div className="text-xs text-amber-400 font-serif font-bold flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-purple-400" /> Músicas & Tradições:
-                  </div>
-                  <div className="text-xs text-slate-200 font-serif font-semibold">
-                    {guardian.musicAndCulturePt}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 3. ANTHEMS TOPIC */}
-            {activeTopic === 'anthems' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                {/* Selector */}
-                <div className="flex flex-wrap items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-                  <button
-                    onClick={() => setSelectedAnthemType('state')}
-                    className={`px-2.5 py-1 rounded-lg font-serif font-bold text-xs transition ${
-                      selectedAnthemType === 'state'
-                        ? 'bg-amber-500 text-slate-950 shadow-md'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    Hino do Estado ({guardian.id})
-                  </button>
-                  <button
-                    onClick={() => setSelectedAnthemType('national')}
-                    className={`px-2.5 py-1 rounded-lg font-serif font-bold text-xs transition ${
-                      selectedAnthemType === 'national'
-                        ? 'bg-amber-500 text-slate-950 shadow-md'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    Hino Nacional Brasileiro
-                  </button>
-                </div>
-
-                {/* Player Card */}
-                <div className="bg-amber-950/30 border border-amber-500/40 p-3 rounded-2xl space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-amber-300">
-                        {activeAnthem.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        Música: {activeAnthem.composers.music} • Letra: {activeAnthem.composers.lyrics}
-                      </p>
-                    </div>
-
-                    {mp3Path && (
-                      <button
-                        onClick={handleToggleMp3}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 text-xs shadow-lg cursor-pointer"
-                      >
-                        {isPlayingMp3 ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                        <span>{isPlayingMp3 ? 'Pausar' : 'Tocar MP3'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Lyrics Box */}
-                  <div className="max-h-36 overflow-y-auto pr-2 bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/20 text-xs font-serif italic leading-relaxed text-amber-100 whitespace-pre-line scrollbar-none">
-                    {activeAnthem.lyricsPt}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 4. QUIZ TOPIC */}
-            {activeTopic === 'quiz' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                {!quizFinished ? (
-                  <>
-                    <div className="flex items-center justify-between border-b border-amber-500/30 pb-1.5">
-                      <span className="text-xs font-serif font-bold text-amber-400 uppercase tracking-wider">
-                        Pergunta {currentQIndex + 1} de {guardian.questions.length}
-                      </span>
-                      <span className="text-xs font-mono text-slate-400">
-                        Pontuação: {score} XP
-                      </span>
-                    </div>
-
-                    <p className="font-serif text-xs sm:text-sm font-bold text-white">
-                      {currentQ.questionPt}
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {currentQ.optionsPt.map((opt, idx) => {
-                        let btnStyle =
-                          'bg-slate-900 border-slate-800 text-slate-200 hover:border-amber-500/60';
-                        if (isAnswered) {
-                          if (idx === currentQ.correctIndex) {
-                            btnStyle = 'bg-emerald-950 border-emerald-500 text-emerald-200 font-bold';
-                          } else if (idx === selectedAnswer) {
-                            btnStyle = 'bg-rose-950 border-rose-500 text-rose-200';
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => handleSelectAnswer(idx)}
-                            disabled={isAnswered}
-                            className={`p-2.5 rounded-xl border text-left text-xs font-serif transition cursor-pointer ${btnStyle}`}
-                          >
-                            <span className="font-mono text-amber-400 font-bold mr-1.5">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            <span>{opt}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {isAnswered && (
-                      <div className="pt-2 flex items-center justify-between border-t border-amber-500/20">
-                        <p className="text-[11px] text-amber-200/90 italic font-serif">
-                          {currentQ.explanationPt}
-                        </p>
-                        <button
-                          onClick={handleNextQuestion}
-                          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-black text-xs px-3.5 py-1.5 rounded-xl transition shadow-lg shrink-0 cursor-pointer"
-                        >
-                          Próxima ▶
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center space-y-2.5 py-3">
-                    <Award className="w-10 h-10 text-yellow-400 mx-auto animate-bounce" />
-                    <h3 className="font-serif font-black text-base text-amber-300">
-                      Desafio Concluído!
-                    </h3>
-                    <p className="text-xs text-slate-300 font-serif">
-                      Você acertou {score} de {guardian.questions.length} perguntas e ganhou{' '}
-                      <strong className="text-amber-400">{score * 100} XP</strong>!
-                    </p>
-                    {score === guardian.questions.length && (
-                      <div className="bg-amber-500/20 border border-amber-400 p-2.5 rounded-2xl text-xs text-amber-300 font-bold font-serif">
-                        🏆 Parabéns! Você conquistou a {guardian.insigniaNamePt}!
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Subtitle */}
+            <div className="bg-slate-900 border border-amber-500/60 px-3 py-1 rounded-xl shadow-lg text-center mt-1">
+              <span className="text-xs font-serif font-bold text-amber-300">
+                Baú de Relíquias ({inventoryItems.length} Itens)
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* ────────────────────────────────────────────────────────── */}
+        {/* 3. MODAIS AUXILIARES (INVENTÁRIO, HINOS, QUIZ, CELEBRAÇÃO) */}
+        {/* ────────────────────────────────────────────────────────── */}
+
+        {/* MODAL INVENTÁRIO (Com Painel de Leitura & Atribuição de XP) */}
+        {npcState === 'bau_aberto' && (
+          <GuardianInventoryModal
+            stateId={guardian.id}
+            items={inventoryItems}
+            guardianName={guardian.guardianName}
+            readItemIds={userProgress?.readPergamentIds || []}
+            onClose={() => {
+              setIsChestOpen(false);
+              setNpcState('idle');
+              setIsDialogueActive(true);
+              speak('“Baú guardado com honra! O que mais desejas explorar?”');
+            }}
+            onInspectItem={(item) => speak(item.guardianQuote)}
+            onCompleteReading={handleCompleteItemReading}
+            onSpeak={speak}
+          />
+        )}
+
+        {/* MODAL HINOS SAGRADOS */}
+        {npcState === 'hinos' && (
+          <GuardianAnthemsModal
+            stateId={guardian.id}
+            onClose={() => {
+              setNpcState('idle');
+              setIsDialogueActive(true);
+            }}
+          />
+        )}
+
+        {/* MODAL QUIZ / DESAFIO DE HONRA */}
+        {npcState === 'quiz' && (
+          <GuardianQuizModal
+            guardian={guardian}
+            onClose={() => {
+              setNpcState('idle');
+              setIsDialogueActive(true);
+            }}
+            onCompleteQuiz={onCompleteQuiz}
+            onUnlockInsignia={handleInsigniaEarned}
+            onSpeak={speak}
+          />
+        )}
+
+        {/* MODAL DE CELEBRAÇÃO DE TÍTULO / INSÍGNIA */}
+        {celebrationData && (
+          <GuardianInsigniaCelebrationModal
+            titleText={celebrationData.titleText}
+            subtitleText={celebrationData.subtitleText}
+            insigniaName={celebrationData.insigniaName}
+            insigniaIcon={celebrationData.insigniaIcon}
+            xpGained={celebrationData.xpGained}
+            levelReached={celebrationData.levelReached}
+            onClose={() => setCelebrationData(null)}
+            onNavigateToSanctuary={onNavigateToSanctuary}
+          />
+        )}
+      </main>
     </div>
   );
 };

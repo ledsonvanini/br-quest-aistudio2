@@ -103,6 +103,32 @@ export function App() {
     });
   };
 
+  const handleReadRelic = (relicId: string, xpEarned: number) => {
+    setProgress((prev) => {
+      const alreadyRead = prev.readPergamentIds.includes(relicId);
+      const updatedRead = alreadyRead ? prev.readPergamentIds : [...prev.readPergamentIds, relicId];
+      const newXp = alreadyRead ? prev.xp : prev.xp + xpEarned;
+      const oldLevelData = calculateLevel(prev.xp);
+      const newLevelData = calculateLevel(newXp);
+
+      if (!alreadyRead) {
+        if (newLevelData.level > oldLevelData.level) {
+          audioEngine.playSfx('levelUp');
+          showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
+        } else {
+          showNotification(`📜 Sabedoria Absorvida! +${xpEarned} XP`);
+        }
+      }
+
+      return {
+        ...prev,
+        xp: newXp,
+        level: newLevelData.level,
+        readPergamentIds: updatedRead,
+      };
+    });
+  };
+
   const handleUnlockInsignia = (insigniaId: string) => {
     setProgress((prev) => {
       if (prev.unlockedInsigniaIds.includes(insigniaId)) return prev;
@@ -128,28 +154,30 @@ export function App() {
         </div>
       )}
 
-      {/* Main RPG Header */}
-      <Header
-        progress={progress}
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'insignias') {
-            setActiveGuardian(null);
-            window.location.hash = '#/insignias';
-          } else {
-            window.location.hash = '#/map';
-          }
-        }}
-        lang={lang}
-        setLang={setLang}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
+      {/* Main RPG Header (Hidden when inside state RPG view, since it is integrated into the RPG sidebar) */}
+      {!activeGuardian && (
+        <Header
+          progress={progress}
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            if (tab === 'insignias') {
+              setActiveGuardian(null);
+              window.location.hash = '#/insignias';
+            } else {
+              window.location.hash = '#/map';
+            }
+          }}
+          lang={lang}
+          setLang={setLang}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      )}
 
       {/* Main View Container */}
       <main
         className={`container-conteudo-principal flex-1 min-h-0 w-full flex flex-col overflow-hidden relative ${
-          activeTab === 'map' && !activeGuardian
+          activeGuardian || (activeTab === 'map' && !activeGuardian)
             ? 'p-0 m-0 max-w-none'
             : 'max-w-7xl mx-auto px-1 sm:px-3 py-1'
         }`}
@@ -164,7 +192,15 @@ export function App() {
             onBackToMap={handleBackToMap}
             onCompleteQuiz={handleCompleteQuiz}
             onUnlockInsignia={handleUnlockInsignia}
+            onReadRelic={handleReadRelic}
             lang={lang}
+            userProgress={progress}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onNavigateToSanctuary={() => {
+              setActiveGuardian(null);
+              setActiveTab('insignias');
+              window.location.hash = '#/insignias';
+            }}
           />
         ) : activeTab === 'map' ? (
           /* Interactive RPG Map View (Homepage Route - Full Game Canvas) */
@@ -179,7 +215,18 @@ export function App() {
           </div>
         ) : (
           /* Insignias Sanctuary View (Codex Route) */
-          <CodexInsignias progress={progress} lang={lang} />
+          <CodexInsignias
+            progress={progress}
+            lang={lang}
+            onNavigateToState={(stateId) => {
+              const found = GUARDIANS_DATA.find((g) => g.id === stateId);
+              if (found) {
+                handleSelectGuardian(found);
+              }
+            }}
+            onReadRelic={handleReadRelic}
+            onBackToMap={handleBackToMap}
+          />
         )}
       </main>
 
