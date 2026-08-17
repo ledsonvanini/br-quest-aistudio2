@@ -19,24 +19,34 @@ export function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
-  // Synchronize hash URL with state route (e.g., #/state/RS or #/map)
+  // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
     // Preload GeoJSON cartographic data in background
     loadBrazilGeoData().catch(() => {});
 
     const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/state/')) {
-        const stateId = hash.replace('#/state/', '').toUpperCase();
+      const rawHash = window.location.hash || '';
+      const hash = rawHash.toLowerCase();
+
+      // Padronização em minúsculo e pt-br: #/estado/rs (suporta legado #/state/rs)
+      if (hash.startsWith('#/estado/') || hash.startsWith('#/state/')) {
+        const stateId = hash
+          .replace('#/estado/', '')
+          .replace('#/state/', '')
+          .toUpperCase();
         const found = GUARDIANS_DATA.find((g) => g.id === stateId);
         if (found) {
           setActiveGuardian(found);
           setActiveTab('map');
           return;
         }
-      } else if (hash === '#/insignias') {
+      } else if (hash === '#/insignias' || hash === '#/santuario') {
         setActiveTab('insignias');
         setActiveGuardian(null);
+        return;
+      } else if (hash === '#/mapa' || hash === '#/map') {
+        setActiveGuardian(null);
+        setActiveTab('map');
         return;
       }
       // Default to map view
@@ -63,13 +73,13 @@ export function App() {
   const handleSelectGuardian = (guardian: GuardianData) => {
     audioEngine.playSfx('click');
     setActiveGuardian(guardian);
-    window.location.hash = `#/state/${guardian.id}`;
+    window.location.hash = `#/estado/${guardian.id.toLowerCase()}`;
   };
 
   const handleBackToMap = () => {
     audioEngine.playSfx('click');
     setActiveGuardian(null);
-    window.location.hash = '#/map';
+    window.location.hash = '#/mapa';
   };
 
   const handleCompleteQuiz = (xpEarned: number, correctCount: number) => {
@@ -165,7 +175,7 @@ export function App() {
               setActiveGuardian(null);
               window.location.hash = '#/insignias';
             } else {
-              window.location.hash = '#/map';
+              window.location.hash = '#/mapa';
             }
           }}
           lang={lang}

@@ -34,7 +34,7 @@ export const Header: React.FC<Props> = ({
           onClick={() => {
             audioEngine.playSfx('click');
             setActiveTab('map');
-            window.location.hash = '#/map';
+            window.location.hash = '#/mapa';
           }}
           className="grupo-logotipo-titulo flex items-center gap-2.5 cursor-pointer group"
           title="Ir para a Página Inicial / Mapa do Brasil"
@@ -98,7 +98,7 @@ export const Header: React.FC<Props> = ({
             onClick={() => {
               audioEngine.playSfx('click');
               setActiveTab('map');
-              window.location.hash = '#/map';
+              window.location.hash = '#/mapa';
             }}
             className={`btn-aba-mapa px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-serif font-bold flex items-center gap-1.5 transition cursor-pointer border ${
               activeTab === 'map'

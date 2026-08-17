@@ -201,7 +201,7 @@ export const CodexInsignias: React.FC<Props> = ({
     if (onNavigateToState) {
       onNavigateToState(stateId);
     } else {
-      window.location.hash = `#/state/${stateId}`;
+      window.location.hash = `#/estado/${stateId.toLowerCase()}`;
     }
   };
 
