@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { geoPath } from 'd3-geo';
 import { SOUTH_AMERICA_LANDMASS_GEO } from '../../data/southAmericaGeo';
 import {
-  createNauticalGraticule,
   MAP_CANVAS_WIDTH,
   MAP_CANVAS_HEIGHT,
   cleanStateId,
@@ -12,8 +11,11 @@ import {
   MapVisualStyle,
   ChoroplethSubTheme,
 } from '../../lib/mapColorScales';
+import { findNeighborCountry, NeighborCountryData } from '../../data/southAmericaNeighborsData';
 import { ClippedMapTilesLayer, TerrainTileProvider } from './ClippedMapTilesLayer';
 import { AntiqueCartographyDecor } from './AntiqueCartographyDecor';
+import { StateWeatherData, getEcmwfTempColor } from '../../services/climateService';
+import { ClimateMode } from './ClimatePhenomenaLayer';
 
 interface MapStatesLayerProps {
   geoData: any;
@@ -24,9 +26,18 @@ interface MapStatesLayerProps {
   completedStateIds: Set<string>;
   hoveredStateId: string | null;
   selectedStateId: string | null;
+  showNeighbors?: boolean;
+  hoveredCountryId?: string | null;
   centroids?: Record<string, [number, number]>;
-  onStateHover: (stateId: string | null, e?: React.MouseEvent) => void;
+  isClimateActive?: boolean;
+  climateMode?: ClimateMode;
+  stateWeather?: Record<string, StateWeatherData>;
+  onStateEnter: (stateId: string) => void;
+  onStateLeave: (stateId: string) => void;
   onStateClick: (stateId: string, e: React.MouseEvent) => void;
+  onCountryEnter?: (countryId: string) => void;
+  onCountryLeave?: (countryId: string) => void;
+  onCountryClick?: (country: NeighborCountryData) => void;
 }
 
 export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
@@ -38,43 +49,66 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   completedStateIds,
   hoveredStateId,
   selectedStateId,
-  centroids,
-  onStateHover,
+  showNeighbors = false,
+  hoveredCountryId = null,
+  isClimateActive = false,
+  climateMode = 'temperaturas_frentes',
+  stateWeather,
+  onStateEnter,
+  onStateLeave,
   onStateClick,
+  onCountryEnter,
+  onCountryLeave,
+  onCountryClick,
 }) => {
   const pathGenerator = useMemo(() => {
     if (!projection) return null;
     return geoPath().projection(projection);
   }, [projection]);
 
-  const graticuleData = useMemo(() => {
-    return createNauticalGraticule();
-  }, []);
+  // Pre-filter and pre-compute all South America paths ONCE
+  const neighborFeaturesList = useMemo(() => {
+    if (!pathGenerator) return [];
 
-  // Filter out remote Pacific islands (Easter Island at -109°, Galapagos at -91°) so only continental South America and coastal landmass is rendered
-  const filteredSouthAmericaFeatures = useMemo(() => {
-    return SOUTH_AMERICA_LANDMASS_GEO.features.map((feat: any) => {
+    const list: { pathD: string; countryName: string; matchedCountry: NeighborCountryData | undefined; key: string }[] = [];
+
+    SOUTH_AMERICA_LANDMASS_GEO.features.forEach((feat: any, idx: number) => {
+      let cleanFeat = feat;
       if (feat.geometry?.type === 'MultiPolygon' && Array.isArray(feat.geometry.coordinates)) {
         const cleanCoordinates = feat.geometry.coordinates.filter((poly: any) => {
-          const isFarPacific = poly[0]?.some((pt: number[]) => pt[0] < -82);
+          const isFarPacific = poly[0]?.some((pt: number[]) => pt[0] < -85);
           return !isFarPacific;
         });
-        return {
+        cleanFeat = {
           ...feat,
-          geometry: {
-            ...feat.geometry,
-            coordinates: cleanCoordinates,
-          },
+          geometry: { ...feat.geometry, coordinates: cleanCoordinates },
         };
       }
-      return feat;
-    });
-  }, []);
 
-  // Pre-calculate all state SVG path strings
-  const statePathMap = useMemo(() => {
-    if (!pathGenerator || !geoData) return {};
+      const d = pathGenerator(cleanFeat as any);
+      if (d) {
+        const countryName = feat.properties?.name || feat.properties?.NAME || `country-${idx}`;
+        const matchedCountry = findNeighborCountry(countryName);
+        list.push({
+          pathD: d,
+          countryName,
+          matchedCountry,
+          key: `sa-neighbor-${idx}`,
+        });
+      }
+    });
+
+    return list;
+  }, [pathGenerator]);
+
+  // Pre-calculate all Brazilian state SVG path strings ONCE
+  const { statePathMap, brazilBoundaryCombinedPath } = useMemo(() => {
+    if (!pathGenerator || !geoData?.features) {
+      return { statePathMap: {}, brazilBoundaryCombinedPath: '' };
+    }
     const map: Record<string, string> = {};
+    const dList: string[] = [];
+
     geoData.features.forEach((feat: any) => {
       const rawId =
         feat.properties?.id ||
@@ -85,98 +119,127 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       const stateId = cleanStateId(rawId);
       if (stateId) {
         const d = pathGenerator(feat);
-        if (d) map[stateId] = d;
+        if (d) {
+          map[stateId] = d;
+          dList.push(d);
+        }
       }
     });
-    return map;
+
+    return {
+      statePathMap: map,
+      brazilBoundaryCombinedPath: dList.join(' '),
+    };
   }, [pathGenerator, geoData]);
-
-  // Compound SVG path combining all 27 states into a unified boundary for reliable clipping
-  const brazilBoundaryCombinedPath = useMemo(() => {
-    return Object.values(statePathMap).join(' ');
-  }, [statePathMap]);
-
-  // Sort states so the hovered/selected state is rendered last (on top of neighboring borders)
-  const sortedFeatures = useMemo(() => {
-    if (!geoData?.features) return [];
-    if (!hoveredStateId && !selectedStateId) return geoData.features;
-    return [...geoData.features].sort((a: any, b: any) => {
-      const idA = cleanStateId(a.properties?.id || (a as any).id || a.properties?.sigla || a.properties?.UF || '');
-      const idB = cleanStateId(b.properties?.id || (b as any).id || b.properties?.sigla || b.properties?.UF || '');
-      if (idA === hoveredStateId || idA === selectedStateId) return 1;
-      if (idB === hoveredStateId || idB === selectedStateId) return -1;
-      return 0;
-    });
-  }, [geoData, hoveredStateId, selectedStateId]);
 
   if (!pathGenerator || !geoData) return null;
 
   return (
     <svg
-      className="camada-estados-svg absolute inset-0 pointer-events-none"
-      style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT }}
+      className="camada-estados-svg absolute inset-0 pointer-events-none overflow-visible"
+      style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT, overflow: 'visible' }}
       viewBox={`0 0 ${MAP_CANVAS_WIDTH} ${MAP_CANVAS_HEIGHT}`}
     >
       <defs>
-        {/* Master Clip Path: Single compound path encompassing ALL 27 states seamlessly */}
         <clipPath id="brazil-boundary-clip">
           <path d={brazilBoundaryCombinedPath} />
         </clipPath>
+
+        {/* Solid Continental Landmass Palette for South America Neighbors */}
+        <linearGradient id="saContinentEarthGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#223249" />
+          <stop offset="40%" stopColor="#1b283d" />
+          <stop offset="75%" stopColor="#152030" />
+          <stop offset="100%" stopColor="#101926" />
+        </linearGradient>
+
+        <linearGradient id="neighborHighlightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3b5275" />
+          <stop offset="100%" stopColor="#23354d" />
+        </linearGradient>
       </defs>
 
-      {/* 2. South America Context Landmass (Authentic Detailed Continental Landmass & Neighboring Countries) */}
-      <g className="camada-america-do-sul south-america-context pointer-events-none">
-        {filteredSouthAmericaFeatures.map((feat: any, idx) => {
-          const d = pathGenerator(feat as any);
-          if (!d) return null;
-          const countryName = feat.properties?.name || feat.properties?.NAME || `country-${idx}`;
+      {/* =========================================================================
+          1. MASSA CONTINENTAL DA AMÉRICA DO SUL & PAÍSES VIZINHOS (SEM CONTORNOS EXTRAS)
+             Contraste garantido puramente por variação harmônica de cores de terra.
+         ========================================================================= */}
+      <g className={`camada-america-do-sul south-america-context ${showNeighbors ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+        {neighborFeaturesList.map(({ pathD, countryName, matchedCountry, key }) => {
+          const isCurrentHovered =
+            matchedCountry && hoveredCountryId && hoveredCountryId === matchedCountry.id;
+          const isParchment = terrainProvider === 'voyager_parchment';
 
           return (
-            <g key={`sa-neighbor-${idx}`} className={`pais-vizinho pais-${countryName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
-              {/* Continental Land Underlay */}
+            <g
+              key={key}
+              className={`pais-vizinho pais-${countryName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+            >
               <path
-                d={d}
-                fill="url(#rpgSouthAmericaGrad)"
-                stroke="#334155"
-                strokeWidth="1.2"
-                strokeOpacity="0.7"
+                d={pathD}
+                fill={
+                  isCurrentHovered
+                    ? 'url(#neighborHighlightGrad)'
+                    : isParchment
+                    ? '#eedbb8'
+                    : 'url(#saContinentEarthGrad)'
+                }
+                stroke={
+                  isCurrentHovered
+                    ? '#fbbf24'
+                    : isParchment
+                    ? '#92400e'
+                    : showNeighbors
+                    ? '#475569'
+                    : '#1e293b'
+                }
+                strokeWidth={isCurrentHovered ? '2.0' : '1.0'}
+                strokeOpacity={isCurrentHovered ? 1.0 : isParchment ? 0.85 : showNeighbors ? 0.9 : 0.6}
                 strokeLinejoin="round"
                 strokeLinecap="round"
-              />
-              {/* Subtle Coastal Marine Wash */}
-              <path
-                d={d}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="2.4"
-                strokeOpacity="0.15"
+                className={`transition-colors duration-150 ${showNeighbors && matchedCountry ? 'cursor-pointer pointer-events-auto' : ''}`}
+                onMouseEnter={() => {
+                  if (matchedCountry && showNeighbors) {
+                    onCountryEnter?.(matchedCountry.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (matchedCountry && showNeighbors) {
+                    onCountryLeave?.(matchedCountry.id);
+                  }
+                }}
+                onClick={() => {
+                  if (matchedCountry && showNeighbors) {
+                    onCountryClick?.(matchedCountry);
+                  }
+                }}
               />
             </g>
           );
         })}
       </g>
 
-      {/* 3. Base Underlay for Brazil - Clean transparent anchor without overriding beige texture */}
-      <g id="brazil-base-land-underlay" className="camada-base-terreno-brasil" pointerEvents="none">
-        {/* Intentionally transparent base to allow Shaded, Satellite, Atlas, and Region colors to shine without opaque beige overlay */}
-      </g>
-
-      {/* 4. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite & Atlas Físico) */}
+      {/* =========================================================================
+          2. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite)
+         ========================================================================= */}
       {visualStyle === 'tiles' && (
         <ClippedMapTilesLayer
           geoData={geoData}
           projection={projection}
           provider={terrainProvider}
-          opacity={1.0}
+          opacity={isClimateActive ? 0.50 : 1.0}
         />
       )}
 
-      {/* 5. Antique Cartography Embellishments (Rosa dos Ventos, Caravel, Ocean Titles) */}
-      <AntiqueCartographyDecor />
+      {/* Antique Cartography Embellishments */}
+      {!isClimateActive && (
+        <AntiqueCartographyDecor isParchmentMode={terrainProvider === 'voyager_parchment'} />
+      )}
 
-      {/* 6. Interactive Brazil States Vector Layer */}
+      {/* =========================================================================
+          3. CAMADA VETORIAL DOS 27 ESTADOS (Contraste Puro por Cores / Ultra Leve)
+         ========================================================================= */}
       <g className="camada-vetorial-estados brazil-states-layer pointer-events-auto">
-        {sortedFeatures.map((feat: any) => {
+        {geoData.features.map((feat: any) => {
           const rawId =
             feat.properties?.id ||
             (feat as any).id ||
@@ -192,105 +255,107 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           const isCompleted = completedStateIds.has(stateId);
           const isHovered = hoveredStateId === stateId;
           const isSelected = selectedStateId === stateId;
+          const weather = stateWeather?.[stateId];
 
-          const centroid = centroids ? centroids[stateId] : null;
-          const [cx, cy] = centroid || [0, 0];
+          let stateFill = 'transparent';
+          let stateFillOpacity = 0.0;
+          let strokeColor = visualStyle === 'tiles' ? '#f59e0b' : '#38bdf8';
+          let strokeWidth = 1.0;
 
-          const { fill, stroke } = getStateColor(
-            stateId,
-            visualStyle,
-            choroplethSubTheme,
-            isCompleted,
-            isHovered,
-            isSelected
-          );
-
-          // In Tiles/Shaded mode: State fill is transparent (0%) by default so terrain is fully visible;
-          // on hover, it lights up with a subtle golden tint (30%).
-          // In Choropleth mode: State fill has subtle opacity (28%), rising to 88% on hover.
-          const stateFillOpacity =
-            visualStyle === 'tiles'
-              ? isSelected
-                ? 0.40
+          if (isClimateActive) {
+            if (climateMode === 'temperaturas_frentes') {
+              const temp = weather?.temperature ?? 24;
+              stateFill = getEcmwfTempColor(temp).hex;
+              stateFillOpacity = isSelected ? 0.95 : isHovered ? 0.88 : 0.72;
+              strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : '#ffffff';
+              strokeWidth = isSelected ? 2.5 : isHovered ? 2.0 : 0.8;
+            } else if (climateMode === 'precipitacao_zcas') {
+              const rain = weather?.precipitation ?? 0;
+              stateFill =
+                rain > 60
+                  ? '#0284c7'
+                  : rain > 30
+                  ? '#0ea5e9'
+                  : rain > 10
+                  ? '#38bdf8'
+                  : rain > 2
+                  ? '#059669'
+                  : '#d97706';
+              stateFillOpacity = isSelected ? 0.92 : isHovered ? 0.85 : 0.68;
+              strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : rain > 30 ? '#67e8f9' : '#fde047';
+              strokeWidth = isSelected ? 2.5 : isHovered ? 2.0 : 0.8;
+            } else if (climateMode === 'ventos_aliseos') {
+              const isFlyingRiverCorridor = ['AM', 'RO', 'MT', 'MS', 'SP', 'PR', 'SC'].includes(stateId);
+              stateFill = isFlyingRiverCorridor ? '#10b981' : '#0369a1';
+              stateFillOpacity = isSelected ? 0.88 : isHovered ? 0.80 : 0.62;
+              strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : isFlyingRiverCorridor ? '#6ee7b7' : '#38bdf8';
+              strokeWidth = isSelected ? 2.5 : isHovered ? 2.0 : 0.8;
+            } else if (climateMode === 'el_nino_la_nina') {
+              const isDroughtZone = ['AM', 'PA', 'MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'].includes(stateId);
+              const isFloodZone = ['RS', 'SC', 'PR'].includes(stateId);
+              stateFill = isDroughtZone ? '#ef4444' : isFloodZone ? '#06b6d4' : '#1e293b';
+              stateFillOpacity = isSelected ? 0.92 : isHovered ? 0.85 : 0.65;
+              strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : isDroughtZone ? '#fca5a5' : isFloodZone ? '#67e8f9' : '#64748b';
+              strokeWidth = isSelected ? 2.5 : isHovered ? 2.0 : 0.8;
+            }
+          } else {
+            const colors = getStateColor(
+              stateId,
+              visualStyle,
+              choroplethSubTheme,
+              isCompleted,
+              isHovered,
+              isSelected
+            );
+            stateFill = visualStyle === 'tiles' ? (isHovered || isSelected ? '#fbbf24' : 'transparent') : colors.fill;
+            stateFillOpacity =
+              visualStyle === 'tiles'
+                ? isSelected
+                  ? 0.40
+                  : isHovered
+                  ? 0.30
+                  : isCompleted
+                  ? 0.20
+                  : 0.0
+                : isSelected
+                ? 0.92
                 : isHovered
-                ? 0.30
+                ? 0.85
                 : isCompleted
-                ? 0.20
-                : 0.0
-              : isSelected
-              ? 0.92
+                ? 0.45
+                : 0.28;
+
+            strokeColor = isSelected
+              ? '#fef08a'
               : isHovered
-              ? 0.85
+              ? '#fde047'
               : isCompleted
-              ? 0.45
-              : 0.28;
+              ? '#34d399'
+              : visualStyle === 'tiles'
+              ? '#f59e0b'
+              : colors.stroke;
 
-          const strokeColor = isSelected
-            ? '#fef08a'
-            : isHovered
-            ? '#fde047'
-            : isCompleted
-            ? '#34d399'
-            : visualStyle === 'tiles'
-            ? '#f59e0b'
-            : stroke;
-
-          const strokeWidth = isSelected ? 4.0 : isHovered ? 3.2 : 1.6;
+            strokeWidth = isSelected ? 2.8 : isHovered ? 2.0 : 1.0;
+          }
 
           return (
             <g
               key={stateId}
               className={`grupo-estado-svg grupo-estado-${stateId.toLowerCase()}`}
-              style={
-                centroid
-                  ? {
-                      transformOrigin: `${cx}px ${cy}px`,
-                      transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-                      transition: 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)',
-                    }
-                  : undefined
-              }
             >
-              {/* Outer Golden Glow on Hover/Selection */}
-              {(isHovered || isSelected) && (
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke="#fbbf24"
-                  strokeWidth={strokeWidth + 2.5}
-                  strokeOpacity={0.7}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  className="borda-neon-dourada pointer-events-none animate-pulse"
-                />
-              )}
-
-              {/* Primary State Polygon (Fires hover once upon entering state polygon, clears upon leaving) */}
               <path
                 id={`state-path-${stateId}`}
                 d={pathD}
-                fill={visualStyle === 'tiles' ? (isHovered || isSelected ? '#fbbf24' : 'transparent') : fill}
+                fill={stateFill}
                 fillOpacity={stateFillOpacity}
                 stroke={strokeColor}
                 strokeWidth={strokeWidth}
                 strokeLinejoin="round"
                 strokeLinecap="round"
-                filter={isSelected || isHovered ? 'url(#rpgGoldenAura)' : undefined}
-                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} cursor-pointer transition-all duration-200 pointer-events-auto`}
-                onMouseEnter={(e) => onStateHover(stateId, e)}
-                onMouseLeave={() => onStateHover(null)}
+                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} cursor-pointer transition-colors duration-150 pointer-events-auto`}
+                onMouseEnter={() => onStateEnter(stateId)}
+                onMouseLeave={() => onStateLeave(stateId)}
                 onClick={(e) => onStateClick(stateId, e)}
-              />
-
-              {/* Subtle Inset Border for Cartographic Precision */}
-              <path
-                d={pathD}
-                fill="none"
-                stroke={isHovered ? '#fef08a' : '#d97706'}
-                strokeWidth={1}
-                strokeDasharray="4 4"
-                strokeOpacity={isHovered ? 0.9 : 0.35}
-                className="borda-pontilhada-estado pointer-events-none"
               />
             </g>
           );

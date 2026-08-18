@@ -14,12 +14,17 @@ import {
   Wind,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
+  LocateFixed,
   Volume2,
   VolumeX,
   Compass,
   Layers,
   Sparkles,
+  Flag,
+  Waves,
+  CloudRain,
+  Activity,
+  ThermometerSun,
 } from 'lucide-react';
 
 interface MapControlsHUDProps {
@@ -35,6 +40,12 @@ interface MapControlsHUDProps {
   onToggleGlobe3D: () => void;
   atmosphereEnabled: boolean;
   onToggleAtmosphere: () => void;
+  wavesEnabled?: boolean;
+  onToggleWaves?: () => void;
+  isClimateActive?: boolean;
+  onToggleClimate?: () => void;
+  showNeighbors?: boolean;
+  onToggleNeighbors?: () => void;
   zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -43,7 +54,7 @@ interface MapControlsHUDProps {
   onToggleMusic?: () => void;
 }
 
-type MenuCategory = 'styles' | 'projection' | 'navigation' | 'ambience' | null;
+type MenuCategory = 'styles' | 'projection' | 'neighbors' | 'navigation' | 'climate' | 'ambience' | null;
 
 export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
   visualStyle,
@@ -58,6 +69,12 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
   onToggleGlobe3D,
   atmosphereEnabled,
   onToggleAtmosphere,
+  wavesEnabled = true,
+  onToggleWaves,
+  isClimateActive = false,
+  onToggleClimate,
+  showNeighbors = false,
+  onToggleNeighbors,
   zoom,
   onZoomIn,
   onZoomOut,
@@ -327,7 +344,59 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
       </div>
 
       {/* ==================================================================== */}
-      {/* 3. CATEGORIA: NAVEGAÇÃO & ZOOM (ZOOM +, -, CENTRALIZAR)              */}
+      {/* 3. CATEGORIA: PAÍSES VIZINHOS & AMÉRICA DO SUL                       */}
+      {/* ==================================================================== */}
+      {onToggleNeighbors && (
+        <div
+          className="grupo-hover-vizinhos relative flex items-center pointer-events-auto"
+          onMouseEnter={() => handleMouseEnterMenu('neighbors')}
+          onMouseLeave={handleMouseLeaveMenu}
+        >
+          <button
+            id="hud-btn-toggle-neighbors"
+            onClick={onToggleNeighbors}
+            className={`btn-toggle-vizinhos w-10 h-10 rounded-xl flex items-center justify-center border shadow-lg transition-all duration-200 cursor-pointer ${
+              showNeighbors
+                ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/40 ring-2 ring-amber-400/40 scale-105'
+                : activeHoverMenu === 'neighbors'
+                ? 'bg-slate-900 text-amber-300 border-amber-400'
+                : 'bg-slate-950/90 text-amber-200/80 border-amber-500/30 hover:bg-slate-900 hover:text-amber-300'
+            }`}
+            title="Mostrar Países Vizinhos & América do Sul (Passe o mouse ou clique)"
+            aria-label="Mostrar Países Vizinhos"
+          >
+            <Flag className={`w-4.5 h-4.5 ${showNeighbors ? 'text-slate-950' : 'text-amber-400'}`} />
+          </button>
+
+          {/* Horizontal Drawer: Neighbors Info & Toggle */}
+          <div
+            className={`drawer-horizontal-vizinhos absolute left-full ml-2.5 top-0 flex items-center gap-2 p-1.5 rounded-xl bg-slate-950/95 backdrop-blur-xl border border-amber-500/50 shadow-2xl shadow-black/90 transition-all duration-250 ease-out origin-left z-20 ${
+              activeHoverMenu === 'neighbors'
+                ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
+                : 'opacity-0 -translate-x-3 scale-95 pointer-events-none'
+            }`}
+          >
+            <button
+              id="hud-btn-action-toggle-neighbors"
+              onClick={onToggleNeighbors}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-serif font-bold transition-all border whitespace-nowrap ${
+                showNeighbors
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-sm shadow-amber-500/30'
+                  : 'bg-slate-900 text-amber-200/90 border-amber-500/30 hover:bg-slate-800 hover:text-amber-200'
+              }`}
+            >
+              <Flag className="w-3.5 h-3.5" />
+              <span>{showNeighbors ? 'Ocultar Vizinhos' : 'Mostrar Vizinhos (América do Sul)'}</span>
+            </button>
+            <span className="text-[10px] text-amber-300/70 font-sans hidden sm:inline whitespace-nowrap px-1">
+              {showNeighbors ? 'Bandeiras a 45° ativas' : 'Enquadra o continente'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* 4. CATEGORIA: NAVEGAÇÃO & ZOOM (ZOOM +, -, CENTRALIZAR)              */}
       {/* ==================================================================== */}
       <div
         className="grupo-hover-navegacao relative flex items-center pointer-events-auto"
@@ -380,23 +449,74 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
 
-          <div className="h-4 w-px bg-amber-500/30 mx-0.5" />
+          <div className="w-[1px] h-4 bg-amber-500/30 mx-0.5" />
 
-          {/* Center Brazil Button */}
+          {/* Centralize on Goiás (GO) */}
           <button
-            id="hud-btn-camera-reset"
+            id="hud-btn-camera-recenter-go"
             onClick={onResetView}
-            className="px-2.5 py-1.5 rounded-lg bg-slate-900 text-amber-300 border border-amber-500/30 hover:bg-slate-800 hover:border-amber-400 transition-colors flex items-center gap-1.5 text-xs font-serif font-bold"
-            title="Centralizar o mapa do Brasil na tela"
+            className="p-2 rounded-lg bg-slate-900 text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950 hover:border-amber-300 transition-all group"
+            title="Centralizar Mapa no Brasil (Pivô Goiás - GO)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Centralizar</span>
+            <LocateFixed className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>
 
       {/* ==================================================================== */}
-      {/* 4. CATEGORIA: AMBIENTE & ÁUDIO (MÚSICA, ONDAS, GAIVOTAS)             */}
+      {/* 5. CATEGORIA: TEMPERATURA & AMBIENTE (ECMWF & DINÂMICA NATURAL)       */}
+      {/* ==================================================================== */}
+      <div
+        className="grupo-hover-clima relative flex items-center pointer-events-auto"
+        onMouseEnter={() => handleMouseEnterMenu('climate')}
+        onMouseLeave={handleMouseLeaveMenu}
+      >
+        <button
+          id="hud-btn-stack-climate"
+          onClick={() => {
+            if (onToggleClimate) onToggleClimate();
+            setActiveHoverMenu((prev) => (prev === 'climate' ? null : 'climate'));
+          }}
+          className={`btn-icone-pilha-clima w-10 h-10 rounded-xl flex items-center justify-center border shadow-lg transition-all duration-200 cursor-pointer ${
+            isClimateActive
+              ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/40 scale-105'
+              : activeHoverMenu === 'climate'
+              ? 'bg-slate-900 text-amber-300 border-amber-400'
+              : 'bg-slate-950/90 text-amber-300/80 border-amber-500/30 hover:bg-slate-900 hover:text-amber-300'
+          }`}
+          title="Temperatura & Ambiente: Mapas Térmicos ECMWF, Ventos Alísios, ZCAS & Ondas"
+        >
+          <ThermometerSun className={`w-4.5 h-4.5 ${isClimateActive ? 'animate-pulse' : ''}`} />
+        </button>
+
+        {/* Horizontal Drawer: Climate & Meteorology */}
+        <div
+          className={`drawer-horizontal-clima absolute left-full ml-2.5 top-0 flex items-center gap-1.5 p-1.5 rounded-xl bg-slate-950/95 backdrop-blur-xl border border-amber-500/50 shadow-2xl shadow-black/90 transition-all duration-250 ease-out origin-left z-20 ${
+            activeHoverMenu === 'climate'
+              ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
+              : 'opacity-0 -translate-x-3 scale-95 pointer-events-none'
+          }`}
+        >
+          <button
+            id="hud-btn-toggle-climate-active"
+            onClick={onToggleClimate}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-serif font-bold transition-all border whitespace-nowrap ${
+              isClimateActive
+                ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-sm shadow-amber-500/30'
+                : 'bg-slate-900 text-amber-200/90 border-amber-500/30 hover:bg-slate-800 hover:text-amber-200'
+            }`}
+          >
+            <ThermometerSun className="w-3.5 h-3.5" />
+            <span>{isClimateActive ? 'Ocultar Ambiente' : 'Temperatura & Ambiente'}</span>
+          </button>
+          <span className="text-[10px] text-amber-300/80 font-sans hidden sm:inline whitespace-nowrap px-1">
+            Mapas ECMWF • Ventos • ZCAS • Ondas
+          </span>
+        </div>
+      </div>
+
+      {/* ==================================================================== */}
+      {/* 6. CATEGORIA: AMBIENTE & ÁUDIO (MÚSICA, ONDAS, GAIVOTAS)             */}
       {/* ==================================================================== */}
       <div
         className="grupo-hover-ambiente relative flex items-center pointer-events-auto"
@@ -411,7 +531,7 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
               ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-amber-500/30 scale-105'
               : 'bg-slate-950/90 text-amber-200/80 border-amber-500/30 hover:bg-slate-900 hover:text-amber-300'
           }`}
-          title="Trilha Sonora e Efeitos Atmosféricos"
+          title="Trilha Sonora, Ondas e Efeitos Atmosféricos"
         >
           <Sparkles className="w-4.5 h-4.5" />
         </button>
@@ -455,6 +575,23 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
             <Wind className="w-3.5 h-3.5" />
             <span>Pássaros</span>
           </button>
+
+          {/* Coastal Waves & Sea Foam Simulation */}
+          {onToggleWaves && (
+            <button
+              id="hud-btn-toggle-waves-fx"
+              onClick={onToggleWaves}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-serif font-bold transition-all border whitespace-nowrap ${
+                wavesEnabled
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-sm'
+                  : 'bg-slate-900 text-amber-200/80 border-amber-500/30 hover:bg-slate-800 hover:text-amber-200'
+              }`}
+              title="Simular movimento natural das ondas oceânicas com espuma marítima costeira"
+            >
+              <Waves className="w-3.5 h-3.5" />
+              <span>Ondas & Espuma</span>
+            </button>
+          )}
         </div>
       </div>
 

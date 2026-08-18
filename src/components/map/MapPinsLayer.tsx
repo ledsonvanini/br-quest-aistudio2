@@ -15,7 +15,8 @@ interface MapPinsLayerProps {
   is3D?: boolean;
   tiltAngle?: number;
   onSelectGuardian: (stateId: string) => void;
-  onHoverState: (stateId: string | null) => void;
+  onStateEnter: (stateId: string) => void;
+  onStateLeave: (stateId: string) => void;
 }
 
 export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
@@ -26,7 +27,8 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
   is3D = true,
   tiltAngle = 42,
   onSelectGuardian,
-  onHoverState,
+  onStateEnter,
+  onStateLeave,
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -78,8 +80,8 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
               className={`circulo-beacon-terreno absolute -left-3.5 -top-3.5 w-7 h-7 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-all duration-300 ${
                 isActive ? 'scale-120' : 'hover:scale-110'
               }`}
-              onMouseEnter={() => onHoverState(stateId)}
-              onMouseLeave={() => onHoverState(null)}
+              onMouseEnter={() => onStateEnter(stateId)}
+              onMouseLeave={() => onStateLeave(stateId)}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelectGuardian(stateId);
@@ -145,18 +147,21 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                   // Tilted 45 degrees relative to map plane so it stands up diagonally like a real map pin
                   transform: 'rotateX(-45deg) translateY(-4px) scale(1.12)',
                 }}
-                onMouseEnter={() => onHoverState(stateId)}
-                onMouseLeave={() => onHoverState(null)}
+                onMouseEnter={() => onStateEnter(stateId)}
+                onMouseLeave={() => onStateLeave(stateId)}
               >
-                {/* Vertical Anchor Stem - Connects Banner Bottom to Exact (0,0) Ground Center */}
+                {/* Vertical Anchor Mast / Flagpole - Connects Banner Bottom to Exact (0,0) Ground Center at 45° */}
                 <div
-                  className="haste-ancoragem-centro absolute left-1/2 bottom-0 -translate-x-1/2 w-0.5 pointer-events-none z-0"
+                  className="haste-ancoragem-centro absolute left-1/2 bottom-0 -translate-x-1/2 w-1 pointer-events-none z-0"
                   style={{
-                    height: '24px',
-                    background: 'linear-gradient(to top, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.6), transparent)',
-                    boxShadow: '0 0 6px rgba(245, 158, 11, 0.5)',
+                    height: '26px',
+                    background: 'linear-gradient(to top, #d97706, #fbbf24, #fef3c7)',
+                    boxShadow: '0 0 8px rgba(251, 191, 36, 0.6), 2px 2px 4px rgba(0,0,0,0.8)',
+                    borderRadius: '2px',
                   }}
-                />
+                >
+                  <div className="ponta-mastro-dourada absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-white shadow-[0_0_6px_#fef08a]" />
+                </div>
 
                 {/* Particle Sparks Burst on Hover (Originating around the crest) */}
                 <div className="particulas-burst-hover absolute left-1/2 bottom-12 -translate-x-1/2 pointer-events-none flex items-center justify-center">

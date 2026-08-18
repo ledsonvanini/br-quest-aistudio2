@@ -10,16 +10,23 @@ import {
   Sparkles,
   Info,
   Radio,
-  Check
+  Check,
+  Activity
 } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onResetCamera?: () => void;
+  onOpenApiStatus?: () => void;
 }
 
-export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, onResetCamera }) => {
+export const SettingsModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  onResetCamera,
+  onOpenApiStatus,
+}) => {
   const [bgmOn, setBgmOn] = useState<boolean>(audioEngine.isBgmOn());
   const [bgmVol, setBgmVol] = useState<number>(Math.round(audioEngine.getBgmVolume() * 100));
   const [sfxOn, setSfxOn] = useState<boolean>(audioEngine.isEnabled());
@@ -123,7 +130,10 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, onResetCamera 
                 max="100"
                 value={bgmVol}
                 onChange={handleVolumeChange}
-                className="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-400 border border-slate-800"
+                style={{
+                  background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${bgmVol}%, #1e293b ${bgmVol}%, #1e293b 100%)`,
+                }}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-amber-400"
               />
             </div>
           </div>
@@ -179,6 +189,34 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, onResetCamera 
                 className="px-3 py-1.5 rounded-xl bg-slate-800 text-amber-300 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/30 text-xs font-bold font-serif transition"
               >
                 Resetar
+              </button>
+            </div>
+          )}
+
+          {/* API Status & Telemetry Button */}
+          {onOpenApiStatus && (
+            <div className="bg-slate-900/90 rounded-2xl p-4 border border-cyan-500/30 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-400/40">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-serif font-bold text-slate-200">
+                    Status de APIs & Tráfego
+                  </div>
+                  <div className="text-[10px] text-slate-400">Ver requisições, latência e provedores (ECMWF, IBGE)</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onOpenApiStatus();
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950 border border-cyan-500/40 text-xs font-bold font-serif transition"
+              >
+                Abrir Painel
               </button>
             </div>
           )}

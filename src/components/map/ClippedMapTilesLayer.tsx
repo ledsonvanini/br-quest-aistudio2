@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 
-export type TerrainTileProvider = 'shaded_relief' | 'physical_atlas' | 'satellite_earth' | 'voyager_parchment';
+export type TerrainTileProvider = 'shaded_relief' | 'physical_atlas' | 'satellite_earth' | 'voyager_parchment' | 'muted_gray';
 
 interface ClippedMapTilesLayerProps {
   geoData: any;
@@ -48,6 +48,10 @@ const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: 
   // 4. Antique Voyager Parchment (Historical Cartographic Style)
   voyager_parchment: (x, y, z) =>
     `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+
+  // 5. Clean Muted Light Grey (Meteored / ECMWF Weather Broadcast Style)
+  muted_gray: (x, y, z) =>
+    `https://basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png`,
 };
 
 // CSS Filter Profiles to make each terrain mode visually striking and premium
@@ -55,7 +59,8 @@ const PROVIDER_FILTER_STYLES: Record<TerrainTileProvider, string> = {
   shaded_relief: 'contrast(1.18) saturate(1.12) brightness(0.96)',
   physical_atlas: 'contrast(1.22) saturate(1.3) brightness(1.02)',
   satellite_earth: 'contrast(1.24) saturate(1.28) brightness(0.96)',
-  voyager_parchment: 'sepia(0.32) contrast(1.15) brightness(0.98)',
+  voyager_parchment: 'sepia(0.65) contrast(1.25) saturate(1.1) brightness(0.92) hue-rotate(-5deg)',
+  muted_gray: 'grayscale(0.9) contrast(1.05) brightness(1.02)',
 };
 
 export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({

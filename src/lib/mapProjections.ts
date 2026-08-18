@@ -34,45 +34,44 @@ export function cleanStateId(rawId: any): string {
  * Calibrated directly from D3 Mercator projection centered on Brazil (2560x1440).
  */
 export const DEFAULT_STATE_CENTROIDS: Record<string, [number, number]> = {
-  AC: [859, 562],
-  AL: [1745, 568],
-  AP: [1343, 280],
-  AM: [1010, 428],
-  BA: [1612, 648],
-  CE: [1667, 452],
-  DF: [1453, 736],
-  ES: [1639, 841],
-  GO: [1405, 744],
-  MA: [1518, 452],
-  MT: [1240, 661],
-  MS: [1268, 862],
-  MG: [1534, 810],
-  PA: [1313, 424],
-  PB: [1740, 505],
-  PR: [1352, 984],
-  PE: [1709, 537],
-  PI: [1578, 513],
-  RJ: [1587, 914],
-  RN: [1744, 471],
-  RS: [1308, 1135],
-  RO: [1059, 606],
-  RR: [1096, 264],
-  SC: [1382, 1060],
-  SP: [1428, 916],
-  SE: [1724, 596],
-  TO: [1439, 585],
+  AC: [734, 538],
+  AL: [1620, 544],
+  AP: [1218, 256],
+  AM: [885, 404],
+  BA: [1487, 624],
+  CE: [1542, 428],
+  DF: [1328, 712],
+  ES: [1514, 817],
+  GO: [1280, 720],
+  MA: [1393, 428],
+  MT: [1115, 637],
+  MS: [1143, 838],
+  MG: [1409, 786],
+  PA: [1188, 400],
+  PB: [1615, 481],
+  PR: [1227, 960],
+  PE: [1584, 513],
+  PI: [1453, 489],
+  RJ: [1462, 890],
+  RN: [1619, 447],
+  RS: [1183, 1111],
+  RO: [934, 582],
+  RR: [971, 240],
+  SC: [1257, 1036],
+  SP: [1303, 892],
+  SE: [1599, 572],
+  TO: [1314, 561],
 };
 
 /**
- * Geographic center of Brazil:
- * Calibrated exactly at Longitude -54.39° (Midpoint between West Serra do Divisor/AC and East Ponta do Seixas/PB)
- * and Latitude -15.18° (Midpoint between North Monte Caburaí/RR and South Arroio Chuí/RS).
- * Directly maps the mathematical center of Brazil to the center of the Canvas (1280, 720).
+ * Center of Brazil (Goiás - GO):
+ * Calibrated exactly at Longitude -49.83° and Latitude -15.82° (Center of Goiás / Central Plateau).
+ * Maps the center of Goiás to the exact pivot and center of the Canvas (1280, 720).
  */
 export function createBrazilMercatorProjection() {
   const projection = geoMercator();
   projection
-    .center([-54.39, -15.18])
+    .center([-49.83, -15.82])
     .scale(1500)
     .translate([MAP_CANVAS_WIDTH / 2, MAP_CANVAS_HEIGHT / 2]);
   return projection;
@@ -194,15 +193,15 @@ export function clampPanZoom(
   pan: { x: number; y: number },
   zoom: number,
   containerSize: { width: number; height: number },
-  minZoom = 0.85,
-  maxZoom = 4.0
+  minZoom = 0.50,
+  maxZoom = 3.20
 ): { pan: { x: number; y: number }; zoom: number } {
   const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
 
-  // Generous, fluid panning boundaries allowing full centering of any state/region of Brazil
-  const maxPanX = Math.max(1400, containerSize.width * (clampedZoom + 0.8) + 600);
+  // Tight, robust clamping preventing the map from ever sliding beyond the ocean stage
+  const maxPanX = Math.min(950, (containerSize.width * 0.45) * clampedZoom + 300);
   const minPanX = -maxPanX;
-  const maxPanY = Math.max(1200, containerSize.height * (clampedZoom + 0.8) + 500);
+  const maxPanY = Math.min(750, (containerSize.height * 0.40) * clampedZoom + 250);
   const minPanY = -maxPanY;
 
   return {
@@ -217,20 +216,33 @@ export function clampPanZoom(
 /**
  * Mathematical center of Brazil based on the calibrated projection (-54.39°, -15.18°).
  * Centers the entire territorial mass of Brazil (Acre to Paraíba and Roraima to RS)
- * in the center of the screen in both 2D and 3D.
+ * in the center of the screen in both 2D and 3D with 30% wider field of view (zoom 0.80).
  */
-export function getBrazilACtoPBMidpointPan(zoom = 1.12, is3D = true): { x: number; y: number } {
+export function getBrazilACtoPBMidpointPan(zoom = 0.80, is3D = true): { x: number; y: number } {
   return {
     x: 0,
-    y: Math.round((is3D ? -35 : 0) * zoom),
+    y: Math.round((is3D ? -25 : 0) * zoom),
   };
 }
 
 /**
  * Backward compatibility alias for Brazil midpoint centering
  */
-export function getCenteredGoPan(zoom = 1.12, is3D = true): { x: number; y: number } {
+export function getCenteredGoPan(zoom = 0.80, is3D = true): { x: number; y: number } {
   return getBrazilACtoPBMidpointPan(zoom, is3D);
+}
+
+/**
+ * Calculates the exact pan & zoom to center the entire South American continent in the viewport
+ */
+export function getSouthAmericaMidpointPan(zoom = 0.52, is3D = true): { x: number; y: number } {
+  // Centroid of South American landmass is around [1000, 1050]
+  const offsetX = 1000 - MAP_CANVAS_WIDTH / 2; // -280
+  const offsetY = 1050 - MAP_CANVAS_HEIGHT / 2; // +330
+  return {
+    x: Math.round(-offsetX * zoom * 0.7),
+    y: Math.round((is3D ? -offsetY * 0.65 : -offsetY * 0.8) * zoom),
+  };
 }
 
 /**
@@ -255,26 +267,28 @@ export function calculateStateCenterPan(
  * Spherical Globe Rotation & Gyroscope Matrix:
  * Simulates a spherical 3D globe / celestial sphere during grab-and-drag.
  * Horizontal drag (longitude) induces a realistic spherical roll (rotateY),
- * while vertical drag (latitude) adjusts isometric pitch (rotateX).
+ * vertical drag (latitude) adjusts isometric pitch (rotateX),
+ * and headingAngle sets the compass orientation (rotateZ).
  */
 export function calculateSphericalGlobeAngles(
   pan: { x: number; y: number },
   baseTiltAngle = 42,
   _dragVelocity: { x: number; y: number } = { x: 0, y: 0 },
-  is3D = true
+  is3D = true,
+  headingAngle = 0
 ): { rotateX: number; rotateY: number; rotateZ: number } {
   if (!is3D) {
-    return { rotateX: 0, rotateY: 0, rotateZ: 0 };
+    return { rotateX: 0, rotateY: 0, rotateZ: headingAngle };
   }
 
   // Stable, elegant isometric perspective (no jarring velocity tilt jumps during dragging)
   // Subtle, calm horizon perspective based strictly on pan position
-  const subtlePitch = Math.max(32, Math.min(48, baseTiltAngle - pan.y * 0.004));
-  const subtleYaw = Math.max(-4, Math.min(4, pan.x * 0.003));
+  const subtlePitch = Math.max(0, Math.min(75, baseTiltAngle - pan.y * 0.004));
+  const subtleYaw = Math.max(-10, Math.min(10, pan.x * 0.003));
 
   return {
     rotateX: subtlePitch,
     rotateY: subtleYaw,
-    rotateZ: 0,
+    rotateZ: headingAngle,
   };
 }

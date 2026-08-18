@@ -11,6 +11,7 @@ interface Props {
   lang: Language;
   setLang: (lang: Language) => void;
   onOpenSettings?: () => void;
+  isClimateActive?: boolean;
 }
 
 export const Header: React.FC<Props> = ({
@@ -18,15 +19,32 @@ export const Header: React.FC<Props> = ({
   activeTab,
   setActiveTab,
   onOpenSettings,
+  isClimateActive = false,
 }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
   const { level, currentXpInLevel, xpForNextLevel, titlePt } = calculateLevel(progress.xp);
   const xpPercentage = Math.min(100, Math.round((currentXpInLevel / xpForNextLevel) * 100));
 
+  // If in Climate & Environment mode, keep top area dedicated for the Meteorological banner
+  if (isClimateActive) {
+    return null;
+  }
+
   return (
-    <header
-      id="header-superior-navegacao"
-      className="header-superior-navegacao menu-superior-status w-full bg-slate-950/95 backdrop-blur-md border-b border-amber-500/40 shadow-xl z-40 shrink-0 select-none"
+    <div
+      className="fixed top-0 left-0 right-0 z-50 pointer-events-auto"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Top Hover Trigger Stripe */}
+      <div className="h-2 w-full bg-gradient-to-r from-amber-500/20 via-amber-400/40 to-amber-500/20 cursor-pointer" />
+
+      <header
+        id="header-superior-navegacao"
+        className={`header-superior-navegacao menu-superior-status w-full bg-slate-950/95 backdrop-blur-md border-b border-amber-500/40 shadow-xl select-none transition-transform duration-300 ease-out ${
+          isHovered ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+      >
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* 1. Logotipo e Título Nobre */}
@@ -159,6 +177,7 @@ export const Header: React.FC<Props> = ({
 
       </div>
     </header>
+    </div>
   );
 };
 

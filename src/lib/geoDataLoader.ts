@@ -1,3 +1,5 @@
+import { apiTracker } from '../services/apiTracker';
+
 let cachedGeoJson: any = null;
 let pendingPromise: Promise<any> | null = null;
 
@@ -7,6 +9,7 @@ let pendingPromise: Promise<any> | null = null;
  */
 export async function loadBrazilGeoData(): Promise<any> {
   if (cachedGeoJson) {
+    apiTracker.trackCall('ibge-geo', '/br/br.json (Mem Cache)', 0, 'cached', 200, '27 polígonos estaduais servidos da memória');
     return cachedGeoJson;
   }
 
@@ -14,14 +17,19 @@ export async function loadBrazilGeoData(): Promise<any> {
     return pendingPromise;
   }
 
+  const startTime = performance.now();
   pendingPromise = (async () => {
     try {
       const response = await fetch('/br/br.json');
+      const duration = performance.now() - startTime;
       if (!response.ok) {
+        apiTracker.trackCall('ibge-geo', '/br/br.json', duration, 'error', response.status, `HTTP error ${response.status}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       cachedGeoJson = data;
+      const sizeKb = JSON.stringify(data).length / 1024;
+      apiTracker.trackCall('ibge-geo', '/br/br.json (IBGE GeoJSON)', duration, 'success', 200, '27 UFs vetorizadas em alta precisão', sizeKb);
       return data;
     } catch (err) {
       console.error('Failed to load GeoJSON data:', err);

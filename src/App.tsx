@@ -4,11 +4,13 @@ import { IsometricMapCanvas } from './components/IsometricMapCanvas';
 import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
+import { ApiStatusModal } from './components/ApiStatusModal';
+import { FpsCounterWidget } from './components/FpsCounterWidget';
 import { GuardianData, UserProgress, Language } from './types';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Activity, Gauge } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
 
 export function App() {
@@ -18,6 +20,9 @@ export function App() {
   const [lang, setLang] = useState<Language>('pt');
   const [notification, setNotification] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
+  const [isClimateActive, setIsClimateActive] = useState<boolean>(false);
+  const [showFps, setShowFps] = useState<boolean>(false);
 
   // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
@@ -164,7 +169,7 @@ export function App() {
         </div>
       )}
 
-      {/* Main RPG Header (Hidden when inside state RPG view, since it is integrated into the RPG sidebar) */}
+      {/* Main RPG Header (Hidden when inside state RPG view or Climate Mode) */}
       {!activeGuardian && (
         <Header
           progress={progress}
@@ -181,6 +186,7 @@ export function App() {
           lang={lang}
           setLang={setLang}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          isClimateActive={isClimateActive}
         />
       )}
 
@@ -221,6 +227,7 @@ export function App() {
               onSelectGuardian={handleSelectGuardian}
               lang={lang}
               onOpenSettings={() => setIsSettingsOpen(true)}
+              onClimateActiveChange={setIsClimateActive}
             />
           </div>
         ) : (
@@ -244,18 +251,64 @@ export function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        onOpenApiStatus={() => setIsApiStatusOpen(true)}
+      />
+
+      {/* API Telemetry & Status Modal */}
+      <ApiStatusModal
+        isOpen={isApiStatusOpen}
+        onClose={() => setIsApiStatusOpen(false)}
+      />
+
+      {/* Real-time FPS & Performance Telemetry Widget */}
+      <FpsCounterWidget
+        isVisible={showFps}
+        onToggleVisibility={() => setShowFps(false)}
       />
 
       {/* Footer */}
       <footer className="rodape-aplicacao shrink-0 bg-slate-950 text-slate-400 border-t border-amber-500/30 py-2 px-4 text-center text-xs font-serif">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1 font-medium">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-medium">
           <div className="flex items-center gap-2">
             <span>🇧🇷</span>
             <span className="font-bold text-amber-400">BR Quest</span>
             <span className="hidden sm:inline">— Os Guardiões da Cultura do Brasil (RPG & Mapa Ortogonal 3D)</span>
           </div>
-          <div className="text-amber-400/80 text-[11px]">
-            Rio Grande do Sul & Pampas • Hinos, Lendas e Insígnias
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* FPS / Frame Rate Toggle Button */}
+            <button
+              id="btn-toggle-fps-rodape"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                setShowFps((prev) => !prev);
+              }}
+              className={`btn-toggle-fps flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition cursor-pointer ${
+                showFps
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20'
+                  : 'bg-slate-900 border-slate-700 hover:border-emerald-400/60 text-slate-300 hover:text-emerald-300'
+              }`}
+              title="Mostrar / Ocultar Medidor de Taxa de Quadros (FPS) em tempo real"
+            >
+              <Gauge className="w-3 h-3 text-emerald-400" />
+              <span>{showFps ? 'FPS: Ativo' : 'Mostrar FPS'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                audioEngine.playSfx('click');
+                setIsApiStatusOpen(true);
+              }}
+              className="btn-status-api-footer flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-400/60 text-slate-300 hover:text-cyan-300 text-[11px] font-mono transition cursor-pointer"
+              title="Abrir painel de monitoramento de tráfego e latência de APIs"
+            >
+              <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
+              <span>Status API</span>
+            </button>
+
+            <div className="text-amber-400/80 text-[11px]">
+              Rio Grande do Sul & Pampas • Hinos, Lendas e Insígnias
+            </div>
           </div>
         </div>
       </footer>
