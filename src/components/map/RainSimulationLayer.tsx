@@ -296,88 +296,92 @@ export const RainSimulationLayer: React.FC<RainSimulationLayerProps> = ({
                 top: item.posY,
                 transform: `translate(-50%, -100%) translateZ(40px) rotateX(-${effectiveTilt}deg)`,
                 transformOrigin: 'bottom center',
-                zIndex: isHovered ? 100 : 40,
+                zIndex: isHovered ? 120 : 40,
               }}
               onMouseEnter={() => setHoveredBadgeStateId(item.stateId)}
               onMouseLeave={() => setHoveredBadgeStateId(null)}
             >
-              {/* COMPACT BADGE (Default State) */}
-              {!isHovered ? (
-                <div
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-2xl border-2 cursor-pointer transition-all duration-150 ${
-                    item.rainVolume > 70
-                      ? 'bg-slate-950 border-red-500 text-red-200 shadow-red-950/90'
-                      : item.rainVolume > 45
-                      ? 'bg-slate-950 border-amber-500 text-amber-200 shadow-amber-950/90'
-                      : 'bg-slate-950 border-cyan-400 text-cyan-200 shadow-cyan-950/90'
-                  }`}
-                >
-                  <CloudRain className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span className="font-extrabold text-xs tracking-wider text-slate-100">{item.stateId}:</span>
-                  <span className="font-mono font-black text-xs text-cyan-300">{item.rainVolume} mm</span>
-                </div>
-              ) : (
-                /* EXPANDED RICH CARD (On Hover: 100% Solid Dark Billboard Card) */
-                <div
-                  className={`w-72 p-4 rounded-2xl shadow-2xl border-2 cursor-default animate-in fade-in zoom-in-95 duration-150 ${
-                    item.rainVolume > 70
-                      ? 'bg-slate-950 border-red-500 shadow-2xl shadow-black text-white'
-                      : item.rainVolume > 45
-                      ? 'bg-slate-950 border-amber-500 shadow-2xl shadow-black text-white'
-                      : 'bg-slate-950 border-cyan-400 shadow-2xl shadow-black text-white'
-                  }`}
-                  style={{
-                    backgroundColor: '#020617', // Solid Slate-950 (Zero transparency)
-                  }}
-                >
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0">
-                        <CloudRain className="w-4.5 h-4.5" />
-                      </div>
-                      <div>
-                        <h4 className="font-black text-sm text-white leading-tight flex items-center gap-1.5">
-                          <span>{item.stateName}</span>
-                          <span className="text-xs font-mono font-bold text-amber-400">({item.stateId})</span>
-                        </h4>
-                        <p className="text-[11px] text-slate-400 font-medium">{item.region}</p>
-                      </div>
-                    </div>
+              {/* COMPACT BADGE: oculta suavemente no hover sem flicker */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-2xl border-2 cursor-pointer transition-all duration-200 ${
+                  isHovered ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
+                } ${
+                  item.rainVolume > 70
+                    ? 'bg-slate-950 border-red-500 text-red-200 shadow-red-950/90'
+                    : item.rainVolume > 45
+                    ? 'bg-slate-950 border-amber-500 text-amber-200 shadow-amber-950/90'
+                    : 'bg-slate-950 border-cyan-400 text-cyan-200 shadow-cyan-950/90'
+                }`}
+              >
+                <CloudRain className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span className="font-extrabold text-xs tracking-wider text-slate-100">{item.stateId}:</span>
+                <span className="font-mono font-black text-xs text-cyan-300">{item.rainVolume} mm</span>
+              </div>
 
-                    <div className="text-right">
-                      <div className="font-mono font-black text-base text-cyan-300 leading-tight">
-                        {item.rainVolume} <span className="text-[10px] font-normal text-slate-400">mm/dia</span>
-                      </div>
-                      <span className="text-[9px] uppercase font-black tracking-wider text-amber-400">Precipitação</span>
+              {/* EXPANDED RICH CARD: revelado suavemente de forma centralizada e estável */}
+              <div
+                className={`absolute left-1/2 bottom-0 -translate-x-1/2 w-72 p-3.5 rounded-2xl shadow-2xl border-2 transition-all duration-200 ease-out origin-bottom ${
+                  isHovered
+                    ? 'opacity-100 scale-100 pointer-events-auto'
+                    : 'opacity-0 scale-95 pointer-events-none'
+                } ${
+                  item.rainVolume > 70
+                    ? 'bg-slate-950/98 border-red-500 shadow-red-950/80 text-white'
+                    : item.rainVolume > 45
+                    ? 'bg-slate-950/98 border-amber-500 shadow-amber-950/80 text-white'
+                    : 'bg-slate-950/98 border-cyan-400 shadow-cyan-950/80 text-white'
+                }`}
+                style={{
+                  backgroundColor: '#020617',
+                }}
+              >
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0">
+                      <CloudRain className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-xs text-white leading-tight flex items-center gap-1">
+                        <span>{item.stateName}</span>
+                        <span className="text-[11px] font-mono font-bold text-amber-400">({item.stateId})</span>
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-medium">{item.region}</p>
                     </div>
                   </div>
 
-                  {/* Card Details */}
-                  <div className="pt-3 space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-200">
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <Zap className="w-3.5 h-3.5 text-amber-400" /> Diagnóstico:
-                      </span>
-                      <span className="font-bold text-amber-300">{item.condition}</span>
+                  <div className="text-right">
+                    <div className="font-mono font-black text-sm text-cyan-300 leading-tight">
+                      {item.rainVolume} <span className="text-[9px] font-normal text-slate-400">mm/dia</span>
                     </div>
-
-                    <div className="flex items-center justify-between text-slate-200">
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <Droplets className="w-3.5 h-3.5 text-cyan-400" /> Umidade do Ar:
-                      </span>
-                      <span className="font-mono font-bold text-cyan-300">{item.humidity}%</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-slate-200">
-                      <span className="flex items-center gap-1.5 text-slate-400">
-                        <Wind className="w-3.5 h-3.5 text-emerald-400" /> Ventos Médios:
-                      </span>
-                      <span className="font-mono font-bold text-emerald-300">{item.windSpeed} km/h</span>
-                    </div>
+                    <span className="text-[8px] uppercase font-black tracking-wider text-amber-400">Precipitação</span>
                   </div>
                 </div>
-              )}
+
+                {/* Card Details */}
+                <div className="pt-2 space-y-1.5 text-[11px]">
+                  <div className="flex items-center justify-between text-slate-200">
+                    <span className="flex items-center gap-1.5 text-slate-400 text-[10px]">
+                      <Zap className="w-3 h-3 text-amber-400" /> Diagnóstico:
+                    </span>
+                    <span className="font-bold text-amber-300">{item.condition}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-slate-200">
+                    <span className="flex items-center gap-1.5 text-slate-400 text-[10px]">
+                      <Droplets className="w-3 h-3 text-cyan-400" /> Umidade do Ar:
+                    </span>
+                    <span className="font-mono font-bold text-cyan-300">{item.humidity}%</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-slate-200">
+                    <span className="flex items-center gap-1.5 text-slate-400 text-[10px]">
+                      <Wind className="w-3 h-3 text-emerald-400" /> Ventos Médios:
+                    </span>
+                    <span className="font-mono font-bold text-emerald-300">{item.windSpeed} km/h</span>
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })}

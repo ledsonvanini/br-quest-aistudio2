@@ -11,6 +11,7 @@ import {
   getBrazilACtoPBMidpointPan,
   getSouthAmericaMidpointPan,
   calculateStateCenterPan,
+  DEFAULT_BRAZIL_ZOOM,
   MAP_CANVAS_WIDTH,
   MAP_CANVAS_HEIGHT,
 } from '../lib/mapProjections';
@@ -26,6 +27,7 @@ import { AtmosphericCloudsLayer } from './map/AtmosphericCloudsLayer';
 import { RainSimulationLayer } from './map/RainSimulationLayer';
 import { ClimatePhenomenaLayer, ClimateMode } from './map/ClimatePhenomenaLayer';
 import { ClimateControlPanel } from './map/ClimateControlPanel';
+import { ClimateStationTelemetryCard } from './map/ClimateStationTelemetryCard';
 import {
   fetchLiveClimateTelemetry,
   ClimateStationData,
@@ -38,7 +40,7 @@ import { MapPinsLayer } from './map/MapPinsLayer';
 import { NeighborCountryPinsLayer } from './map/NeighborCountryPinsLayer';
 import { NeighborCountryModal } from './map/NeighborCountryModal';
 import { NeighborCountryData } from '../data/southAmericaNeighborsData';
-import { MapControlsHUD } from './map/MapControlsHUD';
+import { TopRightNavigationDock } from './map/TopRightNavigationDock';
 import { MapChoroplethLegend } from './map/MapChoroplethLegend';
 import { MapStateCarousel } from './map/MapStateCarousel';
 import { TerrainTileProvider } from './map/ClippedMapTilesLayer';
@@ -48,7 +50,11 @@ import { IsolatedLeftGuardianStandee } from './map/IsolatedLeftGuardianStandee';
 import { CompassLoadingScreen } from './map/CompassLoadingScreen';
 import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
-import { Compass, LocateFixed, MapPin, Flag } from 'lucide-react';
+import { VintageRadioPlayer } from './music/VintageRadioPlayer';
+import { MusicalStateMapCard } from './music/MusicalStateMapCard';
+import { vintageRadioEngine } from '../lib/vintageRadioEngine';
+import { AppMainMode } from './TopGlobalNavMenu';
+import { Compass, LocateFixed, MapPin, Flag, Plus, Minus } from 'lucide-react';
 
 interface Props {
   completedStateIds: string[];
@@ -57,38 +63,126 @@ interface Props {
   lang: Language;
   onOpenSettings?: () => void;
   onClimateActiveChange?: (active: boolean) => void;
+  mainMode?: AppMainMode;
+  onSelectMainMode?: (mode: AppMainMode) => void;
+  isRadioOpen?: boolean;
+  onToggleRadio?: () => void;
+  activeMusicCategory?: 'state_anthems' | 'top5' | 'national';
+  onSelectMusicCategory?: (category: 'state_anthems' | 'top5' | 'national') => void;
+  selectedRadioEraId?: string;
+  onSelectRadioEra?: (eraId: string) => void;
+  focusedStateId?: string | null;
+  onFocusStateHandled?: () => void;
+  climateMode?: ClimateMode;
+  onClimateModeChange?: (mode: ClimateMode) => void;
+  terrainProvider?: TerrainTileProvider;
+  onTerrainProviderChange?: (provider: TerrainTileProvider) => void;
+  visualStyle?: MapVisualStyle;
+  onVisualStyleChange?: (style: MapVisualStyle) => void;
+  choroplethSubTheme?: ChoroplethSubTheme;
+  onChoroplethSubThemeChange?: (theme: ChoroplethSubTheme) => void;
+  selectedRegionFilter?: string;
+  hoveredRegionFilter?: string | null;
+  showNeighbors?: boolean;
+  onToggleNeighbors?: () => void;
+  isObservatorioOpen?: boolean;
+  onToggleObservatorio?: () => void;
+  atmosphereEnabled?: boolean;
+  wavesEnabled?: boolean;
+  cloudsEnabled?: boolean;
+  rainSimEnabled?: boolean;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
   completedStateIds,
   onSelectGuardian,
   onClimateActiveChange,
+  mainMode = 'aventura',
+  onSelectMainMode,
+  isRadioOpen = true,
+  onToggleRadio,
+  activeMusicCategory = 'state_anthems',
+  onSelectMusicCategory,
+  selectedRadioEraId = 'catedral_1930_1940',
+  onSelectRadioEra,
+  focusedStateId,
+  onFocusStateHandled,
+  climateMode = 'temperaturas_frentes',
+  onClimateModeChange,
+  terrainProvider: propTerrainProvider,
+  onTerrainProviderChange: propOnTerrainProviderChange,
+  visualStyle: propVisualStyle,
+  onVisualStyleChange: propOnVisualStyleChange,
+  choroplethSubTheme: propChoroplethSubTheme,
+  selectedRegionFilter = 'todos',
+  hoveredRegionFilter = null,
+  showNeighbors: propShowNeighbors,
+  onToggleNeighbors,
+  isObservatorioOpen: propIsObservatorioOpen,
+  onToggleObservatorio,
+  atmosphereEnabled: propAtmosphereEnabled,
+  wavesEnabled: propWavesEnabled,
+  cloudsEnabled: propCloudsEnabled,
+  rainSimEnabled: propRainSimEnabled,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   // Visual Modes & Customization
-  const [visualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
-  const [terrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
-  const [choroplethSubTheme, setChoroplethSubTheme] = useState<ChoroplethSubTheme>('regions');
+  const [internalVisualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
+  const [internalTerrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
+  const [internalChoroplethSubTheme, setChoroplethSubTheme] = useState<ChoroplethSubTheme>('regions');
+  
+  const visualStyle = propVisualStyle !== undefined ? propVisualStyle : internalVisualStyle;
+  const terrainProvider = propTerrainProvider !== undefined ? propTerrainProvider : internalTerrainProvider;
+  const choroplethSubTheme = propChoroplethSubTheme !== undefined ? propChoroplethSubTheme : internalChoroplethSubTheme;
+
   const [is3D, setIs3D] = useState<boolean>(true);
   const [isGlobe3DActive, setIsGlobe3DActive] = useState<boolean>(false);
-  const [atmosphereEnabled, setAtmosphereEnabled] = useState<boolean>(true);
-  const [wavesEnabled, setWavesEnabled] = useState<boolean>(true);
-  const [cloudsEnabled, setCloudsEnabled] = useState<boolean>(true);
-  const [rainSimEnabled, setRainSimEnabled] = useState<boolean>(false);
-  const [showNeighbors, setShowNeighbors] = useState<boolean>(false);
+  const [internalAtmosphereEnabled, setAtmosphereEnabled] = useState<boolean>(true);
+  const [internalWavesEnabled, setWavesEnabled] = useState<boolean>(true);
+  const [internalCloudsEnabled, setCloudsEnabled] = useState<boolean>(true);
+  const [internalRainSimEnabled, setRainSimEnabled] = useState<boolean>(false);
+
+  const atmosphereEnabled = propAtmosphereEnabled !== undefined ? propAtmosphereEnabled : internalAtmosphereEnabled;
+  const wavesEnabled = propWavesEnabled !== undefined ? propWavesEnabled : internalWavesEnabled;
+  const cloudsEnabled = propCloudsEnabled !== undefined ? propCloudsEnabled : internalCloudsEnabled;
+  const rainSimEnabled = propRainSimEnabled !== undefined ? propRainSimEnabled : internalRainSimEnabled;
+  const [internalShowNeighbors, setInternalShowNeighbors] = useState<boolean>(false);
+  const showNeighbors = propShowNeighbors !== undefined ? propShowNeighbors : internalShowNeighbors;
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<NeighborCountryData | null>(null);
 
   // Climate Phenomena & Live Meteorological Telemetry (Open-Meteo API)
-  const [isClimateActive, setIsClimateActive] = useState<boolean>(false);
+  const [isClimateActive, setIsClimateActive] = useState<boolean>(mainMode === 'clima');
+  const [internalIsClimatePanelOpen, setInternalIsClimatePanelOpen] = useState<boolean>(false);
+  const isClimatePanelOpen = propIsObservatorioOpen !== undefined ? propIsObservatorioOpen : (internalIsClimatePanelOpen || isClimateActive);
 
-  // Notify parent component about climate mode active state
+  // Synchronize internal climate active state with global mainMode
   useEffect(() => {
-    onClimateActiveChange?.(isClimateActive);
-  }, [isClimateActive, onClimateActiveChange]);
-  const [isClimatePanelOpen, setIsClimatePanelOpen] = useState<boolean>(false);
-  const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
+    if (mainMode === 'clima') {
+      setIsClimateActive(true);
+      setInternalIsClimatePanelOpen(true);
+      setInternalShowNeighbors(false);
+      previousTerrainRef.current = terrainProvider;
+      previousVisualStyleRef.current = visualStyle;
+      setVisualStyle('tiles');
+      setTerrainProvider('muted_gray');
+    } else {
+      setIsClimateActive(false);
+      setInternalIsClimatePanelOpen(false);
+      if (mainMode === 'musicalidades') {
+        setInternalShowNeighbors(false);
+      }
+    }
+    onClimateActiveChange?.(mainMode === 'clima');
+  }, [mainMode, onClimateActiveChange]);
+
+  const [internalClimateMode, setInternalClimateMode] = useState<ClimateMode>('temperaturas_frentes');
+  const currentClimateMode = climateMode || internalClimateMode;
+  const handleClimateModeChange = (mode: ClimateMode) => {
+    setInternalClimateMode(mode);
+    onClimateModeChange?.(mode);
+  };
   const [climateStations, setClimateStations] = useState<ClimateStationData[]>([]);
   const [stateWeather, setStateWeather] = useState<Record<string, StateWeatherData>>({});
   const [elNinoData, setElNinoData] = useState<ElNinoIndexData | null>(null);
@@ -130,32 +224,20 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   const handleToggleClimate = () => {
     audioEngine.playSfx('click');
-    setIsClimateActive((prev) => {
-      const next = !prev;
-      setIsClimatePanelOpen(next);
-
-      if (next) {
-        // Automatically switch base terrain to Muted Grey for high-contrast meteorological radar viewing
-        previousTerrainRef.current = terrainProvider;
-        previousVisualStyleRef.current = visualStyle;
-        setVisualStyle('tiles');
-        setTerrainProvider('muted_gray');
-      } else {
-        // Restore previous visual configuration
-        setTerrainProvider(previousTerrainRef.current);
-        setVisualStyle(previousVisualStyleRef.current);
-      }
-
-      return next;
-    });
+    if (onToggleObservatorio) {
+      onToggleObservatorio();
+    } else {
+      setInternalIsClimatePanelOpen((prev) => !prev);
+    }
   };
 
-  // Camera Pan & Zoom States (Centered mathematically on Brazil with 30% wider zoom out: 0.80)
-  const baseUserZoomRef = useRef<number>(0.80);
-  const [pan, setPan] = useState<{ x: number; y: number }>(() => getBrazilACtoPBMidpointPan(0.80, true));
-  const [zoom, setZoom] = useState<number>(0.80);
+  // Camera Pan & Zoom States (Centered mathematically on Brazil with 30% wider zoom out: DEFAULT_BRAZIL_ZOOM = 0.56)
+  const baseUserZoomRef = useRef<number>(DEFAULT_BRAZIL_ZOOM);
+  const [pan, setPan] = useState<{ x: number; y: number }>(() => getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, true));
+  const [zoom, setZoom] = useState<number>(DEFAULT_BRAZIL_ZOOM);
   const [baseTiltAngle, setBaseTiltAngle] = useState<number>(42);
   const [headingAngle, setHeadingAngle] = useState<number>(0);
+  const [timeOverride, setTimeOverride] = useState<'auto' | 'day' | 'night'>('auto');
 
   // Transition Animation Mode: 'button' (400ms), 'hover' (750ms), or 'entry' (1500ms zoom-in to state)
   const [transitionMode, setTransitionMode] = useState<'drag' | 'hover' | 'button' | 'entry'>('button');
@@ -211,6 +293,52 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     const pathGen = geoPath().projection(projection);
     return calculateCalibratedCentroids(geoData?.features, pathGen);
   }, [geoData, projection]);
+
+  // Interatividade das Estações do Observatório: Selecionar e Voar a Câmera
+  const handleSelectClimateStation = useCallback((station: ClimateStationData | null) => {
+    setSelectedClimateStation(station);
+    if (!station) return;
+
+    audioEngine.playSfx('click');
+
+    if (station.lng !== undefined && station.lat !== undefined && projection) {
+      const coords = projection([station.lng, station.lat]);
+      if (coords && !isNaN(coords[0]) && !isNaN(coords[1])) {
+        const targetZoom = 1.30;
+        const cx = coords[0];
+        const cy = coords[1];
+        const targetPan = {
+          x: (MAP_CANVAS_WIDTH / 2 - cx) * targetZoom,
+          y: (MAP_CANVAS_HEIGHT / 2 - cy) * targetZoom,
+        };
+        setTransitionMode('button');
+        setZoom(targetZoom);
+        setPan(targetPan);
+      }
+    }
+  }, [projection]);
+
+  // Troca Imediata de Textura de Base do Mapa
+  const handleTerrainProviderChange = useCallback((newProvider: TerrainTileProvider) => {
+    setTerrainProvider(newProvider);
+    setVisualStyle('tiles');
+    propOnVisualStyleChange?.('tiles');
+    propOnTerrainProviderChange?.(newProvider);
+    audioEngine.playSfx('click');
+  }, [propOnVisualStyleChange, propOnTerrainProviderChange]);
+
+  // Focus and zoom smoothly on state if triggered by top menu telemetry pills
+  useEffect(() => {
+    if (focusedStateId && centroids[focusedStateId]) {
+      setSelectedStateId(focusedStateId);
+      setTransitionMode('button');
+      const targetZoom = Math.min(2.0, Math.max(1.2, zoom));
+      const targetPan = calculateStateCenterPan(centroids[focusedStateId], targetZoom, is3D);
+      setPan(targetPan);
+      setZoom(targetZoom);
+      onFocusStateHandled?.();
+    }
+  }, [focusedStateId, centroids, is3D, onFocusStateHandled]);
 
   // Spherical Globe Dynamic Angles
   const sphericalAngles = useMemo(() => {
@@ -404,6 +532,19 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     setSelectedStateId(stateId);
     audioEngine.playSfx('travel');
 
+    // In Musical Heritage mode, tune radio and focus camera smoothly without opening RPG scene
+    if (mainMode === 'musicalidades') {
+      const centroid = centroids[stateId];
+      if (centroid) {
+        setTransitionMode('button');
+        const targetZoom = Math.min(2.0, Math.max(1.1, zoom));
+        const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
+        setPan(targetPan);
+        setZoom(targetZoom);
+      }
+      return;
+    }
+
     const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
     if (guardian) {
       setEnteringGuardianName(guardian.stateNamePt);
@@ -507,7 +648,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     setBaseTiltAngle(is3D ? 42 : 0);
     setHeadingAngle(0);
     setDragVelocity({ x: 0, y: 0 });
-    const targetZoom = showNeighbors ? 0.52 : 0.80;
+    const targetZoom = showNeighbors ? 0.48 : DEFAULT_BRAZIL_ZOOM;
     baseUserZoomRef.current = targetZoom;
     const centeredPan = showNeighbors
       ? getSouthAmericaMidpointPan(targetZoom, is3D)
@@ -522,28 +663,35 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }, 1000);
   };
 
+  // Re-alinhar suavemente sempre que o usuário alternar de modo no menu principal ou filtro regional
+  useEffect(() => {
+    handleResetView();
+  }, [mainMode, selectedRegionFilter]);
+
   // Toggle South American Neighbor Countries & Flagpoles at 45°
   const handleToggleNeighbors = () => {
     stopInertia();
     audioEngine.playSfx('click');
     setTransitionMode('button');
-    setShowNeighbors((prev) => {
-      const next = !prev;
-      if (next) {
-        // Zoom out to show full South American continent
-        const continentZoom = 0.52;
-        baseUserZoomRef.current = continentZoom;
-        const continentPan = getSouthAmericaMidpointPan(continentZoom, is3D);
-        applyClampedPanZoom(continentPan, continentZoom);
-      } else {
-        // Zoom in to full Brazil view
-        const brazilZoom = 0.80;
-        baseUserZoomRef.current = brazilZoom;
-        const brazilPan = getBrazilACtoPBMidpointPan(brazilZoom, is3D);
-        applyClampedPanZoom(brazilPan, brazilZoom);
-      }
-      return next;
-    });
+    const next = !showNeighbors;
+    if (onToggleNeighbors) {
+      onToggleNeighbors();
+    } else {
+      setInternalShowNeighbors(next);
+    }
+    if (next) {
+      // Zoom out to show full South American continent
+      const continentZoom = 0.48;
+      baseUserZoomRef.current = continentZoom;
+      const continentPan = getSouthAmericaMidpointPan(continentZoom, is3D);
+      applyClampedPanZoom(continentPan, continentZoom);
+    } else {
+      // Zoom in to full Brazil view with 30% wider zoom out
+      const brazilZoom = DEFAULT_BRAZIL_ZOOM;
+      baseUserZoomRef.current = brazilZoom;
+      const brazilPan = getBrazilACtoPBMidpointPan(brazilZoom, is3D);
+      applyClampedPanZoom(brazilPan, brazilZoom);
+    }
   };
 
   const handleResetNorth = () => {
@@ -640,6 +788,158 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     ? 'transform 750ms cubic-bezier(0.22, 1, 0.36, 1)'
     : 'transform 700ms cubic-bezier(0.22, 1, 0.36, 1)';
 
+  // ----------------------------------------------------
+  // MODO MUSICALIDADES: SPLIT-SCREEN 50/50 (Rádio + Mapa Musical)
+  // ----------------------------------------------------
+  if (mainMode === 'musicalidades') {
+    return (
+      <div className="container-modo-musical-split w-full h-full flex flex-col lg:flex-row overflow-hidden select-none bg-slate-950 pt-14 sm:pt-16">
+        {/* Procedural Filters */}
+        <ProceduralTerrainFilter />
+        <ParchmentTextureFilter />
+
+        {/* LADO ESQUERDO: APARELHO DE RÁDIO HISTÓRICO & TOCADOR VINTAGE (50% no Desktop) */}
+        <div className="painel-split-radio-esquerda w-full lg:w-1/2 h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-amber-500/40 z-20 flex flex-col min-h-0 bg-slate-950 overflow-hidden shadow-2xl">
+          <VintageRadioPlayer
+            selectedStateId={selectedStateId || hoveredStateId || 'RJ'}
+            activeCategory={activeMusicCategory}
+            selectedRadioEraId={selectedRadioEraId}
+            onSelectRadioEra={onSelectRadioEra}
+            onSelectState={(stateId) => {
+              setSelectedStateId(stateId);
+              const centroid = centroids[stateId];
+              if (centroid) {
+                setTransitionMode('button');
+                const targetZoom = Math.min(2.0, Math.max(1.1, zoom));
+                const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
+                setPan(targetPan);
+                setZoom(targetZoom);
+              }
+            }}
+            onClose={onToggleRadio}
+          />
+        </div>
+
+        {/* LADO DIREITO: MAPA DO BRASIL MUSICAL INTERATIVO (50% no Desktop) */}
+        <div
+          ref={containerRef}
+          onMouseDown={isGlobe3DActive ? undefined : handleMouseDown}
+          onMouseMove={isGlobe3DActive ? undefined : handleMouseMove}
+          onMouseUp={isGlobe3DActive ? undefined : handleMouseUp}
+          onMouseLeave={() => {
+            if (!isGlobe3DActive) {
+              handleMouseUp();
+              if (hoveredStateId) handleStateLeave(hoveredStateId);
+            }
+          }}
+          onWheel={isGlobe3DActive ? undefined : handleWheel}
+          className={`painel-split-mapa-direita relative w-full lg:w-1/2 h-1/2 lg:h-full overflow-hidden flex-1 cursor-${
+            isGlobe3DActive ? 'default' : isDragging ? 'grabbing' : 'grab'
+          }`}
+          style={{
+            perspective: '1600px',
+            backgroundColor: '#031526',
+          }}
+        >
+          {/* Botão Centralizar e Controles HUD Rápidos */}
+          <div className="painel-hud-musical-controles absolute top-3 right-4 z-40 flex items-center gap-1.5 pointer-events-auto">
+            <button
+              onClick={handleZoomIn}
+              className="w-8 h-8 rounded-xl bg-slate-950/90 border border-amber-500/50 text-amber-300 flex items-center justify-center hover:bg-slate-900 hover:scale-105 transition cursor-pointer shadow-lg font-bold"
+              title="Aproximar Zoom"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              className="w-8 h-8 rounded-xl bg-slate-950/90 border border-amber-500/50 text-amber-300 flex items-center justify-center hover:bg-slate-900 hover:scale-105 transition cursor-pointer shadow-lg font-bold"
+              title="Afastar Zoom"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleResetView}
+              className="w-8 h-8 rounded-xl bg-slate-950/90 border border-amber-500/50 text-amber-300 flex items-center justify-center hover:bg-slate-900 hover:scale-105 transition cursor-pointer shadow-lg"
+              title="Centralizar Mapa no Brasil"
+            >
+              <LocateFixed className="w-4 h-4 text-amber-400" />
+            </button>
+          </div>
+
+          {/* Dica de Interação */}
+          <div className="absolute top-3 left-4 z-30 pointer-events-none px-3 py-1 rounded-xl bg-slate-950/80 border border-amber-500/40 text-[10px] font-mono text-amber-300 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            Passe o mouse ou clique nos estados para sintonizar a rádio histórica
+          </div>
+
+          {/* Stage com Mapa */}
+          <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
+            <div
+              className="quadro-canvas-camadas absolute left-1/2 top-1/2 pointer-events-auto shrink-0"
+              style={{
+                width: MAP_CANVAS_WIDTH,
+                height: MAP_CANVAS_HEIGHT,
+                transform: `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0px) rotateX(${sphericalAngles.rotateX}deg) rotateY(${sphericalAngles.rotateY}deg) rotateZ(${sphericalAngles.rotateZ}deg) scale(${zoom})`,
+                transformStyle: 'preserve-3d',
+                transformOrigin: '1280px 720px',
+                transition: stageTransition,
+              }}
+            >
+              {/* Oceano & Ondas */}
+              <ProceduralOceanCanvas isPlayingAnimation={true} isParchmentMode={false} />
+              <CoastalWavesCanvas enabled={wavesEnabled} />
+
+              {/* Camada de Estados com Realce Musical */}
+              <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
+                <MapStatesLayer
+                  geoData={geoData}
+                  projection={projection}
+                  visualStyle="tiles"
+                  terrainProvider="shaded_relief"
+                  choroplethSubTheme={choroplethSubTheme}
+                  completedStateIds={completedSet}
+                  hoveredStateId={hoveredStateId}
+                  selectedStateId={selectedStateId}
+                  showNeighbors={false}
+                  centroids={centroids}
+                  isClimateActive={false}
+                  onStateEnter={(stateId) => {
+                    handleStateEnter(stateId);
+                    vintageRadioEngine.playTuningDialSfx();
+                  }}
+                  onStateLeave={handleStateLeave}
+                  onStateClick={(stateId) => {
+                    handleStateClick(stateId);
+                    setSelectedStateId(stateId);
+                    vintageRadioEngine.playTuningDialSfx();
+                  }}
+                />
+              </div>
+
+              {/* Nuvens decorativas suaves */}
+              <div style={{ transform: 'translateZ(100px)', transformStyle: 'preserve-3d' }}>
+                <AtmosphericCloudsLayer enabled={cloudsEnabled} speedMultiplier={0.6} />
+              </div>
+            </div>
+          </div>
+
+          {/* Card Flutuante com Informações Musicais e da Era do Estado em Hover */}
+          <MusicalStateMapCard
+            stateId={hoveredStateId || selectedStateId}
+            selectedRadioEraId={selectedRadioEraId}
+            onTuneState={(stateId) => {
+              setSelectedStateId(stateId);
+              vintageRadioEngine.playTuningDialSfx();
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------
+  // MODOS AVENTURA & CLIMA
+  // ----------------------------------------------------
   return (
     <div
       ref={containerRef}
@@ -681,49 +981,14 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 4. Top HUD Controls (Hidden in Climate Mode to avoid visual clutter and collision with temperature scale) */}
-      {!isGlobe3DActive && !isClimateActive && (
-        <MapControlsHUD
-          visualStyle={visualStyle}
-          onVisualStyleChange={setVisualStyle}
-          terrainProvider={terrainProvider}
-          onTerrainProviderChange={setTerrainProvider}
-          choroplethSubTheme={choroplethSubTheme}
-          onChoroplethSubThemeChange={setChoroplethSubTheme}
-          is3D={is3D}
-          onToggle3D={handleToggle3D}
-          isGlobe3DActive={isGlobe3DActive}
-          onToggleGlobe3D={handleToggleGlobe3D}
-          atmosphereEnabled={atmosphereEnabled}
-          onToggleAtmosphere={handleToggleAtmosphere}
-          wavesEnabled={wavesEnabled}
-          onToggleWaves={() => setWavesEnabled((prev) => !prev)}
-          isClimateActive={isClimateActive}
-          onToggleClimate={handleToggleClimate}
-          showNeighbors={showNeighbors}
-          onToggleNeighbors={handleToggleNeighbors}
-          zoom={zoom}
+      {/* 4. Top-Right Navigation & Zoom HUD (8px from top-right corner, active in all modes) */}
+      {!isGlobe3DActive && (
+        <TopRightNavigationDock
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onResetView={handleResetView}
-          isMusicPlaying={isMusicPlaying}
-          onToggleMusic={handleToggleMusic}
+          zoom={zoom}
         />
-      )}
-
-      {/* 4.1 Top-Right HUD: Centralizar Mapa (Goiás Pivot - Hidden in Climate Mode) */}
-      {!isGlobe3DActive && !isClimateActive && (
-        <div className="painel-hud-centralizar fixed top-14 right-5 z-40 flex items-center pointer-events-auto">
-          <button
-            id="btn-hud-centralizar-mapa"
-            onClick={handleResetView}
-            className="btn-hud-centralizar-mapa w-[50px] h-[50px] rounded-2xl bg-slate-950/95 backdrop-blur-xl border border-amber-500/60 text-amber-400 shadow-2xl shadow-black/90 hover:bg-slate-900 hover:border-amber-300 hover:text-amber-200 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer group"
-            title="Centralizar Mapa no Brasil (Pivô Goiás - GO)"
-            aria-label="Centralizar Mapa no Brasil"
-          >
-            <LocateFixed className="w-5 h-5 text-amber-400 group-hover:text-amber-300 group-hover:scale-110 transition-all duration-300" />
-          </button>
-        </div>
       )}
 
       {/* 5. Choropleth Interactive Legend (Shown on 2D/2.5D Cartographic Mode, Hidden in Climate Mode) */}
@@ -796,11 +1061,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 completedStateIds={completedSet}
                 hoveredStateId={isClimateActive ? null : hoveredStateId}
                 selectedStateId={isClimateActive ? null : selectedStateId}
+                selectedRegionFilter={selectedRegionFilter}
+                hoveredRegionFilter={hoveredRegionFilter}
                 showNeighbors={showNeighbors}
                 hoveredCountryId={hoveredCountryId}
                 centroids={centroids}
                 isClimateActive={isClimateActive}
-                climateMode={climateMode}
+                climateMode={currentClimateMode}
                 stateWeather={stateWeather}
                 onStateEnter={handleStateEnter}
                 onStateLeave={handleStateLeave}
@@ -818,13 +1085,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
               <ClimatePhenomenaLayer
                 active={isClimateActive}
-                mode={climateMode}
+                mode={currentClimateMode}
                 stations={climateStations}
                 stateWeather={stateWeather}
                 elNinoData={elNinoData}
                 geoData={geoData}
                 selectedStationId={selectedClimateStation?.id}
-                onSelectStation={setSelectedClimateStation}
+                onSelectStation={handleSelectClimateStation}
                 speedMultiplier={climateSpeedMultiplier}
                 dateTimeFormatted={climateDateTimeFormatted}
               />
@@ -833,7 +1100,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             {/* Layer 2.6: Rain Simulation & Rainfall Hotspots Ranking (Elevated at Z=60px) */}
             <div style={{ transform: 'translateZ(60px)', transformStyle: 'preserve-3d' }}>
               <RainSimulationLayer
-                active={rainSimEnabled || (isClimateActive && climateMode === 'precipitacao_zcas')}
+                active={rainSimEnabled || (isClimateActive && currentClimateMode === 'precipitacao_zcas')}
                 stateWeather={stateWeather}
                 tiltAngle={is3D ? baseTiltAngle : 0}
               />
@@ -847,8 +1114,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               />
             </div>
 
-            {/* Layer 3: Guardian Heraldic Pins Layer with Coat of Arms (Hidden in Climate Mode to clear the view) */}
-            {!isClimateActive && (
+            {/* Layer 3: Guardian Heraldic Pins Layer with Coat of Arms (Hidden in Climate and Music Modes to clear the view) */}
+            {!isClimateActive && mainMode === 'aventura' && (
               <div style={{ transform: 'translateZ(40px)', transformStyle: 'preserve-3d' }}>
                 <MapPinsLayer
                   centroids={centroids}
@@ -864,8 +1131,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Layer 3.1: South America Neighbor Countries Flags on Masts tilted at 45° */}
-            {!isClimateActive && (
+            {/* Layer 3.1: South America Neighbor Countries Flags on Masts tilted at 45° (Adventure mode only) */}
+            {!isClimateActive && mainMode === 'aventura' && (
               <div style={{ transform: 'translateZ(35px)', transformStyle: 'preserve-3d' }}>
                 <NeighborCountryPinsLayer
                   visible={showNeighbors}
@@ -880,9 +1147,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Layer 4: Procedural Atmosphere (Gaivotas, Névoa Mágica & Brilho Solar) */}
+            {/* Layer 4: Procedural Atmosphere (Gaivotas, Névoa Mágica & Brilho Solar / Céu Noturno) */}
             <div style={{ transform: 'translateZ(120px)', transformStyle: 'preserve-3d' }}>
-              <ProceduralAtmosphereLayer enabled={atmosphereEnabled} />
+              <ProceduralAtmosphereLayer enabled={atmosphereEnabled} timeOverride={timeOverride} />
             </div>
 
             {/* Layer 5: Animated Anchor Point Reticle (Pivô de Rotação Goiás - GO em Vermelho por 1s) */}
@@ -920,7 +1187,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 9. Interactive 3D Antique Compass Rose Gizmo HUD (Hidden in Climate Mode) */}
+      {/* 9. Interactive 3D Antique Compass Rose Gizmo HUD (With Inclination & 3D Globe) */}
       {!isGlobe3DActive && !isClimateActive && (
         <GizmoCompassHUD
           headingAngle={headingAngle}
@@ -937,11 +1204,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           onResetNorth={handleResetNorth}
           onSelectPreset={handleSelectAnglePreset}
           is3D={is3D}
+          isGlobe3DActive={isGlobe3DActive}
+          onToggleGlobe3D={handleToggleGlobe3D}
         />
       )}
 
-      {/* 10. Bottom State Carousel with Search & Progress (Hidden in Climate Mode) */}
-      {!isGlobe3DActive && !isClimateActive && (
+      {/* 10. Bottom State Carousel with Search & Progress (Only in Adventure Mode) */}
+      {!isGlobe3DActive && !isClimateActive && mainMode === 'aventura' && (
         <MapStateCarousel
           completedStateIds={completedSet}
           hoveredStateId={hoveredStateId}
@@ -961,20 +1230,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       <ClimateControlPanel
         isOpen={isClimatePanelOpen && isClimateActive}
         onClose={() => handleToggleClimate()}
-        mode={climateMode}
-        onModeChange={setClimateMode}
+        mode={currentClimateMode}
+        onModeChange={handleClimateModeChange}
         stations={climateStations}
         elNinoData={elNinoData}
         selectedStation={selectedClimateStation}
-        onSelectStation={setSelectedClimateStation}
+        onSelectStation={handleSelectClimateStation}
         speedMultiplier={climateSpeedMultiplier}
         onSpeedMultiplierChange={setClimateSpeedMultiplier}
         onRefreshTelemetry={loadClimateData}
         isLoading={isClimateLoading}
         updatedAt={climateUpdatedAt}
         dateTimeFormatted={climateDateTimeFormatted}
-        terrainProvider={terrainProvider}
-        onTerrainProviderChange={setTerrainProvider}
         avgTempBrazil={avgTempBrazil}
         maxTempState={maxTempState}
         minTempState={minTempState}
@@ -986,7 +1253,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onToggleClouds={() => setCloudsEnabled((prev) => !prev)}
         rainSimEnabled={rainSimEnabled}
         onToggleRainSim={() => setRainSimEnabled((prev) => !prev)}
+        timeOverride={timeOverride}
+        onTimeOverrideChange={setTimeOverride}
       />
+
+      {/* 13. Card de Telemetria Flutuante da Estação Selecionada */}
+      {isClimateActive && selectedClimateStation && (
+        <ClimateStationTelemetryCard
+          station={selectedClimateStation}
+          onClose={() => setSelectedClimateStation(null)}
+          onCenterMap={() => handleSelectClimateStation(selectedClimateStation)}
+        />
+      )}
     </div>
   );
 };

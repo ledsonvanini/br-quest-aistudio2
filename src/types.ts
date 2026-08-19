@@ -80,3 +80,13 @@ export interface UserProgress {
 
 export type Language = 'pt' | 'en';
 
+export type MapVisualStyle = 'tiles' | 'choropleth';
+export type ChoroplethSubTheme = 'progress' | 'regions' | 'biomes';
+export type TerrainTileProvider =
+  | 'shaded_relief'
+  | 'physical_atlas'
+  | 'satellite_earth'
+  | 'voyager_parchment'
+  | 'muted_gray'
+  | 'natural_earth';
+

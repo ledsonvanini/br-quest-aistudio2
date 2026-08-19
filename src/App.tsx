@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
+import { TopGlobalNavMenu, AppMainMode } from './components/TopGlobalNavMenu';
 import { IsometricMapCanvas } from './components/IsometricMapCanvas';
 import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { FpsCounterWidget } from './components/FpsCounterWidget';
-import { GuardianData, UserProgress, Language } from './types';
+import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme } from './types';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
 import { Sparkles, Activity, Gauge } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
+import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -21,8 +22,26 @@ export function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
-  const [isClimateActive, setIsClimateActive] = useState<boolean>(false);
   const [showFps, setShowFps] = useState<boolean>(false);
+
+  // App Modes: 1º Aventura/Navegação (default on page load), 2º Clima, 3º Musicalidades
+  const [mainMode, setMainMode] = useState<AppMainMode>('aventura');
+  const [terrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
+  const [visualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
+  const [choroplethSubTheme, setChoroplethSubTheme] = useState<ChoroplethSubTheme>('regions');
+  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('todos');
+  const [hoveredRegionFilter, setHoveredRegionFilter] = useState<string | null>(null);
+  const [showNeighbors, setShowNeighbors] = useState<boolean>(false);
+  const [isObservatorioOpen, setIsObservatorioOpen] = useState<boolean>(false);
+  const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
+  const [isRainSimActive, setIsRainSimActive] = useState<boolean>(false);
+  const [isCloudsActive, setIsCloudsActive] = useState<boolean>(true);
+  const [isWavesActive, setIsWavesActive] = useState<boolean>(true);
+  const [isAtmosphereActive, setIsAtmosphereActive] = useState<boolean>(true);
+  const [isRadioOpen, setIsRadioOpen] = useState<boolean>(true);
+  const [activeMusicCategory, setActiveMusicCategory] = useState<'state_anthems' | 'top5' | 'national'>('state_anthems');
+  const [selectedRadioEraId, setSelectedRadioEraId] = useState<string>('catedral_1930_1940');
+  const [focusedStateId, setFocusedStateId] = useState<string | null>(null);
 
   // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
@@ -169,24 +188,57 @@ export function App() {
         </div>
       )}
 
-      {/* Main RPG Header (Hidden when inside state RPG view or Climate Mode) */}
-      {!activeGuardian && (
-        <Header
-          progress={progress}
-          activeTab={activeTab}
-          setActiveTab={(tab) => {
-            setActiveTab(tab);
-            if (tab === 'insignias') {
-              setActiveGuardian(null);
-              window.location.hash = '#/insignias';
-            } else {
+      {/* Unified Global Top Menu for All 3 Modes (Adventure, Climate, Music) */}
+      {!activeGuardian && activeTab === 'map' && (
+        <TopGlobalNavMenu
+          mainMode={mainMode}
+          onSelectMainMode={(mode) => {
+            setMainMode(mode);
+            if (activeTab !== 'map') {
+              setActiveTab('map');
               window.location.hash = '#/mapa';
             }
           }}
-          lang={lang}
-          setLang={setLang}
+          terrainProvider={terrainProvider}
+          onTerrainProviderChange={setTerrainProvider}
+          visualStyle={visualStyle}
+          onVisualStyleChange={setVisualStyle}
+          choroplethSubTheme={choroplethSubTheme}
+          onChoroplethSubThemeChange={setChoroplethSubTheme}
+          selectedRegionFilter={selectedRegionFilter}
+          onSelectRegionFilter={setSelectedRegionFilter}
+          onHoverRegionFilter={setHoveredRegionFilter}
+          showNeighbors={showNeighbors}
+          onToggleNeighbors={() => setShowNeighbors((prev) => !prev)}
+          isObservatorioOpen={isObservatorioOpen}
+          onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
+          onNavigateToSanctuary={() => {
+            setActiveGuardian(null);
+            setActiveTab('insignias');
+            window.location.hash = '#/insignias';
+          }}
+          playerLevel={progress.level}
+          playerXp={progress.xp}
+          completedStateCount={progress.completedStateIds.length}
+          unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
+          climateMode={climateMode}
+          onClimateModeChange={setClimateMode}
+          isRainSimActive={isRainSimActive}
+          onToggleRainSim={() => setIsRainSimActive((prev) => !prev)}
+          isCloudsActive={isCloudsActive}
+          onToggleClouds={() => setIsCloudsActive((prev) => !prev)}
+          isWavesActive={isWavesActive}
+          onToggleWaves={() => setIsWavesActive((prev) => !prev)}
+          isAtmosphereActive={isAtmosphereActive}
+          onToggleAtmosphere={() => setIsAtmosphereActive((prev) => !prev)}
+          onFocusState={(stateId) => setFocusedStateId(stateId)}
+          isRadioOpen={isRadioOpen}
+          onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+          activeMusicCategory={activeMusicCategory}
+          onSelectMusicCategory={setActiveMusicCategory}
+          selectedRadioEraId={selectedRadioEraId}
+          onSelectRadioEra={setSelectedRadioEraId}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          isClimateActive={isClimateActive}
         />
       )}
 
@@ -227,7 +279,34 @@ export function App() {
               onSelectGuardian={handleSelectGuardian}
               lang={lang}
               onOpenSettings={() => setIsSettingsOpen(true)}
-              onClimateActiveChange={setIsClimateActive}
+              mainMode={mainMode}
+              onSelectMainMode={setMainMode}
+              climateMode={climateMode}
+              onClimateModeChange={setClimateMode}
+              terrainProvider={terrainProvider}
+              onTerrainProviderChange={setTerrainProvider}
+              visualStyle={visualStyle}
+              onVisualStyleChange={setVisualStyle}
+              choroplethSubTheme={choroplethSubTheme}
+              onChoroplethSubThemeChange={setChoroplethSubTheme}
+              selectedRegionFilter={selectedRegionFilter}
+              hoveredRegionFilter={hoveredRegionFilter}
+              showNeighbors={showNeighbors}
+              onToggleNeighbors={() => setShowNeighbors((prev) => !prev)}
+              isObservatorioOpen={isObservatorioOpen}
+              onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
+              atmosphereEnabled={isAtmosphereActive}
+              wavesEnabled={isWavesActive}
+              cloudsEnabled={isCloudsActive}
+              rainSimEnabled={isRainSimActive}
+              isRadioOpen={isRadioOpen}
+              onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+              activeMusicCategory={activeMusicCategory}
+              onSelectMusicCategory={setActiveMusicCategory}
+              selectedRadioEraId={selectedRadioEraId}
+              onSelectRadioEra={setSelectedRadioEraId}
+              focusedStateId={focusedStateId}
+              onFocusStateHandled={() => setFocusedStateId(null)}
             />
           </div>
         ) : (

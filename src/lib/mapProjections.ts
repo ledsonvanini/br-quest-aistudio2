@@ -187,21 +187,21 @@ export function calculateCalibratedCentroids(
 /**
  * Zero-Void Pan & Zoom Clamping Algorithm:
  * Ensures the viewport is strictly locked within the South American/Atlantic boundaries.
- * The user will NEVER see empty black voids when dragging or zooming.
+ * The user will NEVER see empty black voids or the outer canvas frame when dragging or zooming.
  */
 export function clampPanZoom(
   pan: { x: number; y: number },
   zoom: number,
   containerSize: { width: number; height: number },
-  minZoom = 0.50,
+  minZoom = 0.35,
   maxZoom = 3.20
 ): { pan: { x: number; y: number }; zoom: number } {
   const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
 
-  // Tight, robust clamping preventing the map from ever sliding beyond the ocean stage
-  const maxPanX = Math.min(950, (containerSize.width * 0.45) * clampedZoom + 300);
+  // Clamping seguro que impede a visualização das bordas do canvas
+  const maxPanX = Math.min(750, (containerSize.width * 0.35) * clampedZoom + 150);
   const minPanX = -maxPanX;
-  const maxPanY = Math.min(750, (containerSize.height * 0.40) * clampedZoom + 250);
+  const maxPanY = Math.min(600, (containerSize.height * 0.30) * clampedZoom + 120);
   const minPanY = -maxPanY;
 
   return {
@@ -216,19 +216,21 @@ export function clampPanZoom(
 /**
  * Mathematical center of Brazil based on the calibrated projection (-54.39°, -15.18°).
  * Centers the entire territorial mass of Brazil (Acre to Paraíba and Roraima to RS)
- * in the center of the screen in both 2D and 3D with 30% wider field of view (zoom 0.80).
+ * in the center of the screen in both 2D and 3D with 30% wider zoom out (0.56).
  */
-export function getBrazilACtoPBMidpointPan(zoom = 0.80, is3D = true): { x: number; y: number } {
+export const DEFAULT_BRAZIL_ZOOM = 0.56;
+
+export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   return {
     x: 0,
-    y: Math.round((is3D ? -25 : 0) * zoom),
+    y: Math.round((is3D ? -20 : 0) * zoom),
   };
 }
 
 /**
  * Backward compatibility alias for Brazil midpoint centering
  */
-export function getCenteredGoPan(zoom = 0.80, is3D = true): { x: number; y: number } {
+export function getCenteredGoPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   return getBrazilACtoPBMidpointPan(zoom, is3D);
 }
 

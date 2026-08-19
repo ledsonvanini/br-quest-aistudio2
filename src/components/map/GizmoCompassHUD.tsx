@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Compass, RotateCcw, Eye, Layers, Maximize2 } from 'lucide-react';
+import { Compass, RotateCcw, Eye, Layers, Maximize2, Globe } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
 
 export type MapAnglePreset = '2d_flat' | 'iso_suave' | 'iso_classico' | 'perspectiva_3d';
@@ -12,6 +12,8 @@ interface GizmoCompassHUDProps {
   onResetNorth: () => void;
   onSelectPreset: (preset: MapAnglePreset) => void;
   is3D: boolean;
+  isGlobe3DActive?: boolean;
+  onToggleGlobe3D?: () => void;
 }
 
 export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
@@ -22,6 +24,8 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
   onResetNorth,
   onSelectPreset,
   is3D,
+  isGlobe3DActive = false,
+  onToggleGlobe3D,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
@@ -251,6 +255,29 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
               className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-amber-400"
             />
           </div>
+
+          {/* Botão de Alternar Globo 3D Esférico */}
+          {onToggleGlobe3D && (
+            <button
+              onClick={() => {
+                onToggleGlobe3D();
+                audioEngine.playSfx('click');
+              }}
+              className={`w-full py-1.5 px-3 rounded-xl border text-xs font-serif flex items-center justify-between transition-all shadow ${
+                isGlobe3DActive
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 border-cyan-300 text-white font-bold'
+                  : 'bg-slate-900 border-slate-700 hover:border-cyan-400 hover:bg-slate-800 text-cyan-300'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Globo 3D Esférico (R3F)</span>
+              </div>
+              <span className="text-[10px] font-mono opacity-80">
+                {isGlobe3DActive ? 'Ativo' : 'Inativo'}
+              </span>
+            </button>
+          )}
 
           {/* Botão de Reset ao Norte */}
           <button

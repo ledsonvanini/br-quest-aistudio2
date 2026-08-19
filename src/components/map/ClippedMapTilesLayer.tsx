@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
+import { TerrainTileProvider } from '../../types';
 
-export type TerrainTileProvider = 'shaded_relief' | 'physical_atlas' | 'satellite_earth' | 'voyager_parchment' | 'muted_gray';
+export type { TerrainTileProvider };
 
 interface ClippedMapTilesLayerProps {
   geoData: any;
@@ -52,6 +53,10 @@ const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: 
   // 5. Clean Muted Light Grey (Meteored / ECMWF Weather Broadcast Style)
   muted_gray: (x, y, z) =>
     `https://basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png`,
+
+  // 6. Natural Earth Land Cover
+  natural_earth: (x, y, z) =>
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${z}/${y}/${x}`,
 };
 
 // CSS Filter Profiles to make each terrain mode visually striking and premium
@@ -61,6 +66,7 @@ const PROVIDER_FILTER_STYLES: Record<TerrainTileProvider, string> = {
   satellite_earth: 'contrast(1.24) saturate(1.28) brightness(0.96)',
   voyager_parchment: 'sepia(0.65) contrast(1.25) saturate(1.1) brightness(0.92) hue-rotate(-5deg)',
   muted_gray: 'grayscale(0.9) contrast(1.05) brightness(1.02)',
+  natural_earth: 'contrast(1.22) saturate(1.35) brightness(1.04) hue-rotate(-3deg)',
 };
 
 export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({

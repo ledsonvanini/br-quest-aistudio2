@@ -26,6 +26,8 @@ interface MapStatesLayerProps {
   completedStateIds: Set<string>;
   hoveredStateId: string | null;
   selectedStateId: string | null;
+  selectedRegionFilter?: string;
+  hoveredRegionFilter?: string | null;
   showNeighbors?: boolean;
   hoveredCountryId?: string | null;
   centroids?: Record<string, [number, number]>;
@@ -40,6 +42,44 @@ interface MapStatesLayerProps {
   onCountryClick?: (country: NeighborCountryData) => void;
 }
 
+export const REGION_STATES_MAP: Record<string, string[]> = {
+  norte: ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
+  nordeste: ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
+  centro_oeste: ['DF', 'GO', 'MT', 'MS'],
+  sudeste: ['ES', 'MG', 'RJ', 'SP'],
+  sul: ['PR', 'RS', 'SC'],
+};
+
+export const STATE_NEIGHBORS_MAP: Record<string, string[]> = {
+  AC: ['AM', 'RO'],
+  AL: ['PE', 'SE', 'BA'],
+  AM: ['AC', 'RO', 'MT', 'PA', 'RR'],
+  AP: ['PA'],
+  BA: ['SE', 'AL', 'PE', 'PI', 'TO', 'GO', 'MG', 'ES'],
+  CE: ['PI', 'RN', 'PB', 'PE'],
+  DF: ['GO', 'MG'],
+  ES: ['BA', 'MG', 'RJ'],
+  GO: ['TO', 'BA', 'MG', 'DF', 'MS', 'MT'],
+  MA: ['PA', 'TO', 'PI'],
+  MG: ['BA', 'ES', 'RJ', 'SP', 'MS', 'GO', 'DF'],
+  MS: ['MT', 'GO', 'MG', 'SP', 'PR'],
+  MT: ['RO', 'AM', 'PA', 'TO', 'GO', 'MS'],
+  PA: ['AP', 'RR', 'AM', 'MT', 'TO', 'MA'],
+  PB: ['RN', 'CE', 'PE'],
+  PE: ['PB', 'CE', 'PI', 'BA', 'AL'],
+  PI: ['MA', 'TO', 'BA', 'PE', 'CE'],
+  PR: ['SP', 'MS', 'SC'],
+  RJ: ['ES', 'MG', 'SP'],
+  RN: ['CE', 'PB'],
+  RO: ['AC', 'AM', 'MT'],
+  RR: ['AM', 'PA'],
+  RS: ['SC'],
+  SC: ['PR', 'RS'],
+  SE: ['AL', 'BA'],
+  SP: ['MG', 'RJ', 'PR', 'MS'],
+  TO: ['PA', 'MA', 'PI', 'BA', 'GO', 'MT'],
+};
+
 export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   geoData,
   projection,
@@ -49,6 +89,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   completedStateIds,
   hoveredStateId,
   selectedStateId,
+  selectedRegionFilter = 'todos',
+  hoveredRegionFilter = null,
   showNeighbors = false,
   hoveredCountryId = null,
   isClimateActive = false,
@@ -338,21 +380,59 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
             strokeWidth = isSelected ? 2.8 : isHovered ? 2.0 : 1.0;
           }
 
+          const activeRegionFilter =
+            hoveredRegionFilter && hoveredRegionFilter !== 'todos'
+              ? hoveredRegionFilter
+              : selectedRegionFilter && selectedRegionFilter !== 'todos'
+              ? selectedRegionFilter
+              : null;
+
+          const isRegionActive = !!activeRegionFilter;
+          const belongsToActiveRegion = !isRegionActive || (REGION_STATES_MAP[activeRegionFilter]?.includes(stateId) ?? false);
+          const isNeighborOfSelected = Boolean(showNeighbors && selectedStateId && STATE_NEIGHBORS_MAP[selectedStateId]?.includes(stateId));
+
           return (
             <g
               key={stateId}
-              className={`grupo-estado-svg grupo-estado-${stateId.toLowerCase()}`}
+              className={`grupo-estado-svg grupo-estado-${stateId.toLowerCase()} transition-all duration-200`}
+              style={{
+                opacity: isRegionActive ? (belongsToActiveRegion ? 1.0 : 0.20) : (showNeighbors && selectedStateId ? (isSelected || isNeighborOfSelected ? 1.0 : 0.45) : 1.0),
+              }}
             >
               <path
                 id={`state-path-${stateId}`}
                 d={pathD}
-                fill={stateFill}
-                fillOpacity={stateFillOpacity}
-                stroke={strokeColor}
-                strokeWidth={strokeWidth}
+                fill={
+                  isRegionActive && belongsToActiveRegion && !isSelected && !isHovered && visualStyle === 'tiles'
+                    ? '#10b981'
+                    : isNeighborOfSelected && !isSelected && !isHovered && visualStyle === 'tiles'
+                    ? '#0284c7'
+                    : stateFill
+                }
+                fillOpacity={
+                  isRegionActive && belongsToActiveRegion && !isSelected && !isHovered && visualStyle === 'tiles'
+                    ? 0.40
+                    : isNeighborOfSelected && !isSelected && !isHovered && visualStyle === 'tiles'
+                    ? 0.30
+                    : stateFillOpacity
+                }
+                stroke={
+                  isRegionActive && belongsToActiveRegion && !isSelected && !isHovered
+                    ? '#34d399'
+                    : isNeighborOfSelected && !isSelected && !isHovered
+                    ? '#38bdf8'
+                    : strokeColor
+                }
+                strokeWidth={
+                  isRegionActive && belongsToActiveRegion && !isSelected && !isHovered
+                    ? 2.2
+                    : isNeighborOfSelected && !isSelected && !isHovered
+                    ? 2.0
+                    : strokeWidth
+                }
                 strokeLinejoin="round"
                 strokeLinecap="round"
-                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} cursor-pointer transition-colors duration-150 pointer-events-auto`}
+                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} cursor-pointer transition-all duration-150 pointer-events-auto`}
                 onMouseEnter={() => onStateEnter(stateId)}
                 onMouseLeave={() => onStateLeave(stateId)}
                 onClick={(e) => onStateClick(stateId, e)}
