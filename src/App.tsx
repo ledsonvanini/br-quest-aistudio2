@@ -5,6 +5,8 @@ import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
 import { ApiStatusModal } from './components/ApiStatusModal';
+import { AboutInfoModal } from './components/AboutInfoModal';
+import { DynamicAppFooter } from './components/DynamicAppFooter';
 import { FpsCounterWidget } from './components/FpsCounterWidget';
 import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme } from './types';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
@@ -13,6 +15,7 @@ import { GUARDIANS_DATA } from './data/guardiansData';
 import { Sparkles, Activity, Gauge } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
+import { fetchLiveClimateTelemetry } from './services/climateService';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -22,7 +25,10 @@ export function App() {
   const [notification, setNotification] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
+  const [isAboutInfoOpen, setIsAboutInfoOpen] = useState<boolean>(false);
   const [showFps, setShowFps] = useState<boolean>(false);
+  const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
+  const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
 
   // App Modes: 1º Aventura/Navegação (default on page load), 2º Clima, 3º Musicalidades
   const [mainMode, setMainMode] = useState<AppMainMode>('aventura');
@@ -34,14 +40,101 @@ export function App() {
   const [showNeighbors, setShowNeighbors] = useState<boolean>(false);
   const [isObservatorioOpen, setIsObservatorioOpen] = useState<boolean>(false);
   const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
+  const [climateTelemetry, setClimateTelemetry] = useState<{
+    avgTempBrazil: number;
+    maxTempState: { stateId: string; temp: number };
+    minTempState: { stateId: string; temp: number };
+  }>({
+    avgTempBrazil: 27.4,
+    maxTempState: { stateId: 'MT', temp: 35.1 },
+    minTempState: { stateId: 'RS', temp: 17.5 },
+  });
+
+  // Preload live climate telemetry for dynamic footer
+  useEffect(() => {
+    fetchLiveClimateTelemetry()
+      .then((res) => {
+        if (res) {
+          setClimateTelemetry({
+            avgTempBrazil: res.avgTempBrazil,
+            maxTempState: res.maxTempState,
+            minTempState: res.minTempState,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [isRainSimActive, setIsRainSimActive] = useState<boolean>(false);
   const [isCloudsActive, setIsCloudsActive] = useState<boolean>(true);
-  const [isWavesActive, setIsWavesActive] = useState<boolean>(true);
+  const [isWavesActive, setIsWavesActive] = useState<boolean>(false);
   const [isAtmosphereActive, setIsAtmosphereActive] = useState<boolean>(true);
+  const [celestialTimeOverride, setCelestialTimeOverride] = useState<'day' | 'night' | 'auto'>('auto');
+
+  const handleCycleCelestial = () => {
+    setCelestialTimeOverride((curr) => {
+      if (curr === 'day') return 'night';
+      if (curr === 'night') return 'auto';
+      return 'day';
+    });
+    setIsAtmosphereActive(true);
+  };
   const [isRadioOpen, setIsRadioOpen] = useState<boolean>(true);
   const [activeMusicCategory, setActiveMusicCategory] = useState<'state_anthems' | 'top5' | 'national'>('state_anthems');
   const [selectedRadioEraId, setSelectedRadioEraId] = useState<string>('catedral_1930_1940');
   const [focusedStateId, setFocusedStateId] = useState<string | null>(null);
+  const [centerMapTrigger, setCenterMapTrigger] = useState<number>(0);
+
+  const handleSelectMainMode = (newMode: AppMainMode) => {
+    setMainMode(newMode);
+
+    if (newMode === 'aventura') {
+      // Modo Aventura Padrão: Apenas nuvens ativas; textura shaded_relief; sem vizinhos; astro em auto
+      setTerrainProvider('shaded_relief');
+      setVisualStyle('tiles');
+      setChoroplethSubTheme('regions');
+      setIsCloudsActive(true);
+      setIsRainSimActive(false);
+      setIsWavesActive(false);
+      setIsAtmosphereActive(true);
+      setCelestialTimeOverride('auto');
+      setShowNeighbors(false);
+      setSelectedRegionFilter('todos');
+      setIsObservatorioOpen(false);
+    } else if (newMode === 'clima') {
+      // Modo Clima Padrão: Sol automático de Brasília, nuvens, ondas, cor neutra para América do Sul; Observatório Ambiental desmarcado por padrão
+      setTerrainProvider('muted_gray');
+      setVisualStyle('tiles');
+      setClimateMode('temperaturas_frentes');
+      setIsCloudsActive(true);
+      setIsAtmosphereActive(true);
+      setCelestialTimeOverride('auto');
+      setIsWavesActive(true);
+      setIsRainSimActive(false);
+      setShowNeighbors(false);
+      setSelectedRegionFilter('todos');
+      setIsObservatorioOpen(false);
+    } else if (newMode === 'musicalidades') {
+      // Modo Musicalidades Padrão: Rádio aberto, sol e nuvens leves, ondas
+      setTerrainProvider('shaded_relief');
+      setVisualStyle('tiles');
+      setIsCloudsActive(true);
+      setIsAtmosphereActive(true);
+      setCelestialTimeOverride('auto');
+      setIsWavesActive(true);
+      setIsRainSimActive(false);
+      setIsRadioOpen(true);
+      setActiveMusicCategory('state_anthems');
+      setShowNeighbors(false);
+      setSelectedRegionFilter('todos');
+      setIsObservatorioOpen(false);
+    }
+
+    if (activeTab !== 'map') {
+      setActiveTab('map');
+      window.location.hash = '#/mapa';
+    }
+  };
 
   // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
@@ -192,13 +285,7 @@ export function App() {
       {!activeGuardian && activeTab === 'map' && (
         <TopGlobalNavMenu
           mainMode={mainMode}
-          onSelectMainMode={(mode) => {
-            setMainMode(mode);
-            if (activeTab !== 'map') {
-              setActiveTab('map');
-              window.location.hash = '#/mapa';
-            }
-          }}
+          onSelectMainMode={handleSelectMainMode}
           terrainProvider={terrainProvider}
           onTerrainProviderChange={setTerrainProvider}
           visualStyle={visualStyle}
@@ -230,7 +317,8 @@ export function App() {
           isWavesActive={isWavesActive}
           onToggleWaves={() => setIsWavesActive((prev) => !prev)}
           isAtmosphereActive={isAtmosphereActive}
-          onToggleAtmosphere={() => setIsAtmosphereActive((prev) => !prev)}
+          onToggleAtmosphere={handleCycleCelestial}
+          celestialTimeOverride={celestialTimeOverride}
           onFocusState={(stateId) => setFocusedStateId(stateId)}
           isRadioOpen={isRadioOpen}
           onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
@@ -239,6 +327,9 @@ export function App() {
           selectedRadioEraId={selectedRadioEraId}
           onSelectRadioEra={setSelectedRadioEraId}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onResetView={() => setCenterMapTrigger((prev) => prev + 1)}
+          onResetViewIfNotCentered={() => setCenterMapTrigger((prev) => prev + 1)}
+          hoveredStateId={hoveredStateId}
         />
       )}
 
@@ -280,7 +371,7 @@ export function App() {
               lang={lang}
               onOpenSettings={() => setIsSettingsOpen(true)}
               mainMode={mainMode}
-              onSelectMainMode={setMainMode}
+              onSelectMainMode={handleSelectMainMode}
               climateMode={climateMode}
               onClimateModeChange={setClimateMode}
               terrainProvider={terrainProvider}
@@ -296,9 +387,11 @@ export function App() {
               isObservatorioOpen={isObservatorioOpen}
               onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
               atmosphereEnabled={isAtmosphereActive}
+              timeOverride={celestialTimeOverride}
               wavesEnabled={isWavesActive}
               cloudsEnabled={isCloudsActive}
               rainSimEnabled={isRainSimActive}
+              centerTrigger={centerMapTrigger}
               isRadioOpen={isRadioOpen}
               onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
               activeMusicCategory={activeMusicCategory}
@@ -307,6 +400,7 @@ export function App() {
               onSelectRadioEra={setSelectedRadioEraId}
               focusedStateId={focusedStateId}
               onFocusStateHandled={() => setFocusedStateId(null)}
+              onHoverStateChange={setHoveredStateId}
             />
           </div>
         ) : (
@@ -331,6 +425,8 @@ export function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onOpenApiStatus={() => setIsApiStatusOpen(true)}
+        showFps={showFps}
+        onToggleFps={() => setShowFps((prev) => !prev)}
       />
 
       {/* API Telemetry & Status Modal */}
@@ -339,58 +435,50 @@ export function App() {
         onClose={() => setIsApiStatusOpen(false)}
       />
 
+      {/* Saiba Mais: Filosofia, Fontes de Dados, Capacidades e Direitos Autorais Modal */}
+      <AboutInfoModal
+        isOpen={isAboutInfoOpen}
+        onClose={() => setIsAboutInfoOpen(false)}
+      />
+
       {/* Real-time FPS & Performance Telemetry Widget */}
       <FpsCounterWidget
         isVisible={showFps}
         onToggleVisibility={() => setShowFps(false)}
       />
 
-      {/* Footer */}
-      <footer className="rodape-aplicacao shrink-0 bg-slate-950 text-slate-400 border-t border-amber-500/30 py-2 px-4 text-center text-xs font-serif">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-medium">
-          <div className="flex items-center gap-2">
-            <span>🇧🇷</span>
-            <span className="font-bold text-amber-400">BR Quest</span>
-            <span className="hidden sm:inline">— Os Guardiões da Cultura do Brasil (RPG & Mapa Ortogonal 3D)</span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* FPS / Frame Rate Toggle Button */}
-            <button
-              id="btn-toggle-fps-rodape"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                setShowFps((prev) => !prev);
-              }}
-              className={`btn-toggle-fps flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition cursor-pointer ${
-                showFps
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20'
-                  : 'bg-slate-900 border-slate-700 hover:border-emerald-400/60 text-slate-300 hover:text-emerald-300'
-              }`}
-              title="Mostrar / Ocultar Medidor de Taxa de Quadros (FPS) em tempo real"
-            >
-              <Gauge className="w-3 h-3 text-emerald-400" />
-              <span>{showFps ? 'FPS: Ativo' : 'Mostrar FPS'}</span>
-            </button>
-
-            <button
-              onClick={() => {
-                audioEngine.playSfx('click');
-                setIsApiStatusOpen(true);
-              }}
-              className="btn-status-api-footer flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-400/60 text-slate-300 hover:text-cyan-300 text-[11px] font-mono transition cursor-pointer"
-              title="Abrir painel de monitoramento de tráfego e latência de APIs"
-            >
-              <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-              <span>Status API</span>
-            </button>
-
-            <div className="text-amber-400/80 text-[11px]">
-              Rio Grande do Sul & Pampas • Hinos, Lendas e Insígnias
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS | APIs | Bússola ] */}
+      <DynamicAppFooter
+        mainMode={mainMode}
+        activeTab={activeTab}
+        activeGuardian={activeGuardian}
+        completedStateIds={progress.completedStateIds}
+        unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
+        hoveredStateId={hoveredStateId}
+        selectedStateId={selectedStateId}
+        onStateHover={(id) => setHoveredStateId(id)}
+        onStateClick={(id) => {
+          const found = GUARDIANS_DATA.find((g) => g.id === id);
+          if (found) {
+            handleSelectGuardian(found);
+          }
+        }}
+        onOpenAboutInfo={() => setIsAboutInfoOpen(true)}
+        onNavigateHome={() => {
+          setActiveGuardian(null);
+          setActiveTab('map');
+        }}
+        showFps={showFps}
+        onToggleFps={() => setShowFps((prev) => !prev)}
+        onOpenApiStatus={() => setIsApiStatusOpen(true)}
+        climateMode={climateMode}
+        onOpenObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
+        isObservatorioOpen={isObservatorioOpen}
+        avgTempBrazil={climateTelemetry.avgTempBrazil}
+        maxTempState={climateTelemetry.maxTempState}
+        minTempState={climateTelemetry.minTempState}
+        onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+      />
     </div>
   );
 }

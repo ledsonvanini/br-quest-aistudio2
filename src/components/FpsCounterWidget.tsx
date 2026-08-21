@@ -52,7 +52,7 @@ export const FpsCounterWidget: React.FC<FpsCounterWidgetProps> = ({
   return (
     <div
       id="widget-fps-contador"
-      className="widget-fps-contador fixed bottom-12 left-4 z-50 pointer-events-auto select-none animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="widget-fps-contador fixed bottom-16 sm:bottom-20 left-4 z-40 pointer-events-auto select-none animate-in fade-in slide-in-from-bottom-2 duration-200"
     >
       <div
         className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border backdrop-blur-xl shadow-2xl shadow-black/90 font-mono text-xs ${getStatusColor(

@@ -171,7 +171,7 @@ export const RainSimulationLayer: React.FC<RainSimulationLayerProps> = ({
     });
 
     // 2. High performance rainfall particles
-    const DROP_COUNT = 240;
+    const DROP_COUNT = 180;
     const drops = new Float32Array(DROP_COUNT * 8);
 
     const initDrop = (i: number) => {
@@ -215,8 +215,12 @@ export const RainSimulationLayer: React.FC<RainSimulationLayerProps> = ({
     const render = () => {
       ctx.clearRect(0, 0, w, h);
 
-      // Render rain drops
-      ctx.lineWidth = 1.0;
+      // Batched render of all rain drops in a single GPU draw call
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.65)';
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+
       for (let i = 0; i < DROP_COUNT; i++) {
         const baseIdx = i * 8;
         drops[baseIdx] += drops[baseIdx + 3];
@@ -230,17 +234,14 @@ export const RainSimulationLayer: React.FC<RainSimulationLayerProps> = ({
         const startY = drops[baseIdx + 1];
         const vx = drops[baseIdx + 3];
         const vy = drops[baseIdx + 4];
-        const opacity = drops[baseIdx + 6];
 
         const endX = startX - vx * 0.6;
         const endY = startY - vy * 0.6;
 
-        ctx.strokeStyle = `rgba(224, 242, 254, ${opacity})`;
-        ctx.beginPath();
         ctx.moveTo(startX, startY);
         ctx.lineTo(endX, endY);
-        ctx.stroke();
       }
+      ctx.stroke();
 
       animId = requestAnimationFrame(render);
     };

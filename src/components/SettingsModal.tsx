@@ -11,7 +11,8 @@ import {
   Info,
   Radio,
   Check,
-  Activity
+  Activity,
+  Gauge
 } from 'lucide-react';
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   onClose: () => void;
   onResetCamera?: () => void;
   onOpenApiStatus?: () => void;
+  showFps?: boolean;
+  onToggleFps?: () => void;
 }
 
 export const SettingsModal: React.FC<Props> = ({
@@ -26,6 +29,8 @@ export const SettingsModal: React.FC<Props> = ({
   onClose,
   onResetCamera,
   onOpenApiStatus,
+  showFps = false,
+  onToggleFps,
 }) => {
   const [bgmOn, setBgmOn] = useState<boolean>(audioEngine.isBgmOn());
   const [bgmVol, setBgmVol] = useState<number>(Math.round(audioEngine.getBgmVolume() * 100));
@@ -193,33 +198,74 @@ export const SettingsModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* API Status & Telemetry Button */}
-          {onOpenApiStatus && (
-            <div className="bg-slate-900/90 rounded-2xl p-4 border border-cyan-500/30 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-400/40">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-serif font-bold text-slate-200">
-                    Status de APIs & Tráfego
-                  </div>
-                  <div className="text-[10px] text-slate-400">Ver requisições, latência e provedores (ECMWF, IBGE)</div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  onOpenApiStatus();
-                  onClose();
-                }}
-                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950 border border-cyan-500/40 text-xs font-bold font-serif transition"
-              >
-                Abrir Painel
-              </button>
+          {/* Performance & Diagnostic Section: FPS Counter & API Status */}
+          <div className="pt-2 border-t border-slate-800/90 space-y-2.5">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold px-1">
+              Performance & Diagnóstico
             </div>
-          )}
+
+            {/* FPS Toggle */}
+            {onToggleFps && (
+              <div className="bg-slate-900/90 rounded-2xl p-3.5 border border-emerald-500/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${showFps ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                    <Gauge className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-serif font-bold text-slate-200">
+                      Medidor de Taxa de Quadros (FPS)
+                    </div>
+                    <div className="text-[10px] text-slate-400">Exibir telemetria de FPS em tempo real no canto da tela</div>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-toggle-fps-config"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onToggleFps();
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-serif transition flex items-center gap-1.5 border cursor-pointer ${
+                    showFps
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-md shadow-emerald-500/20'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  {showFps ? <Check className="w-3.5 h-3.5" /> : null}
+                  <span>{showFps ? 'Visível' : 'Oculto'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* API Status & Telemetry Button */}
+            {onOpenApiStatus && (
+              <div className="bg-slate-900/90 rounded-2xl p-3.5 border border-cyan-500/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-400/40">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-serif font-bold text-slate-200">
+                      Status de APIs & Tráfego
+                    </div>
+                    <div className="text-[10px] text-slate-400">Ver requisições, latência e provedores (ECMWF, IBGE)</div>
+                  </div>
+                </div>
+
+                <button
+                  id="btn-status-api-config"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onOpenApiStatus();
+                    onClose();
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950 border border-cyan-500/40 text-xs font-bold font-serif transition cursor-pointer"
+                >
+                  Abrir Painel
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Instructions Hint */}
           <div className="bg-amber-950/30 rounded-2xl p-3.5 border border-amber-500/20 text-[11px] text-amber-200/90 flex items-start gap-2.5 font-serif italic">

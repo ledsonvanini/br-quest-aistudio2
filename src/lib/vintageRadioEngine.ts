@@ -1,6 +1,21 @@
 // Vintage 1930-1950 Golden Age Radio Synthesizer & Acoustic Effects Engine
 // Uses Web Audio API with vacuum tube saturation, AM static noise filters, and melodic playback.
 
+export interface RadioPlaybackState {
+  isPlaying: boolean;
+  activeStateId: string;
+  currentTrackTitle: string;
+  currentStationName: string;
+  activeEraId: string;
+  activeEraName: string;
+  frequencyDialKHz: number;
+  volume: number;
+  isMuted: boolean;
+  isTubeMode: boolean;
+}
+
+type RadioStateListener = (state: RadioPlaybackState) => void;
+
 class VintageRadioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -15,6 +30,15 @@ class VintageRadioEngine {
   private volume: number = 0.8;
   private isVintageFilterActive: boolean = true;
   private onTrackEndCallback: (() => void) | null = null;
+
+  // Real-time metadata state for dynamic UI sync
+  private activeStateId: string = 'RJ';
+  private currentTrackTitle: string = 'Hino Nacional Brasileiro';
+  private currentStationName: string = 'Rádio Nacional do Brasil';
+  private activeEraId: string = 'catedral_1930_1940';
+  private activeEraName: string = 'Era de Ouro (1930-1940)';
+  private frequencyDialKHz: number = 980;
+  private listeners: Set<RadioStateListener> = new Set();
 
   private initContext() {
     if (!this.ctx) {
@@ -132,6 +156,53 @@ class VintageRadioEngine {
     osc3.stop(now + durationSec + 0.05);
   }
 
+  private notifyListeners() {
+    const state = this.getState();
+    this.listeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch (e) {
+        console.error('Radio listener error:', e);
+      }
+    });
+  }
+
+  public subscribe(listener: RadioStateListener): () => void {
+    this.listeners.add(listener);
+    listener(this.getState());
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  public getState(): RadioPlaybackState {
+    return {
+      isPlaying: this.isPlaying,
+      activeStateId: this.activeStateId,
+      currentTrackTitle: this.currentTrackTitle,
+      currentStationName: this.currentStationName,
+      activeEraId: this.activeEraId,
+      activeEraName: this.activeEraName,
+      frequencyDialKHz: this.frequencyDialKHz,
+      volume: this.volume,
+      isMuted: this.isMuted,
+      isTubeMode: this.isVintageFilterActive,
+    };
+  }
+
+  public updateMetadata(partial: Partial<RadioPlaybackState>) {
+    if (partial.activeStateId !== undefined) this.activeStateId = partial.activeStateId;
+    if (partial.currentTrackTitle !== undefined) this.currentTrackTitle = partial.currentTrackTitle;
+    if (partial.currentStationName !== undefined) this.currentStationName = partial.currentStationName;
+    if (partial.activeEraId !== undefined) this.activeEraId = partial.activeEraId;
+    if (partial.activeEraName !== undefined) this.activeEraName = partial.activeEraName;
+    if (partial.frequencyDialKHz !== undefined) this.frequencyDialKHz = partial.frequencyDialKHz;
+    if (partial.volume !== undefined) this.volume = partial.volume;
+    if (partial.isMuted !== undefined) this.isMuted = partial.isMuted;
+    if (partial.isTubeMode !== undefined) this.isVintageFilterActive = partial.isTubeMode;
+    this.notifyListeners();
+  }
+
   // Play a sequence of frequencies in an infinite melodious broadcast loop
   public playTrack(frequencies: number[], tempoBpm: number = 110, onEnd?: () => void) {
     this.initContext();
@@ -143,6 +214,8 @@ class VintageRadioEngine {
     this.currentTrackNotes = frequencies;
     this.currentNoteIndex = 0;
     this.onTrackEndCallback = onEnd || null;
+
+    this.notifyListeners();
 
     // Initial vintage static burst on tuning
     this.startRadioStatic(450);
@@ -172,13 +245,17 @@ class VintageRadioEngine {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
     }
+    this.notifyListeners();
   }
 
-  public togglePlayPause(frequencies: number[], tempoBpm: number = 110) {
+  public togglePlayPause(frequencies?: number[], tempoBpm: number = 110) {
     if (this.isPlaying) {
       this.stop();
     } else {
-      this.playTrack(frequencies, tempoBpm);
+      const notes = frequencies && frequencies.length > 0 ? frequencies : this.currentTrackNotes;
+      if (notes.length > 0) {
+        this.playTrack(notes, tempoBpm);
+      }
     }
     return this.isPlaying;
   }
@@ -188,6 +265,7 @@ class VintageRadioEngine {
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime);
     }
+    this.notifyListeners();
   }
 
   public setMute(muted: boolean) {
@@ -195,35 +273,40 @@ class VintageRadioEngine {
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime);
     }
+    this.notifyListeners();
   }
 
   public toggleVintageFilter() {
     this.isVintageFilterActive = !this.isVintageFilterActive;
+    this.notifyListeners();
     return this.isVintageFilterActive;
   }
 
-  public setRadioEra(eraId: string) {
+  public setRadioEra(eraId: string, eraName?: string) {
     this.initContext();
-    if (!this.tubeFilter || !this.ctx) return;
-    
-    // Adjust tube filter cutoff frequencies dynamically based on the selected era
-    if (eraId === 'galena_1920') {
-      this.tubeFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
-      this.tubeFilter.Q.setValueAtTime(1.4, this.ctx.currentTime);
-    } else if (eraId === 'catedral_1930_1940') {
-      this.tubeFilter.frequency.setValueAtTime(1800, this.ctx.currentTime);
-      this.tubeFilter.Q.setValueAtTime(0.9, this.ctx.currentTime);
-    } else if (eraId === 'modernista_1950_1960') {
-      this.tubeFilter.frequency.setValueAtTime(2400, this.ctx.currentTime);
-      this.tubeFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
-    } else if (eraId === 'boombox_1970_1980') {
-      this.tubeFilter.frequency.setValueAtTime(3600, this.ctx.currentTime);
-      this.tubeFilter.Q.setValueAtTime(0.5, this.ctx.currentTime);
-    } else {
-      // Digital PLL 1990s
-      this.tubeFilter.frequency.setValueAtTime(5000, this.ctx.currentTime);
-      this.tubeFilter.Q.setValueAtTime(0.3, this.ctx.currentTime);
+    this.activeEraId = eraId;
+    if (eraName) this.activeEraName = eraName;
+    if (this.tubeFilter && this.ctx) {
+      // Adjust tube filter cutoff frequencies dynamically based on the selected era
+      if (eraId === 'galena_1920') {
+        this.tubeFilter.frequency.setValueAtTime(1400, this.ctx.currentTime);
+        this.tubeFilter.Q.setValueAtTime(1.4, this.ctx.currentTime);
+      } else if (eraId === 'catedral_1930_1940') {
+        this.tubeFilter.frequency.setValueAtTime(1800, this.ctx.currentTime);
+        this.tubeFilter.Q.setValueAtTime(0.9, this.ctx.currentTime);
+      } else if (eraId === 'modernista_1950_1960') {
+        this.tubeFilter.frequency.setValueAtTime(2400, this.ctx.currentTime);
+        this.tubeFilter.Q.setValueAtTime(0.7, this.ctx.currentTime);
+      } else if (eraId === 'boombox_1970_1980') {
+        this.tubeFilter.frequency.setValueAtTime(3600, this.ctx.currentTime);
+        this.tubeFilter.Q.setValueAtTime(0.5, this.ctx.currentTime);
+      } else {
+        // Digital PLL 1990s
+        this.tubeFilter.frequency.setValueAtTime(5000, this.ctx.currentTime);
+        this.tubeFilter.Q.setValueAtTime(0.3, this.ctx.currentTime);
+      }
     }
+    this.notifyListeners();
   }
 
   public isRadioPlaying(): boolean {

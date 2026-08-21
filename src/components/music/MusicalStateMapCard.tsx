@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Radio, Music, Disc, ArrowRight, Volume2 } from 'lucide-react';
+import { Sparkles, Radio, Music, Disc, ArrowRight, Volume2, X } from 'lucide-react';
 import { getStateMusicalHeritage } from '../../data/musicalHeritageData';
 import { getStateHighlightsForEra, VINTAGE_RADIO_ERAS } from '../../data/vintageRadioEras';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
@@ -8,12 +8,14 @@ interface MusicalStateMapCardProps {
   stateId: string | null;
   selectedRadioEraId?: string;
   onTuneState?: (stateId: string) => void;
+  onClose?: () => void;
 }
 
 export const MusicalStateMapCard: React.FC<MusicalStateMapCardProps> = ({
   stateId,
   selectedRadioEraId = 'catedral_1930_1940',
   onTuneState,
+  onClose,
 }) => {
   if (!stateId) return null;
 
@@ -24,9 +26,12 @@ export const MusicalStateMapCard: React.FC<MusicalStateMapCardProps> = ({
 
   return (
     <div
+      id={`card-detalhes-musical-${stateId.toLowerCase()}`}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="painel-card-musical-mapa absolute bottom-6 right-6 z-40 w-80 sm:w-96 bg-slate-950/95 backdrop-blur-xl border-2 border-amber-500/70 rounded-2xl shadow-2xl p-4 text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-auto select-none space-y-2.5"
+      className="painel-card-musical-mapa fixed top-20 sm:top-24 right-3 sm:right-6 lg:right-8 z-40 w-80 sm:w-96 max-w-[calc(100vw-24px)] bg-slate-950/95 backdrop-blur-xl border-2 border-amber-500/70 rounded-2xl shadow-2xl p-4 text-slate-100 animate-in fade-in slide-in-from-right-4 duration-200 pointer-events-auto select-none space-y-2.5"
+      role="region"
+      aria-label={`Patrimônio Musical de ${stateData.stateName}`}
     >
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-amber-900/60 pb-2">
@@ -54,8 +59,21 @@ export const MusicalStateMapCard: React.FC<MusicalStateMapCardProps> = ({
           </div>
         </div>
 
-        <div className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono font-black text-amber-300">
-          {stateData.frequencyDialKHz} kHz
+        <div className="flex items-center gap-1.5">
+          <div className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono font-black text-amber-300">
+            {stateData.frequencyDialKHz} kHz
+          </div>
+          {onClose && (
+            <button
+              id="btn-fechar-card-musical"
+              onClick={onClose}
+              className="btn-fechar-card-musical p-1 rounded-md text-amber-300 hover:text-amber-100 hover:bg-amber-500/20 transition-colors cursor-pointer"
+              title="Fechar detalhes do estado"
+              aria-label="Fechar"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -85,8 +103,9 @@ export const MusicalStateMapCard: React.FC<MusicalStateMapCardProps> = ({
 
       {/* Botão de Sintonia */}
       <button
+        id="btn-sintonizar-radio-estado"
         onClick={() => onTuneState?.(stateId)}
-        className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-serif font-black text-xs shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+        className="btn-sintonizar-radio-estado w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-serif font-black text-xs shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
       >
         <Volume2 className="w-3.5 h-3.5" />
         <span>Sintonizar {stateData.stateName} no Rádio</span>

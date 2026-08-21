@@ -12,14 +12,14 @@ interface CloudParticle {
   y: number;
   vx: number;
   vy: number;
-  scaleX: number; // For horizontal mirroring (-1 or 1) * scale
+  scaleX: number;
   scaleY: number;
   opacity: number;
   targetOpacity: number;
   imageIndex: number;
   width: number;
   height: number;
-  altitude: number; // 1 (low, fast) to 3 (high, slow)
+  altitude: number;
   rotation: number;
   vRot: number;
   life: number;
@@ -27,6 +27,10 @@ interface CloudParticle {
   shadowOffsetX: number;
   shadowOffsetY: number;
 }
+
+// Ultra-wide boundless canvas coverage exceeding stage and ocean boundaries to eliminate edge masks
+const CLOUD_CANVAS_WIDTH = 5120;
+const CLOUD_CANVAS_HEIGHT = 3600;
 
 export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
   enabled = true,
@@ -38,18 +42,11 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
     if (!enabled) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    const w = MAP_CANVAS_WIDTH;
-    const h = MAP_CANVAS_HEIGHT;
-
-    // Load cloud sprites from /imgSuport/ or prepare procedural offscreen fallback textures
-    const cloudImageSources = [
-      '/imgSuport/cloud1.png',
-      '/imgSuport/cloud2.png',
-      '/imgSuport/cloud3.png',
-    ];
+    const w = CLOUD_CANVAS_WIDTH;
+    const h = CLOUD_CANVAS_HEIGHT;
 
     // Pre-bake 3 distinct high-res cumulus cloud textures in offscreen buffers
     const cachedSprites: HTMLCanvasElement[] = [];
@@ -57,47 +54,46 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
 
     for (let s = 0; s < 3; s++) {
       const spriteCanvas = document.createElement('canvas');
-      spriteCanvas.width = 380;
-      spriteCanvas.height = 220;
+      spriteCanvas.width = 360;
+      spriteCanvas.height = 200;
       const sCtx = spriteCanvas.getContext('2d');
 
       const shadowCanvas = document.createElement('canvas');
-      shadowCanvas.width = 380;
-      shadowCanvas.height = 220;
+      shadowCanvas.width = 360;
+      shadowCanvas.height = 200;
       const shCtx = shadowCanvas.getContext('2d');
 
       if (sCtx && shCtx) {
-        const cx = 190;
-        const cy = 110;
-        
-        // Distinct puff configurations per cloud type
+        const cx = 180;
+        const cy = 100;
+
         const puffConfigs = [
           [
-            { ox: 0, oy: 0, r: 70 },
-            { ox: -65, oy: 15, r: 55 },
-            { ox: 65, oy: 10, r: 58 },
-            { ox: -115, oy: 28, r: 42 },
-            { ox: 115, oy: 25, r: 42 },
-            { ox: -30, oy: -25, r: 50 },
-            { ox: 35, oy: -22, r: 52 },
+            { ox: 0, oy: 0, r: 65 },
+            { ox: -60, oy: 12, r: 52 },
+            { ox: 60, oy: 8, r: 54 },
+            { ox: -105, oy: 24, r: 38 },
+            { ox: 105, oy: 22, r: 38 },
+            { ox: -25, oy: -22, r: 46 },
+            { ox: 30, oy: -20, r: 48 },
           ],
           [
-            { ox: -10, oy: -5, r: 75 },
-            { ox: -80, oy: 10, r: 50 },
-            { ox: 50, oy: 12, r: 60 },
-            { ox: 110, oy: 22, r: 45 },
-            { ox: -130, oy: 25, r: 38 },
-            { ox: 20, oy: -30, r: 48 },
-            { ox: -50, oy: -20, r: 46 },
+            { ox: -10, oy: -5, r: 70 },
+            { ox: -75, oy: 10, r: 46 },
+            { ox: 45, oy: 12, r: 55 },
+            { ox: 100, oy: 20, r: 40 },
+            { ox: -115, oy: 22, r: 34 },
+            { ox: 18, oy: -26, r: 44 },
+            { ox: -45, oy: -18, r: 42 },
           ],
           [
-            { ox: 15, oy: -10, r: 68 },
-            { ox: -50, oy: 8, r: 62 },
-            { ox: 80, oy: 14, r: 52 },
-            { ox: -105, oy: 22, r: 45 },
-            { ox: 130, oy: 26, r: 36 },
-            { ox: -15, oy: -28, r: 52 },
-            { ox: 45, oy: -25, r: 48 },
+            { ox: 12, oy: -8, r: 64 },
+            { ox: -45, oy: 8, r: 58 },
+            { ox: 75, oy: 12, r: 48 },
+            { ox: -95, oy: 20, r: 40 },
+            { ox: 115, oy: 24, r: 34 },
+            { ox: -12, oy: -24, r: 48 },
+            { ox: 40, oy: -22, r: 44 },
           ],
         ][s];
 
@@ -129,14 +125,14 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
             p.r * 0.2,
             cx + p.ox,
             cy + p.oy,
-            p.r * 1.1
+            p.r * 1.05
           );
-          shGrad.addColorStop(0, 'rgba(2, 8, 20, 0.6)');
-          shGrad.addColorStop(0.6, 'rgba(2, 8, 20, 0.25)');
+          shGrad.addColorStop(0, 'rgba(2, 8, 20, 0.55)');
+          shGrad.addColorStop(0.6, 'rgba(2, 8, 20, 0.2)');
           shGrad.addColorStop(1, 'rgba(2, 8, 20, 0)');
           shCtx.fillStyle = shGrad;
           shCtx.beginPath();
-          shCtx.arc(cx + p.ox, cy + p.oy, p.r * 1.1, 0, Math.PI * 2);
+          shCtx.arc(cx + p.ox, cy + p.oy, p.r * 1.05, 0, Math.PI * 2);
           shCtx.fill();
         });
       }
@@ -145,44 +141,34 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
       cachedShadows.push(shadowCanvas);
     }
 
-    // Try loading actual PNG files
-    const imgElements: HTMLImageElement[] = cloudImageSources.map((src) => {
-      const img = new Image();
-      img.src = src;
-      return img;
-    });
-
-    // Real Game Engine Spawner Pool: 14 dynamic cloud instances
+    // High performance cloud pool (14 balanced clouds across Brazil and Atlantic)
     const CLOUD_COUNT = 14;
     const clouds: CloudParticle[] = [];
 
     const createCloud = (initialSpawn = false): CloudParticle => {
       const imgIdx = Math.floor(Math.random() * 3);
       const isMirrored = Math.random() < 0.5;
-      const baseScale = 0.45 + Math.random() * 0.95; // 0.45x to 1.4x scale variation
-      const altitude = 1 + Math.random() * 2; // 1 (low/fast), 2 (mid), 3 (high/slow)
+      const baseScale = 0.65 + Math.random() * 0.95;
+      const altitude = 1 + Math.random() * 2;
 
-      // Speed scales with altitude and trade wind drift (East to West-Northwest across Brazil)
-      const baseSpeed = (0.22 + (4 - altitude) * 0.16 + Math.random() * 0.15) * speedMultiplier;
-      const windAngle = Math.PI * 0.95 + (Math.random() - 0.5) * 0.18;
+      const baseSpeed = (0.28 + (3.5 - altitude) * 0.16 + Math.random() * 0.14) * speedMultiplier;
+      const windAngle = Math.PI * 0.95 + (Math.random() - 0.5) * 0.15;
 
       const cloudW = 340 * baseScale;
-      const cloudH = 200 * baseScale;
+      const cloudH = 190 * baseScale;
 
       let startX: number;
       let startY: number;
 
       if (initialSpawn) {
-        startX = Math.random() * (w * 1.3) - w * 0.15;
-        startY = Math.random() * (h * 1.1) - h * 0.05;
+        startX = Math.random() * (w * 1.1) - w * 0.05;
+        startY = Math.random() * (h * 0.95);
       } else {
-        // Spawn from East/Atlantic edge beyond visible viewport
         startX = w + 120 + Math.random() * 350;
-        startY = Math.random() * (h * 0.9) - 50;
+        startY = Math.random() * (h * 0.88);
       }
 
-      // Rich opacity variation: light wispy clouds (0.35) to thick dense cumulus (0.9)
-      const targetOpacity = 0.35 + Math.random() * 0.55;
+      const targetOpacity = 0.35 + Math.random() * 0.45;
 
       return {
         id: Math.random(),
@@ -192,18 +178,18 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         vy: Math.sin(windAngle) * baseSpeed,
         scaleX: (isMirrored ? -1 : 1) * baseScale,
         scaleY: baseScale,
-        opacity: initialSpawn ? targetOpacity * (0.4 + Math.random() * 0.6) : 0,
+        opacity: initialSpawn ? targetOpacity * (0.5 + Math.random() * 0.5) : 0,
         targetOpacity,
         imageIndex: imgIdx,
         width: cloudW,
         height: cloudH,
         altitude,
-        rotation: (Math.random() - 0.5) * 0.08,
-        vRot: (Math.random() - 0.5) * 0.0002,
+        rotation: (Math.random() - 0.5) * 0.06,
+        vRot: (Math.random() - 0.5) * 0.0001,
         life: 0,
-        maxLife: 4000 + Math.random() * 5000,
-        shadowOffsetX: (25 + altitude * 15) * baseScale,
-        shadowOffsetY: (35 + altitude * 20) * baseScale,
+        maxLife: 4500 + Math.random() * 5000,
+        shadowOffsetX: (24 + altitude * 14) * baseScale,
+        shadowOffsetY: (32 + altitude * 18) * baseScale,
       };
     };
 
@@ -220,48 +206,39 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         const c = clouds[i];
         c.life++;
 
-        // Physics movement
         c.x += c.vx * speedMultiplier;
         c.y += c.vy * speedMultiplier;
         c.rotation += c.vRot;
 
-        // Smooth fade-in
         if (c.opacity < c.targetOpacity) {
-          c.opacity = Math.min(c.targetOpacity, c.opacity + 0.006);
+          c.opacity = Math.min(c.targetOpacity, c.opacity + 0.008);
         }
 
-        // Out of bounds / Expired lifetime cleanup & instantaneous recycle
         if (c.x < -c.width - 250 || c.y > h + 250 || c.y < -250 || c.life > c.maxLife) {
           clouds.splice(i, 1);
           clouds.push(createCloud(false));
           continue;
         }
 
-        const img = imgElements[c.imageIndex];
-        const useImg = img.complete && img.naturalWidth > 0;
-        const sprite = useImg ? img : cachedSprites[c.imageIndex];
+        const sprite = cachedSprites[c.imageIndex];
         const shadow = cachedShadows[c.imageIndex];
 
-        // =========================================================================
-        // 1. SOFT RELIEF SHADOW (Projected on terrain below)
-        // =========================================================================
+        // 1. Soft Relief Shadow
         ctx.save();
         ctx.translate(c.x + c.shadowOffsetX, c.y + c.shadowOffsetY);
         ctx.rotate(c.rotation);
         ctx.scale(c.scaleX, c.scaleY);
-        ctx.globalAlpha = c.opacity * 0.28;
-        ctx.drawImage(shadow, -190, -110, 380, 220);
+        ctx.globalAlpha = c.opacity * 0.22;
+        ctx.drawImage(shadow, -180, -100, 360, 200);
         ctx.restore();
 
-        // =========================================================================
-        // 2. HIGH-ALTITUDE CUMULUS CLOUD (Passing smoothly OVER the map)
-        // =========================================================================
+        // 2. High-Altitude Cumulus Cloud
         ctx.save();
         ctx.translate(c.x, c.y);
         ctx.rotate(c.rotation);
         ctx.scale(c.scaleX, c.scaleY);
         ctx.globalAlpha = c.opacity;
-        ctx.drawImage(sprite, -190, -110, 380, 220);
+        ctx.drawImage(sprite, -180, -100, 360, 200);
         ctx.restore();
       }
 
@@ -279,21 +256,25 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
 
   return (
     <div
-      className="camada-nuvens-atmosfericas-wrapper absolute inset-0 pointer-events-none"
+      className="camada-nuvens-atmosfericas-wrapper absolute pointer-events-none overflow-visible will-change-transform"
       style={{
-        transform: 'translateZ(95px)',
+        width: CLOUD_CANVAS_WIDTH,
+        height: CLOUD_CANVAS_HEIGHT,
+        left: '50%',
+        top: '50%',
+        transform: 'translate(-50%, -50%) translateZ(95px)',
         transformStyle: 'preserve-3d',
         zIndex: 50,
       }}
     >
       <canvas
         ref={canvasRef}
-        width={MAP_CANVAS_WIDTH}
-        height={MAP_CANVAS_HEIGHT}
+        width={CLOUD_CANVAS_WIDTH}
+        height={CLOUD_CANVAS_HEIGHT}
         className="camada-nuvens-spawner-canvas absolute inset-0 pointer-events-none"
         style={{
-          width: MAP_CANVAS_WIDTH,
-          height: MAP_CANVAS_HEIGHT,
+          width: CLOUD_CANVAS_WIDTH,
+          height: CLOUD_CANVAS_HEIGHT,
         }}
       />
     </div>

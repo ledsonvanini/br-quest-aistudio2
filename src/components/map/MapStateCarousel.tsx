@@ -141,14 +141,14 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
 
   return (
     <div
-      className="container-carrossel-estados painel-inferior-estados absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 z-30 pointer-events-auto flex flex-col items-center max-w-5xl mx-auto select-none"
+      className="container-carrossel-estados painel-inferior-estados relative z-30 pointer-events-auto flex flex-col items-center w-full max-w-xl mx-auto select-none"
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* 1. Floating Search Popover */}
       {isSearchOpen && (
         <div
           ref={popoverRef}
-          className="popover-busca-estados absolute bottom-full mb-3 left-2 sm:left-4 w-80 sm:w-96 max-w-[calc(100vw-32px)] bg-slate-950/95 backdrop-blur-2xl border border-amber-500/40 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-2.5"
+          className="popover-busca-estados absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-80 sm:w-96 max-w-[calc(100vw-32px)] bg-slate-950/95 backdrop-blur-2xl border border-amber-500/50 rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-2.5"
         >
           {/* Header & Search Input */}
           <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800">
@@ -165,7 +165,7 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="text-slate-500 hover:text-slate-300 p-0.5"
+                  className="text-slate-500 hover:text-slate-300 p-0.5 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -174,7 +174,7 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
 
             <button
               onClick={() => setIsSearchOpen(false)}
-              className="btn-fechar-popover p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              className="btn-fechar-popover p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
               title="Fechar (Esc)"
             >
               <X className="w-4 h-4" />
@@ -199,7 +199,7 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
                     }}
                     onMouseEnter={() => onStateHover(stateId, 'toolbar')}
                     onMouseLeave={() => onStateHover(null, 'toolbar')}
-                    className={`item-resultado-busca flex items-center justify-between p-2 rounded-xl text-xs transition-colors text-left ${
+                    className={`item-resultado-busca flex items-center justify-between p-2 rounded-xl text-xs transition-colors text-left cursor-pointer ${
                       isSelected
                         ? 'bg-amber-950/80 text-amber-200 border border-amber-500/50'
                         : 'hover:bg-slate-900/90 text-slate-200 border border-transparent'
@@ -252,61 +252,52 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
         </div>
       )}
 
-      {/* 2. Main Modern Glass Carousel Bar */}
-      <div className="barra-principal-carrossel w-full bg-slate-950/85 backdrop-blur-xl border border-slate-800/90 shadow-2xl rounded-2xl p-1.5 sm:p-2 flex items-center gap-2 relative">
+      {/* 2. Main Modern Glass Compact Carousel Bar (Sized for 5 Visible States) */}
+      <div className="barra-principal-carrossel w-full bg-slate-950/80 backdrop-blur-md border border-slate-800/90 shadow-lg rounded-xl p-1 flex items-center gap-1.5 relative">
         
-        {/* Left Search Icon Trigger & Stats Counter */}
-        <div className="secao-esquerda-botoes flex items-center gap-1.5 shrink-0 pl-1">
+        {/* Left Search Icon Trigger */}
+        <div className="secao-esquerda-botoes flex items-center gap-1 shrink-0">
           <button
             onClick={toggleSearch}
-            className={`btn-abrir-busca-estados p-2 rounded-xl border transition-all flex items-center justify-center ${
+            className={`btn-abrir-busca-estados p-1.5 rounded-lg border transition-all flex items-center justify-center cursor-pointer ${
               isSearchOpen || searchQuery
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
                 : 'bg-slate-900/90 text-slate-300 border-slate-700/80 hover:bg-slate-800 hover:text-amber-300'
             }`}
             title="Buscar Estado ou Guardião (Ctrl+K)"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5" />
           </button>
 
           {/* Mini Counter Badge */}
           <div
-            className="badge-contador-concluidos hidden sm:flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] font-mono text-amber-300 shrink-0"
+            className="badge-contador-concluidos hidden lg:flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-900/80 border border-slate-800 text-[10px] font-mono text-amber-300 shrink-0"
             title="Estados Concluídos"
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>
-              {completedStateIds.size}/27
-            </span>
+            <Trophy className="w-3 h-3 text-amber-400" />
+            <span>{completedStateIds.size}/27</span>
           </div>
         </div>
-
-        {/* Separator */}
-        <div className="w-[1px] h-6 bg-slate-800 shrink-0 hidden sm:block" />
 
         {/* Carousel Navigation: Left Button */}
         <button
           onClick={() => handleScrollStep('left')}
-          className="btn-carrossel-prev shrink-0 p-1.5 rounded-xl bg-slate-900/90 text-slate-300 border border-slate-700/80 hover:bg-slate-800 hover:text-white transition-all active:scale-95 shadow-md"
+          className="btn-carrossel-prev shrink-0 p-1 rounded-lg bg-slate-900/90 text-slate-300 border border-slate-700/80 hover:bg-slate-800 hover:text-white transition-all active:scale-95 cursor-pointer"
           title="Rolar para esquerda"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {/* Carousel Scroll Track with Gradient Mask & Edge Shadows */}
+        {/* Carousel Scroll Track with Gradient Mask for Exactly ~5 States */}
         <div
-          className="container-mascara-carrossel relative flex-1 min-w-0 overflow-hidden"
+          className="container-mascara-carrossel relative flex-1 min-w-0 max-w-[340px] sm:max-w-[420px] overflow-hidden"
           style={{
             maskImage:
-              'linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%)',
+              'linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)',
             WebkitMaskImage:
-              'linear-gradient(to right, transparent 0%, black 28px, black calc(100% - 28px), transparent 100%)',
+              'linear-gradient(to right, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)',
           }}
         >
-          {/* Edge Shadows */}
-          <div className="sombra-borda-esquerda pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent z-10" />
-          <div className="sombra-borda-direita pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-950 via-slate-950/40 to-transparent z-10" />
-
           {/* Scrollable Track */}
           <div
             ref={scrollRef}
@@ -315,7 +306,7 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className="trilha-carrossel-estados flex items-center gap-1.5 overflow-x-auto scrollbar-gold-horizontal pb-1.5 pt-0.5 px-6 cursor-grab active:cursor-grabbing select-none w-full scroll-smooth"
+            className="trilha-carrossel-estados flex items-center gap-1 overflow-x-auto scrollbar-gold-horizontal py-0.5 px-3 cursor-grab active:cursor-grabbing select-none w-full scroll-smooth"
           >
             {GUARDIANS_DATA.map((guardian) => {
               const stateId = guardian.id;
@@ -334,18 +325,18 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
                   }}
                   onMouseEnter={() => onStateHover(stateId, 'toolbar')}
                   onMouseLeave={() => onStateHover(null, 'toolbar')}
-                  className={`card-estado-carrossel item-estado-${stateId.toLowerCase()} flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all border shadow-md ${
+                  className={`card-estado-carrossel item-estado-${stateId.toLowerCase()} flex items-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition-all border cursor-pointer ${
                     isSelected
-                      ? 'bg-amber-950/95 border-amber-400 ring-2 ring-amber-400/40 text-amber-100 scale-102 shadow-amber-500/20'
+                      ? 'bg-amber-950/95 border-amber-400 ring-1 ring-amber-400 text-amber-100 shadow-sm'
                       : isHovered
-                      ? 'bg-slate-900/95 border-amber-400/80 text-amber-200 shadow-slate-900'
+                      ? 'bg-slate-900/95 border-amber-400 text-amber-200'
                       : isCompleted
                       ? 'bg-slate-950/80 border-emerald-500/50 text-emerald-100 hover:border-emerald-400'
-                      : 'bg-slate-950/60 border-slate-800/90 text-slate-300 hover:bg-slate-900/90 hover:border-slate-700'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
                   }`}
                 >
                   {/* Coat of Arms / Icon */}
-                  <div className="brasao-miniatura w-5 h-5 rounded-full overflow-hidden bg-slate-900 p-0.5 border border-white/10 shrink-0 flex items-center justify-center">
+                  <div className="brasao-miniatura w-4 h-4 rounded-full overflow-hidden bg-slate-900 p-0.5 border border-white/10 shrink-0 flex items-center justify-center">
                     {coatOfArms ? (
                       <img
                         src={coatOfArms}
@@ -354,23 +345,23 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
                         loading="lazy"
                       />
                     ) : (
-                      <Shield className="w-3.5 h-3.5 text-amber-400" />
+                      <Shield className="w-3 h-3 text-amber-400" />
                     )}
                   </div>
 
                   {/* UF + Name */}
                   <div className="flex items-center gap-1">
-                    <span className="sigla-estado font-bold font-mono text-xs text-amber-300">
+                    <span className="sigla-estado font-bold font-mono text-[11px] text-amber-300">
                       {stateId}
                     </span>
-                    <span className="nome-estado text-[10px] text-slate-400 truncate max-w-[75px] hidden sm:inline">
+                    <span className="nome-estado text-[10px] text-slate-400 truncate max-w-[55px] hidden sm:inline">
                       {guardian.stateNamePt}
                     </span>
                   </div>
 
                   {/* Completion Checkmark */}
                   {isCompleted && (
-                    <CheckCircle2 className="icone-status-concluido w-3.5 h-3.5 text-emerald-400 shrink-0 ml-0.5" />
+                    <CheckCircle2 className="icone-status-concluido w-3 h-3 text-emerald-400 shrink-0" />
                   )}
                 </button>
               );
@@ -381,10 +372,10 @@ export const MapStateCarousel: React.FC<MapStateCarouselProps> = ({
         {/* Carousel Navigation: Right Button */}
         <button
           onClick={() => handleScrollStep('right')}
-          className="btn-carrossel-next shrink-0 p-1.5 rounded-xl bg-slate-900/90 text-slate-300 border border-slate-700/80 hover:bg-slate-800 hover:text-white transition-all active:scale-95 shadow-md"
+          className="btn-carrossel-next shrink-0 p-1 rounded-lg bg-slate-900/90 text-slate-300 border border-slate-700/80 hover:bg-slate-800 hover:text-white transition-all active:scale-95 cursor-pointer"
           title="Rolar para direita"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

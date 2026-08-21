@@ -19,7 +19,7 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
   return (
     <div
       id="dock-navegacao-zoom-topo-direita"
-      className="dock-navegacao-zoom-topo-direita fixed top-2 right-2 z-50 flex items-center gap-1 bg-slate-950/95 backdrop-blur-xl border-2 border-amber-500/60 rounded-2xl p-1 shadow-2xl shadow-black/90 pointer-events-auto select-none font-sans"
+      className="dock-navegacao-zoom-topo-direita fixed top-2 sm:top-3 right-2 sm:right-4 z-50 flex items-center gap-1 bg-slate-950/95 backdrop-blur-xl border border-amber-500/50 rounded-2xl p-1 shadow-2xl shadow-black/90 pointer-events-auto select-none font-sans"
     >
       {/* Zoom In */}
       <div className="relative group">

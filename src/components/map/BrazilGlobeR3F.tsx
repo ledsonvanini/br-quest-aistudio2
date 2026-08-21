@@ -152,12 +152,20 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 3. OrbitControls (Smooth Google Earth-style navigation restricted to South America)
+    // 3. OrbitControls (Smooth Google Earth-style navigation restricted to South America with full scroll wheel support)
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.055;
     controls.rotateSpeed = 0.55;
-    controls.zoomSpeed = 0.85;
+    controls.enableZoom = true;
+    controls.zoomSpeed = 1.0;
+    controls.enablePan = true;
+    controls.panSpeed = 0.7;
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.DOLLY,
+      RIGHT: THREE.MOUSE.PAN,
+    };
     controls.minDistance = 3.2;
     controls.maxDistance = 7.5;
     controls.minPolarAngle = Math.PI / 4.5;

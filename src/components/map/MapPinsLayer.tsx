@@ -17,6 +17,7 @@ interface MapPinsLayerProps {
   onSelectGuardian: (stateId: string) => void;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
+  onStateContextMenu?: (stateId: string, e: React.MouseEvent) => void;
 }
 
 export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
@@ -29,6 +30,7 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
   onSelectGuardian,
   onStateEnter,
   onStateLeave,
+  onStateContextMenu,
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -74,11 +76,31 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
             className={`ancora-estado-pin ancora-pin-${stateId.toLowerCase()} select-none`}
           >
             {/* ==================================================================== */}
+            {/* 0. EXPANDED HIT TRIGGER FOR SMALL GEOGRAPHIC STATES (DF, SE, AL, etc.)*/}
+            {/* ==================================================================== */}
+            <div
+              className="hitbox-estado-expandida absolute -left-7 -top-7 w-14 h-14 rounded-full pointer-events-auto cursor-pointer z-20"
+              style={{ transform: 'translateZ(0px)' }}
+              onMouseEnter={() => onStateEnter(stateId)}
+              onMouseLeave={() => onStateLeave(stateId)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectGuardian(stateId);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onStateContextMenu?.(stateId, e);
+              }}
+              title={stateInfo.name}
+            />
+
+            {/* ==================================================================== */}
             {/* 1. GROUND BEACON CIRCLE (Antique Brass Cartographic Eyelet Pin)     */}
             {/* ==================================================================== */}
             <div
-              className={`circulo-beacon-terreno absolute -left-3.5 -top-3.5 w-7 h-7 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-all duration-300 ${
-                isActive ? 'scale-120' : 'hover:scale-110'
+              className={`circulo-beacon-terreno absolute -left-3.5 -top-3.5 w-7 h-7 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-transform duration-300 ${
+                isActive ? 'scale-125' : 'hover:scale-110'
               }`}
               onMouseEnter={() => onStateEnter(stateId)}
               onMouseLeave={() => onStateLeave(stateId)}
@@ -86,26 +108,31 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                 e.stopPropagation();
                 onSelectGuardian(stateId);
               }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onStateContextMenu?.(stateId, e);
+              }}
             >
               {/* Soft Expanding Pulse Wave */}
               <div
                 className={`anel-radar-pulso absolute inset-0 rounded-full anim-ground-beacon-pulse pointer-events-none ${
                   isActive
-                    ? 'border border-amber-300/80 bg-amber-400/15 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                    ? 'border-2 border-amber-300 bg-amber-400/20 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
                     : isCompleted
-                    ? 'border border-emerald-400/50 bg-emerald-500/10'
-                    : 'border border-amber-500/40 bg-amber-500/5'
+                    ? 'border border-emerald-400/60 bg-emerald-500/10'
+                    : 'border border-amber-500/50 bg-amber-500/10'
                 }`}
               />
 
-              {/* Antique Metal Cartographic Disc (No black fill) */}
+              {/* Antique Metal Cartographic Disc */}
               <div
-                className={`anel-mostrador-solo relative w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-300 ${
+                className={`anel-mostrador-solo relative w-5 h-5 rounded-full border flex items-center justify-center transition-colors duration-200 ${
                   isActive
-                    ? 'border-amber-300 bg-amber-400/20 shadow-[0_0_12px_rgba(245,158,11,0.6)]'
+                    ? 'border-amber-300 bg-amber-950/80 shadow-[0_0_10px_rgba(245,158,11,0.7)]'
                     : isCompleted
-                    ? 'border-emerald-400/90 bg-emerald-500/20 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
-                    : 'border-amber-500/70 bg-amber-500/10 shadow-[0_0_6px_rgba(180,83,9,0.3)]'
+                    ? 'border-emerald-400/90 bg-emerald-950/70 shadow-[0_0_8px_rgba(52,211,153,0.4)]'
+                    : 'border-amber-500/70 bg-amber-950/60 shadow-[0_0_6px_rgba(180,83,9,0.3)]'
                 }`}
               >
                 {/* Concentric Brass Inset Ring */}
@@ -118,11 +145,11 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       : 'border-amber-400/60'
                   }`}
                 >
-                  {/* Central Core Eyelet */}
+                  {/* Central Core Eyelet Pinpoint (Strict (0,0) center) */}
                   <div
                     className={`w-1.5 h-1.5 rounded-full ${
                       isActive
-                        ? 'bg-amber-300 shadow-[0_0_4px_#fde047]'
+                        ? 'bg-amber-300 shadow-[0_0_6px_#fde047]'
                         : isCompleted
                         ? 'bg-emerald-400 shadow-[0_0_4px_#34d399]'
                         : 'bg-amber-400/90'
@@ -133,68 +160,65 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
             </div>
 
             {/* ==================================================================== */}
-            {/* 2. HERALDIC CREST PIN (Tilted 45° relative to map plane)             */}
+            {/* 2. HERALDIC CREST PIN & BANNER (Flagpole Base at Strict Center (0,0)) */}
             {/* ==================================================================== */}
             {isActive && (
               <div
-                className="container-popup-pin absolute pointer-events-none anim-pin-spring-in"
+                className="container-popup-pin absolute pointer-events-none anim-pin-spring-in z-50"
                 style={{
                   left: '0px',
-                  bottom: '0px',
+                  top: '0px',
                   transformStyle: 'preserve-3d',
                   // The origin is strictly at (0,0) - the center of the ground circle!
-                  transformOrigin: 'bottom center',
-                  // Tilted 45 degrees relative to map plane so it stands up diagonally like a real map pin
-                  transform: 'rotateX(-45deg) translateY(-4px) scale(1.12)',
+                  transformOrigin: '0px 0px',
+                  transform: 'rotateX(-45deg) translateY(-2px) scale(1.35)',
                 }}
                 onMouseEnter={() => onStateEnter(stateId)}
                 onMouseLeave={() => onStateLeave(stateId)}
               >
-                {/* Vertical Anchor Mast / Flagpole - Connects Banner Bottom to Exact (0,0) Ground Center at 45° */}
+                {/* Vertical Anchor Mast / Flagpole - Base anchored at strictly (0,0) of the ground circle */}
                 <div
-                  className="haste-ancoragem-centro absolute left-1/2 bottom-0 -translate-x-1/2 w-1 pointer-events-none z-0"
+                  className="haste-ancoragem-centro absolute left-0 bottom-0 -translate-x-1/2 w-1.5 pointer-events-none z-0"
                   style={{
-                    height: '26px',
-                    background: 'linear-gradient(to top, #d97706, #fbbf24, #fef3c7)',
-                    boxShadow: '0 0 8px rgba(251, 191, 36, 0.6), 2px 2px 4px rgba(0,0,0,0.8)',
+                    height: '42px',
+                    background: 'linear-gradient(to top, #78350f, #d97706, #fde047, #ffffff)',
+                    boxShadow: '0 0 8px rgba(251, 191, 36, 0.8), 1px 1px 4px rgba(0,0,0,0.9)',
                     borderRadius: '2px',
                   }}
                 >
-                  <div className="ponta-mastro-dourada absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-white shadow-[0_0_6px_#fef08a]" />
+                  <div className="ponta-mastro-dourada absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-200 to-white shadow-[0_0_8px_#fef08a] border border-amber-300" />
                 </div>
 
-                {/* Particle Sparks Burst on Hover (Originating around the crest) */}
-                <div className="particulas-burst-hover absolute left-1/2 bottom-12 -translate-x-1/2 pointer-events-none flex items-center justify-center">
-                  <span className="absolute w-1.5 h-1.5 rounded-full bg-yellow-200 shadow-[0_0_8px_#fef08a] anim-burst-nw" />
+                {/* Particle Sparks Burst on Hover */}
+                <div className="particulas-burst-hover absolute left-0 bottom-20 -translate-x-1/2 pointer-events-none flex items-center justify-center">
+                  <span className="absolute w-2 h-2 rounded-full bg-yellow-200 shadow-[0_0_8px_#fef08a] anim-burst-nw" />
                   <span className="absolute w-2 h-2 rounded-full bg-amber-300 shadow-[0_0_8px_#fde047] anim-burst-ne" />
-                  <span className="absolute w-1.5 h-1.5 rounded-full bg-yellow-100 shadow-[0_0_8px_#ffffff] anim-burst-sw" />
-                  <span className="absolute w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] anim-burst-se" />
-                  <span className="absolute w-2 h-2 rounded-full bg-yellow-300 shadow-[0_0_10px_#fde047] anim-burst-n" />
+                  <span className="absolute w-2 h-2 rounded-full bg-yellow-100 shadow-[0_0_8px_#ffffff] anim-burst-sw" />
+                  <span className="absolute w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] anim-burst-se" />
                 </div>
 
-                {/* Pin Banner Body (Sits directly atop the anchor stem) */}
+                {/* Pin Banner Body (Sits on the mast directly above the ground center) */}
                 <div
-                  className="corpo-pin-estandarte relative -translate-x-1/2 flex flex-col items-center justify-center pointer-events-auto cursor-pointer"
-                  style={{ marginBottom: '22px' }}
+                  className="corpo-pin-estandarte absolute left-0 bottom-10 -translate-x-1/2 flex flex-col items-center justify-center pointer-events-auto cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectGuardian(stateId);
                   }}
                 >
-                  {/* Radiant Aura Glow */}
-                  <div className="aura-halo-luz absolute -inset-3 rounded-full bg-amber-400/25 blur-md pointer-events-none animate-pulse" />
+                  {/* Subtle Clean Radiant Accent (No Blurry Low Quality Glow) */}
+                  <div className="aura-halo-luz absolute -inset-2 rounded-2xl bg-amber-400/20 pointer-events-none" />
 
                   {/* Medieval RPG Heraldic Crest Shield */}
                   <div
-                    className={`moldura-heraldica-brasao relative w-12 h-14 sm:w-13 sm:h-15 rounded-b-xl rounded-t-sm flex items-center justify-center p-1 shadow-2xl transition-all duration-200 z-10 ${
+                    className={`moldura-heraldica-brasao relative w-18 h-22 sm:w-20 sm:h-24 rounded-b-2xl rounded-t-sm flex items-center justify-center p-1.5 shadow-2xl transition-all duration-200 z-10 ${
                       isCompleted
-                        ? 'bg-gradient-to-b from-amber-500 via-amber-700 to-amber-950 border-2 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.7)]'
+                        ? 'bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 border-2 border-amber-200 shadow-[0_4px_16px_rgba(0,0,0,0.8)]'
                         : isSelected
-                        ? 'bg-gradient-to-b from-yellow-400 via-amber-700 to-slate-950 border-2.5 border-yellow-200 shadow-[0_0_24px_rgba(253,224,71,0.9)]'
-                        : 'bg-gradient-to-b from-yellow-500 via-amber-800 to-slate-950 border-2 border-yellow-300 shadow-[0_0_20px_rgba(253,224,71,0.8)]'
+                        ? 'bg-gradient-to-b from-yellow-300 via-amber-600 to-slate-950 border-2.5 border-yellow-100 shadow-[0_4px_20px_rgba(0,0,0,0.85)]'
+                        : 'bg-gradient-to-b from-yellow-400 via-amber-800 to-slate-950 border-2 border-yellow-200 shadow-[0_4px_16px_rgba(0,0,0,0.8)]'
                     }`}
                     style={{
-                      clipPath: 'polygon(0% 0%, 100% 0%, 100% 75%, 50% 100%, 0% 75%)',
+                      clipPath: 'polygon(0% 0%, 100% 0%, 100% 78%, 50% 100%, 0% 78%)',
                     }}
                   >
                     {/* Coat of Arms Image or Fallback */}
@@ -202,27 +226,27 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       <img
                         src={coatOfArmsUrl}
                         alt={`Brasão de ${stateInfo.name}`}
-                        className="imagem-brasao-estado w-full h-full object-contain p-0.5 filter drop-shadow-md brightness-115"
+                        className="imagem-brasao-estado w-full h-full object-contain p-0.5 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] brightness-110 hover:scale-105 transition-transform"
                         referrerPolicy="no-referrer"
                         onError={() => {
                           setImageErrors((prev) => ({ ...prev, [stateId]: true }));
                         }}
                       />
                     ) : (
-                      <div className="flex flex-col items-center justify-center">
-                        <Shield className="w-5 h-5 text-amber-300" />
-                        <span className="text-[10px] font-bold text-amber-200 tracking-wider">
+                      <div className="flex flex-col items-center justify-center p-1">
+                        <Shield className="w-8 h-8 text-amber-300 drop-shadow" />
+                        <span className="text-xs font-bold text-amber-200 tracking-wider">
                           {stateId}
                         </span>
                       </div>
                     )}
 
                     {/* Status Badge */}
-                    <div className="badge-status-pin absolute -top-1.5 -right-1.5 bg-slate-950/95 border border-amber-300 rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
+                    <div className="badge-status-pin absolute -top-2 -right-2 bg-slate-950/95 border border-amber-300 rounded-full w-5 h-5 flex items-center justify-center shadow-lg">
                       {isCompleted ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       ) : (
-                        <span className="text-[9px] font-bold text-amber-300 leading-none">
+                        <span className="text-[10px] font-bold text-amber-300 leading-none">
                           ★
                         </span>
                       )}
@@ -231,18 +255,21 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
 
                   {/* Antique Parchment State Acronym Pill */}
                   <div
-                    className={`pill-sigla-estado mt-1 px-2.5 py-0.5 rounded-sm border shadow-xl flex items-center gap-1 transition-all ${
+                    className={`pill-sigla-estado mt-1 px-2.5 py-0.5 rounded border shadow-lg flex items-center gap-1.5 transition-all ${
                       isCompleted
-                        ? 'bg-amber-950/95 border-amber-300 text-amber-200 font-bold'
+                        ? 'bg-amber-950/95 border-amber-300 text-amber-100 font-bold'
                         : isSelected
-                        ? 'bg-amber-900 border-yellow-200 text-yellow-100 font-black'
-                        : 'bg-slate-900/95 border-yellow-300 text-amber-200 font-bold'
+                        ? 'bg-amber-900/95 border-yellow-200 text-yellow-100 font-black'
+                        : 'bg-slate-950/95 border-yellow-300 text-amber-200 font-bold'
                     }`}
                   >
-                    <span className="texto-sigla-estado text-[11px] font-serif font-black tracking-wider leading-none">
+                    <span className="texto-sigla-estado text-xs font-serif font-black tracking-widest leading-none">
                       {stateId}
                     </span>
-                    <Sparkles className="w-2.5 h-2.5 text-yellow-300" />
+                    <span className="text-[10px] text-amber-300/80 font-sans hidden sm:inline">
+                      • {stateInfo.name}
+                    </span>
+                    <Sparkles className="w-3 h-3 text-yellow-300 shrink-0" />
                   </div>
                 </div>
               </div>

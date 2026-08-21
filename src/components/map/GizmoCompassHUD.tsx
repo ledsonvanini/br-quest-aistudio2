@@ -65,17 +65,16 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
     };
   }, [isMenuOpen]);
 
-  // Calculate cardinal heading label
-  const normalizedHeading = ((headingAngle % 360) + 360) % 360;
+  // Calculate cardinal heading label for restricted ±45° range
   const getHeadingLabel = (deg: number) => {
-    if (deg >= 337.5 || deg < 22.5) return 'N (Norte)';
-    if (deg >= 22.5 && deg < 67.5) return 'NE (Nordeste)';
-    if (deg >= 67.5 && deg < 112.5) return 'L (Leste)';
-    if (deg >= 112.5 && deg < 157.5) return 'SE (Sudeste)';
-    if (deg >= 157.5 && deg < 202.5) return 'S (Sul)';
-    if (deg >= 202.5 && deg < 247.5) return 'SO (Sudoeste)';
-    if (deg >= 247.5 && deg < 292.5) return 'O (Oeste)';
-    return 'NO (Noroeste)';
+    if (Math.abs(deg) < 2) return 'N (Norte)';
+    if (deg > 0) {
+      if (deg >= 38) return 'L (Leste +45°)';
+      return `NE (+${Math.round(deg)}°)`;
+    } else {
+      if (deg <= -38) return 'O (Oeste -45°)';
+      return `NO (${Math.round(deg)}°)`;
+    }
   };
 
   // Helper to compute angle from center of compass
@@ -109,9 +108,15 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
     (e: MouseEvent) => {
       if (!isDraggingCompass) return;
       const currentPointerAngle = getAngleFromEvent(e);
-      const deltaAngle = currentPointerAngle - startDragRef.current.angle;
-      const newHeading = Math.round(startDragRef.current.startHeading + deltaAngle);
-      onHeadingChange(newHeading);
+      let deltaAngle = currentPointerAngle - startDragRef.current.angle;
+      while (deltaAngle > 180) deltaAngle -= 360;
+      while (deltaAngle < -180) deltaAngle += 360;
+
+      // Applied sensitivity factor (0.45x) and clamped to maximum ±45° range
+      const dampedDelta = deltaAngle * 0.45;
+      const rawHeading = startDragRef.current.startHeading + dampedDelta;
+      const clampedHeading = Math.max(-45, Math.min(45, Math.round(rawHeading)));
+      onHeadingChange(clampedHeading);
     },
     [isDraggingCompass, onHeadingChange]
   );
@@ -133,23 +138,26 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
     };
   }, [isDraggingCompass, handleMouseMove, handleMouseUp]);
 
-  // Click on cardinal points
+  // Click on cardinal points clamped to max 45°
   const handleCardinalClick = (e: React.MouseEvent, targetHeading: number) => {
     e.stopPropagation();
     audioEngine.playSfx('click');
-    onHeadingChange(targetHeading);
+    const clampedTarget = Math.max(-45, Math.min(45, targetHeading));
+    onHeadingChange(clampedTarget);
   };
+
+  const isFacingNorth = Math.abs(headingAngle) < 1.5;
 
   return (
     <div
       id="gizmo-compass-hud"
-      className="painel-gizmo-bussola fixed bottom-20 right-5 z-40 flex flex-col items-end select-none pointer-events-auto"
+      className="painel-gizmo-bussola fixed bottom-0.5 right-2 sm:right-3 z-40 flex flex-col items-center select-none pointer-events-auto"
     >
       {/* 1. Angle & Preset Options Popover */}
       {isMenuOpen && (
         <div
           ref={menuPopoverRef}
-          className="painel-presets-gizmo mb-2.5 w-64 bg-slate-950/95 backdrop-blur-xl border border-amber-500/40 shadow-2xl shadow-black/80 rounded-2xl p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200"
+          className="painel-presets-gizmo mb-1 w-64 bg-slate-950/95 backdrop-blur-xl border border-amber-500/40 shadow-2xl shadow-black/80 rounded-2xl p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200 z-50"
         >
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
             <span className="text-xs font-serif font-bold text-amber-300 flex items-center gap-1.5">
@@ -157,7 +165,7 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
               Perspectiva & Orientação
             </span>
             <span className="text-[10px] font-mono text-slate-400">
-              {Math.round(normalizedHeading)}° • {Math.round(pitchAngle)}°
+              {Math.round(headingAngle)}° • {Math.round(pitchAngle)}°
             </span>
           </div>
 
@@ -293,18 +301,43 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
         </div>
       )}
 
-      {/* 2. Main 3D Antique Compass Rose Gizmo */}
-      <div className="container-gizmo-compass-3d relative flex items-center justify-center group">
+      {/* 3. Main 3D Antique Compass Rose Gizmo with Overlapping Top Badge */}
+      <div className="container-gizmo-compass-3d relative flex flex-col items-center justify-center group">
         {/* Ambient Glow Aura */}
         <div className="absolute inset-0 rounded-full bg-amber-500/10 filter blur-xl pointer-events-none group-hover:bg-amber-500/20 transition-all duration-500" />
+
+        {/* 2. Orientation Readout Badge Placed DIRECTLY OVER / ATOP the Compass Rose */}
+        <button
+          onClick={() => {
+            if (!isFacingNorth) {
+              onResetNorth();
+              audioEngine.playSfx('click');
+            } else {
+              setIsMenuOpen((prev) => !prev);
+            }
+          }}
+          className={`badge-orientacao-gizmo z-30 -mb-2 px-2.5 py-0.5 rounded-full backdrop-blur-md border text-[10px] font-mono transition-all flex items-center gap-1.5 shadow-lg cursor-pointer ${
+            !isFacingNorth
+              ? 'animate-pulse bg-gradient-to-r from-amber-950 via-red-950 to-amber-950 border-amber-400 text-amber-200 hover:border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+              : 'bg-slate-950/90 border-amber-600/50 text-amber-300 hover:text-white hover:border-amber-400'
+          }`}
+          title={!isFacingNorth ? 'Clique para alinhar ao Norte (0°)' : 'Abrir configurações de perspectiva e rotação'}
+        >
+          <span className="font-bold">{getHeadingLabel(headingAngle)}</span>
+          <span className="text-amber-500/60">•</span>
+          <span>{Math.round(pitchAngle)}°</span>
+          {!isFacingNorth && (
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-0.5" />
+          )}
+        </button>
 
         {/* Outer Circular Brass Bezel & Interactive Controls Container */}
         <div
           ref={compassContainerRef}
           onMouseDown={handleMouseDown}
-          className={`card-gizmo-compass relative w-28 h-28 sm:w-32 sm:h-32 rounded-full cursor-grab ${
+          className={`card-gizmo-compass relative w-24 h-24 sm:w-28 sm:h-28 rounded-full cursor-grab ${
             isDraggingCompass ? 'cursor-grabbing scale-105 shadow-amber-500/30' : 'hover:scale-105'
-          } transition-transform duration-200 bg-slate-950/80 backdrop-blur-md border border-amber-600/50 shadow-2xl p-1.5 flex items-center justify-center`}
+          } transition-transform duration-200 bg-slate-950/85 backdrop-blur-md border border-amber-600/50 shadow-2xl p-1 flex items-center justify-center`}
           style={{
             perspective: '600px',
           }}
@@ -389,32 +422,39 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
             </text>
           </svg>
 
-          {/* Non-rotating Cardinal Click Targets (Allows user to click top/bottom/left/right of bezel to jump) */}
+          {/* Non-rotating Cardinal Click Targets (Top 'N' pulses with vibrant indicator when not aligned to North) */}
           <button
-            onClick={(e) => handleCardinalClick(e, 0)}
-            className="absolute top-0.5 inset-x-0 mx-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300 hover:text-white hover:bg-amber-500/30 transition"
-            title="Alinhar ao Norte (0°)"
+            onClick={(e) => {
+              handleCardinalClick(e, 0);
+              onResetNorth();
+            }}
+            className={`btn-gizmo-ponto-norte absolute top-0.5 inset-x-0 mx-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-black transition-all cursor-pointer z-20 ${
+              !isFacingNorth
+                ? 'animate-pulse bg-gradient-to-br from-red-600 to-amber-500 text-white ring-2 ring-yellow-300 shadow-[0_0_12px_rgba(239,68,68,0.95)] scale-110 hover:scale-125'
+                : 'text-amber-300 hover:text-white hover:bg-amber-500/30'
+            }`}
+            title="Alinhar ao Norte Geográfico (0°)"
           >
             N
           </button>
           <button
-            onClick={(e) => handleCardinalClick(e, 180)}
-            className="absolute bottom-0.5 inset-x-0 mx-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition"
-            title="Alinhar ao Sul (180°)"
+            onClick={(e) => handleCardinalClick(e, 0)}
+            className="absolute bottom-0.5 inset-x-0 mx-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition cursor-pointer z-10"
+            title="Alinhar ao Centro / Norte (0°)"
           >
             S
           </button>
           <button
-            onClick={(e) => handleCardinalClick(e, 90)}
-            className="absolute right-0.5 inset-y-0 my-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition"
-            title="Alinhar ao Leste (90°)"
+            onClick={(e) => handleCardinalClick(e, 45)}
+            className="absolute right-0.5 inset-y-0 my-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition cursor-pointer z-10"
+            title="Perspectiva Leste (+45°)"
           >
             L
           </button>
           <button
-            onClick={(e) => handleCardinalClick(e, 270)}
-            className="absolute left-0.5 inset-y-0 my-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition"
-            title="Alinhar ao Oeste (270°)"
+            onClick={(e) => handleCardinalClick(e, -45)}
+            className="absolute left-0.5 inset-y-0 my-auto w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-serif font-bold text-amber-300/80 hover:text-white hover:bg-amber-500/30 transition cursor-pointer z-10"
+            title="Perspectiva Oeste (-45°)"
           >
             O
           </button>
@@ -426,22 +466,12 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
               setIsMenuOpen((prev) => !prev);
               audioEngine.playSfx('click');
             }}
-            className="btn-toggle-menu-gizmo absolute w-8 h-8 rounded-full bg-amber-950/90 border border-amber-400 hover:border-amber-200 hover:scale-110 active:scale-95 text-amber-300 flex items-center justify-center shadow-lg transition-all z-10"
+            className="btn-toggle-menu-gizmo absolute w-7 h-7 rounded-full bg-amber-950/90 border border-amber-400 hover:border-amber-200 hover:scale-110 active:scale-95 text-amber-300 flex items-center justify-center shadow-lg transition-all z-10 cursor-pointer"
             title="Configurações de Ângulo e Projeção"
           >
-            <Compass className={`w-4 h-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-45 text-white' : ''}`} />
+            <Compass className={`w-3.5 h-3.5 transition-transform duration-300 ${isMenuOpen ? 'rotate-45 text-white' : ''}`} />
           </button>
         </div>
-
-        {/* Small Bottom Readout Badge */}
-        <button
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-          className="badge-orientacao-gizmo mt-1.5 px-2 py-0.5 rounded-full bg-slate-950/90 border border-amber-600/40 text-[10px] font-mono text-amber-300 hover:text-white hover:border-amber-400 transition-all flex items-center gap-1 shadow"
-        >
-          <span>{getHeadingLabel(normalizedHeading)}</span>
-          <span className="text-slate-400">•</span>
-          <span>{Math.round(pitchAngle)}°</span>
-        </button>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ export interface NeighborCountryData {
   centroid: [number, number]; // [X, Y] on 2560x1440 Mercator Canvas
   borderingStatesBR?: string[]; // Brazilian states bordering this country
   description: string;
+  aliases?: string[];
 }
 
 export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
@@ -31,6 +32,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [872, 1332],
     borderingStatesBR: ['RS', 'SC', 'PR'],
     description: 'Vizinho ao sul, compartilha a bacia do Prata, Cataratas do Iguaçu e ricas tradições gaúchas.',
+    aliases: ['argentina', 'argentine republic', 'republica argentina', 'ar'],
   },
   {
     id: 'BO',
@@ -44,6 +46,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [891, 746],
     borderingStatesBR: ['AC', 'RO', 'MT', 'MS'],
     description: 'Maior fronteira terrestre com o Brasil, ligada pelos biomas do Pantanal e Amazônia.',
+    aliases: ['bolivia', 'plurinational state of bolivia', 'estado plurinacional de bolivia', 'bo'],
   },
   {
     id: 'CO',
@@ -57,6 +60,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [671, 197],
     borderingStatesBR: ['AM'],
     description: 'Vizinho ao noroeste, integrado pela tríplice fronteira amazônica em Tabatinga/Letícia.',
+    aliases: ['colombia', 'republic of colombia', 'republica de colombia', 'co'],
   },
   {
     id: 'GF',
@@ -70,6 +74,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [1191, 198],
     borderingStatesBR: ['AP'],
     description: 'Território ultraperiférico francês na Amazônia, ligado ao Amapá pela ponte sobre o Rio Oiapoque.',
+    aliases: ['french guiana', 'french guiana (france)', 'guyane', 'guyane francaise', 'guiana francesa', 'gf'],
   },
   {
     id: 'GY',
@@ -83,6 +88,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [1040, 175],
     borderingStatesBR: ['RR', 'PA'],
     description: 'Vizinho ao norte do Escudo das Guianas, compartilha o Monte Roraima e savanas de Rupununi.',
+    aliases: ['guyana', 'co-operative republic of guyana', 'guiana', 'gy'],
   },
   {
     id: 'PY',
@@ -96,6 +102,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [1056, 927],
     borderingStatesBR: ['MS', 'PR'],
     description: 'Parceiro da Usina Hidrelétrica de Itaipu, conectado ao Paraná pela Ponte da Amizade.',
+    aliases: ['paraguay', 'paraguai', 'republic of paraguay', 'republica del paraguay', 'py'],
   },
   {
     id: 'PE',
@@ -109,6 +116,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [638, 543],
     borderingStatesBR: ['AC', 'AM'],
     description: 'Berço da nascente do Rio Amazonas nos Andes e vizinho direto do Acre e Amazonas.',
+    aliases: ['peru', 'republic of peru', 'republica del peru', 'pe'],
   },
   {
     id: 'SR',
@@ -122,6 +130,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [1121, 192],
     borderingStatesBR: ['AP', 'PA'],
     description: 'Vizinho setentrional na região das Guianas, coberto por densas florestas tropicais pristinas.',
+    aliases: ['suriname', 'surinam', 'republic of suriname', 'republiek suriname', 'sr'],
   },
   {
     id: 'UY',
@@ -135,6 +144,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [1118, 1211],
     borderingStatesBR: ['RS'],
     description: 'Vizinho ao extremo sul, compartilha o bioma Pampa e a histórica Lagoa Mirim.',
+    aliases: ['uruguay', 'uruguai', 'oriental republic of uruguay', 'republica oriental del uruguay', 'uy'],
   },
   {
     id: 'VE',
@@ -148,6 +158,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     centroid: [852, 113],
     borderingStatesBR: ['RR', 'AM'],
     description: 'Vizinho ao norte, ligado a Roraima pela fronteira de Pacaraima e pelos tepuis amazônicos.',
+    aliases: ['venezuela', 'bolivarian republic of venezuela', 'republica bolivariana de venezuela', 've'],
   },
   {
     id: 'CL',
@@ -160,6 +171,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     isDirectNeighbor: false,
     centroid: [712, 1455],
     description: 'Nação andina ao longo do Pacífico, importante parceiro comercial e da Rota Bioceânica.',
+    aliases: ['chile', 'republic of chile', 'republica de chile', 'cl'],
   },
   {
     id: 'EC',
@@ -172,6 +184,7 @@ export const SOUTH_AMERICA_NEIGHBORS: NeighborCountryData[] = [
     isDirectNeighbor: false,
     centroid: [523, 338],
     description: 'Nação equatorial andina e pacífica, conectada à bacia amazônica.',
+    aliases: ['ecuador', 'equador', 'republic of ecuador', 'republica del ecuador', 'ec'],
   },
 ];
 
@@ -187,6 +200,18 @@ export function findNeighborCountry(nameOrCodeOrId?: string): NeighborCountryDat
     const code = c.code.toLowerCase();
     const name = c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const official = c.officialName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return search === id || search === code || name.includes(search) || search.includes(name) || official.includes(search);
+    
+    if (search === id || search === code) return true;
+    if (name === search || search.includes(name) || name.includes(search)) return true;
+    if (official === search || search.includes(official) || official.includes(search)) return true;
+    
+    if (c.aliases && c.aliases.some((alias) => {
+      const a = alias.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return search === a || search.includes(a) || a.includes(search);
+    })) {
+      return true;
+    }
+
+    return false;
   });
 }

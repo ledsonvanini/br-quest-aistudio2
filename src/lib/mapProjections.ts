@@ -194,13 +194,14 @@ export function clampPanZoom(
   zoom: number,
   containerSize: { width: number; height: number },
   minZoom = 0.35,
-  maxZoom = 3.20
+  maxZoom = 3.20,
+  isMusicalRadioMode = false
 ): { pan: { x: number; y: number }; zoom: number } {
   const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
 
-  // Clamping seguro que impede a visualização das bordas do canvas
+  // Clamping seguro que impede a visualização das bordas do canvas e esconde o mapa atrás do rádio
   const maxPanX = Math.min(750, (containerSize.width * 0.35) * clampedZoom + 150);
-  const minPanX = -maxPanX;
+  const minPanX = isMusicalRadioMode ? -Math.min(320, (containerSize.width * 0.20) * clampedZoom + 60) : -maxPanX;
   const maxPanY = Math.min(600, (containerSize.height * 0.30) * clampedZoom + 120);
   const minPanY = -maxPanY;
 
@@ -216,9 +217,9 @@ export function clampPanZoom(
 /**
  * Mathematical center of Brazil based on the calibrated projection (-54.39°, -15.18°).
  * Centers the entire territorial mass of Brazil (Acre to Paraíba and Roraima to RS)
- * in the center of the screen in both 2D and 3D with 30% wider zoom out (0.56).
+ * in the center of the screen in both 2D and 3D with 30% increased zoom (0.73).
  */
-export const DEFAULT_BRAZIL_ZOOM = 0.56;
+export const DEFAULT_BRAZIL_ZOOM = 0.73;
 
 export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   return {
@@ -262,6 +263,32 @@ export function calculateStateCenterPan(
   return {
     x: Math.round(-offsetX * zoom),
     y: Math.round((is3D ? -offsetY * 0.74 : -offsetY) * zoom),
+  };
+}
+
+/**
+ * Calculates the exact pan adjustment to zoom in/out while keeping the point
+ * directly under the mouse cursor invariant on the screen (zero displacement & zero flicker).
+ */
+export function calculateAnchoredZoomPan(
+  currentPan: { x: number; y: number },
+  currentZoom: number,
+  targetZoom: number,
+  mouseScreenPos: { x: number; y: number },
+  containerSize: CanvasDimensions
+): { x: number; y: number } {
+  if (currentZoom <= 0 || targetZoom <= 0) return currentPan;
+
+  const centerX = containerSize.width / 2;
+  const centerY = containerSize.height / 2;
+
+  const scaleRatio = targetZoom / currentZoom;
+  const newPanX = mouseScreenPos.x - centerX - (mouseScreenPos.x - centerX - currentPan.x) * scaleRatio;
+  const newPanY = mouseScreenPos.y - centerY - (mouseScreenPos.y - centerY - currentPan.y) * scaleRatio;
+
+  return {
+    x: Math.round(newPanX),
+    y: Math.round(newPanY),
   };
 }
 

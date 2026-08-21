@@ -235,16 +235,27 @@ body {
   color: #f8fafc;
 }
 
-button, a, [role="button"], input, select, .cursor-pointer, .interactive-pin, svg path {
+/* Hide native OS cursor completely inside the cartographic map canvas */
+.container-canva-mapa-br,
+.container-canva-mapa-br *,
+.container-canva-mapa-br svg,
+.container-canva-mapa-br path,
+.container-canva-mapa-br div,
+.container-canva-mapa-br button,
+.container-canva-mapa-br canvas {
+  cursor: none !important;
+}
+
+button, a, [role="button"], input, select, .interactive-pin {
   cursor: pointer;
 }
 
 .cursor-grab {
-  cursor: grab !important;
+  cursor: grab;
 }
 
 .cursor-grabbing {
-  cursor: grabbing !important;
+  cursor: grabbing;
 }
 
 h1, h2, h3, .font-outfit {
@@ -342,6 +353,43 @@ h1, h2, h3, .font-outfit {
   animation: progress-shimmer 2s ease-in-out infinite;
 }
 
+/* --- 3D Natural Stepped Elevation Animations --- */
+@keyframes elevacao-3d-subir {
+  0% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(var(--elev-target-y, -16px)) scale(1.008);
+    opacity: 1;
+  }
+}
 
+@keyframes elevacao-3d-sombra {
+  0% {
+    transform: translate(0, 2px) scale(0.98);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(0, 16px) scale(1.02);
+    opacity: 0.88;
+  }
+}
 
+.anim-elevacao-3d-corpo {
+  animation: elevacao-3d-subir 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.15) forwards;
+  transform-origin: center center;
+}
 
+.anim-elevacao-3d-sombra {
+  animation: elevacao-3d-sombra 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.15) forwards;
+  transform-origin: center center;
+}
+
+/* High Contrast Crisp Vector Antialiasing */
+.svg-crisp-precision {
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}

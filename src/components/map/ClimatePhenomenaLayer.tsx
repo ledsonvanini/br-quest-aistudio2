@@ -22,6 +22,7 @@ interface ClimatePhenomenaLayerProps {
   mode: ClimateMode;
   stations: ClimateStationData[];
   stateWeather?: Record<string, StateWeatherData>;
+  hoveredStateId?: string | null;
   elNinoData?: ElNinoIndexData | null;
   geoData?: any;
   selectedStationId?: string | null;
@@ -60,6 +61,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
   mode,
   stations,
   stateWeather = {},
+  hoveredStateId = null,
   elNinoData,
   geoData,
   selectedStationId,
@@ -68,8 +70,6 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
   dateTimeFormatted,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [hoveredStateInfo, setHoveredStateInfo] = useState<StateWeatherData | null>(null);
-  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   const projection = useMemo(() => createBrazilMercatorProjection(), []);
 
@@ -127,6 +127,18 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     });
   }, [geoData, projection, stateWeather]);
 
+  const hoveredStateInfo = useMemo(() => {
+    if (!hoveredStateId || !stateWeather[hoveredStateId]) return null;
+    return stateWeather[hoveredStateId];
+  }, [hoveredStateId, stateWeather]);
+
+  const hoverPos = useMemo(() => {
+    if (!hoveredStateId) return null;
+    const item = statePathList.find((p) => p.stateId === hoveredStateId);
+    if (!item || !item.centroidX || !item.centroidY) return null;
+    return { x: item.centroidX, y: item.centroidY };
+  }, [hoveredStateId, statePathList]);
+
   // Atmospheric Streamlines (Execute ONLY in 'ventos_aliseos' mode)
   useEffect(() => {
     if (!active || mode !== 'ventos_aliseos') {
@@ -146,14 +158,14 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     const w = MAP_CANVAS_WIDTH;
     const h = MAP_CANVAS_HEIGHT;
 
-    const PARTICLE_COUNT = 320;
+    const PARTICLE_COUNT = 180;
     const particles: ParticleStreamline[] = [];
 
     const initParticle = (p?: ParticleStreamline): ParticleStreamline => {
       const trajectoryId = Math.floor(Math.random() * 4);
       let sx = 0;
       let sy = 0;
-      let color = 'rgba(56, 189, 248, 0.6)';
+      let color = 'rgba(56, 189, 248, 0.75)';
 
       if (trajectoryId === 0) {
         // 1. Trade Winds from NE (Alísios de Nordeste) -> Azul Claro
@@ -182,11 +194,11 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         y: sy,
         startX: sx,
         startY: sy,
-        speed: (1.4 + Math.random() * 2.2) * speedMultiplier,
-        size: 1.5 + Math.random() * 2.0,
+        speed: (1.4 + Math.random() * 1.8) * speedMultiplier,
+        size: 2.0,
         alpha: 0.1,
         age: 0,
-        maxLife: 90 + Math.random() * 110,
+        maxLife: 80 + Math.random() * 90,
         trajectoryId,
         color,
       };
@@ -203,57 +215,64 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     const render = () => {
       ctx.clearRect(0, 0, w, h);
 
-      particles.forEach((p, idx) => {
+      // Group particles by trajectoryId for batched drawing
+      const groups: { [key: number]: { color: string; lines: { x1: number; y1: number; x2: number; y2: number }[] } } = {
+        0: { color: 'rgba(56, 189, 248, 0.75)', lines: [] },
+        1: { color: 'rgba(52, 211, 153, 0.85)', lines: [] },
+        2: { color: 'rgba(96, 165, 250, 0.75)', lines: [] },
+        3: { color: 'rgba(147, 197, 253, 0.8)', lines: [] },
+      };
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
         p.age++;
         if (p.age >= p.maxLife) {
-          particles[idx] = initParticle(p);
-          return;
+          particles[i] = initParticle(p);
+          continue;
         }
 
         // Calculate flow angle along meteorological trajectories
         let angle = 0;
         if (p.trajectoryId === 0) {
-          // NE Winds curving into Amazon
           angle = Math.PI * 0.88 + Math.sin(p.y * 0.003) * 0.2;
         } else if (p.trajectoryId === 1) {
-          // Flying Rivers (Amazon -> Andes -> Center-West -> Southeast)
           if (p.x < 650) {
             angle = Math.PI * 0.65;
           } else {
             angle = Math.PI * 0.25;
           }
         } else if (p.trajectoryId === 2) {
-          // SE Winds onto Northeast coast
           angle = Math.PI * 0.95;
         } else {
-          // Cold front northeastward progression
           angle = -Math.PI * 0.35;
         }
 
         p.x += Math.cos(angle) * p.speed;
         p.y += Math.sin(angle) * p.speed;
 
-        const lifeFraction = p.age / p.maxLife;
-        if (lifeFraction < 0.2) {
-          p.alpha = lifeFraction / 0.2;
-        } else if (lifeFraction > 0.8) {
-          p.alpha = (1 - lifeFraction) / 0.2;
-        } else {
-          p.alpha = 1.0;
-        }
-
-        ctx.save();
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = p.size;
-        ctx.lineCap = 'round';
-        ctx.globalAlpha = p.alpha * 0.75;
-
         const tailLen = p.speed * 4.5;
+        groups[p.trajectoryId]?.lines.push({
+          x1: p.x,
+          y1: p.y,
+          x2: p.x - Math.cos(angle) * tailLen,
+          y2: p.y - Math.sin(angle) * tailLen,
+        });
+      }
+
+      // Draw all 4 groups in 4 batched strokes
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      Object.keys(groups).forEach((key) => {
+        const grp = groups[Number(key)];
+        if (!grp.lines.length) return;
+        ctx.strokeStyle = grp.color;
         ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - Math.cos(angle) * tailLen, p.y - Math.sin(angle) * tailLen);
+        for (let l = 0; l < grp.lines.length; l++) {
+          const line = grp.lines[l];
+          ctx.moveTo(line.x1, line.y1);
+          ctx.lineTo(line.x2, line.y2);
+        }
         ctx.stroke();
-        ctx.restore();
       });
 
       animId = requestAnimationFrame(render);
@@ -294,35 +313,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </radialGradient>
         </defs>
 
-        {/* 2.1 State Vector Boundary Hitboxes (Pure invisible hitboxes for telemetry mouse capture) */}
-        <g className="estados-poligonos pointer-events-auto">
-          {statePathList.map((item) => {
-            if (!item.d) return null;
-
-            return (
-              <path
-                key={`hitbox-${item.stateId}`}
-                d={item.d}
-                fill="transparent"
-                stroke="transparent"
-                strokeWidth="0"
-                className="cursor-pointer pointer-events-auto"
-                onMouseEnter={() => {
-                  if (item.weather) {
-                    setHoveredStateInfo(item.weather);
-                    setHoverPos({ x: item.centroidX, y: item.centroidY });
-                  }
-                }}
-                onMouseLeave={() => {
-                  setHoveredStateInfo(null);
-                  setHoverPos(null);
-                }}
-              />
-            );
-          })}
-        </g>
-
-        {/* 2.2 Temperature Badges on State Centroids */}
+        {/* 2.1 Temperature Badges on State Centroids */}
         {mode === 'temperaturas_frentes' && (
           <g className="badges-temperatura-estados pointer-events-none">
             {statePathList.map((item) => {

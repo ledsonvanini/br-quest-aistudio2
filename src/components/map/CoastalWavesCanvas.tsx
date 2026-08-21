@@ -93,15 +93,31 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
       };
     }).filter((isl) => isl.x > 0);
 
-    // 3. Open ocean swells pool
-    const SWELL_COUNT = 32;
+    // Pre-bake Island Reef Glow texture
+    const reefCanvas = document.createElement('canvas');
+    reefCanvas.width = 120;
+    reefCanvas.height = 120;
+    const rCtx = reefCanvas.getContext('2d');
+    if (rCtx) {
+      const rGrad = rCtx.createRadialGradient(60, 60, 4, 60, 60, 56);
+      rGrad.addColorStop(0, 'rgba(34, 211, 238, 0.70)');
+      rGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.35)');
+      rGrad.addColorStop(1, 'rgba(2, 132, 199, 0)');
+      rCtx.fillStyle = rGrad;
+      rCtx.beginPath();
+      rCtx.arc(60, 60, 56, 0, Math.PI * 2);
+      rCtx.fill();
+    }
+
+    // 3. Open ocean swells pool (optimized count)
+    const SWELL_COUNT = 18;
     const swells = Array.from({ length: SWELL_COUNT }, (_, idx) => ({
       x: w * 0.58 + Math.random() * (w * 0.38),
       y: h * 0.15 + Math.random() * (h * 0.75),
-      width: 45 + Math.random() * 65,
-      height: 12 + Math.random() * 16,
-      speed: 0.4 + Math.random() * 0.45,
-      angle: -Math.PI * 0.75 + (Math.random() - 0.5) * 0.4, // traveling towards Brazil coast
+      width: 45 + Math.random() * 55,
+      height: 12 + Math.random() * 14,
+      speed: 0.35 + Math.random() * 0.35,
+      angle: -Math.PI * 0.75 + (Math.random() - 0.5) * 0.35, // traveling towards Brazil coast
       phase: (idx / SWELL_COUNT) * Math.PI * 2,
     }));
 
@@ -117,30 +133,25 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
       // =========================================================================
       swells.forEach((sw) => {
         const swellPhase = Math.sin(time * 1.5 + sw.phase);
-        if (swellPhase < -0.2) return; // Wave trough hidden
+        if (swellPhase < -0.15) return; // Wave trough hidden
 
         const alpha = Math.max(0, swellPhase) * 0.65;
-        const swellX = sw.x + Math.cos(sw.angle) * (time * sw.speed * 20 % 150);
-        const swellY = sw.y + Math.sin(sw.angle) * (time * sw.speed * 20 % 150);
+        const swellX = sw.x + Math.cos(sw.angle) * ((time * sw.speed * 18) % 140);
+        const swellY = sw.y + Math.sin(sw.angle) * ((time * sw.speed * 18) % 140);
 
         ctx.save();
         ctx.translate(swellX, swellY);
         ctx.rotate(sw.angle + Math.PI / 2);
 
-        // 1. Shaded Wave Body (Deep Sapphire/Cobalt)
-        const waveBodyGrad = ctx.createLinearGradient(0, -sw.height * 0.5, 0, sw.height * 0.5);
-        waveBodyGrad.addColorStop(0, `rgba(6, 182, 212, ${alpha * 0.7})`);
-        waveBodyGrad.addColorStop(0.5, `rgba(2, 132, 199, ${alpha * 0.85})`);
-        waveBodyGrad.addColorStop(1, `rgba(12, 74, 110, 0)`);
-
-        ctx.fillStyle = waveBodyGrad;
+        // 1. Shaded Wave Body
+        ctx.fillStyle = `rgba(2, 132, 199, ${alpha * 0.75})`;
         ctx.beginPath();
         ctx.ellipse(0, 0, sw.width * 0.5, sw.height * 0.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // 2. White Curved Foam Crest on top of the wave
         ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2.0;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.arc(0, sw.height * 0.1, sw.width * 0.45, Math.PI * 0.15, Math.PI * 0.85, false);
@@ -159,8 +170,6 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
         const opacity = (1 - progress) * 0.75;
 
         ctx.save();
-        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -173,7 +182,6 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
           if (i === 0) {
             ctx.moveTo(waveX, waveY);
           } else {
-            // Smooth curve
             const prev = coastPts[i - 1];
             const prevX = prev.x + prev.nx * distOffshore;
             const prevY = prev.y + prev.ny * distOffshore;
@@ -182,11 +190,15 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
             ctx.quadraticCurveTo(prevX, prevY, cx, cy);
           }
         });
-        ctx.stroke();
 
         // Secondary turquoise wash under the white foam
-        ctx.strokeStyle = `rgba(34, 211, 238, ${opacity * 0.6})`;
-        ctx.lineWidth = 5.0;
+        ctx.strokeStyle = `rgba(34, 211, 238, ${opacity * 0.55})`;
+        ctx.lineWidth = 4.5;
+        ctx.stroke();
+
+        // White surf crest
+        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.9})`;
+        ctx.lineWidth = 2.2;
         ctx.stroke();
 
         ctx.restore();
@@ -197,21 +209,14 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
       // =========================================================================
       islands.forEach((isl) => {
         const pulse = (Math.sin(time * 2.0) + 1) / 2;
+        const sz = isl.radius * 4.4;
 
-        // Shallow lagoon reef glow
-        const reefGrad = ctx.createRadialGradient(isl.x, isl.y, 2, isl.x, isl.y, isl.radius * 2.2);
-        reefGrad.addColorStop(0, 'rgba(34, 211, 238, 0.75)');
-        reefGrad.addColorStop(0.6, 'rgba(6, 182, 212, 0.4)');
-        reefGrad.addColorStop(1, 'rgba(2, 132, 199, 0)');
-
-        ctx.fillStyle = reefGrad;
-        ctx.beginPath();
-        ctx.arc(isl.x, isl.y, isl.radius * 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        // Shallow lagoon reef glow via pre-baked sprite
+        ctx.drawImage(reefCanvas, isl.x - sz / 2, isl.y - sz / 2, sz, sz);
 
         // White breaking surf ring
         ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + pulse * 0.45})`;
-        ctx.lineWidth = 2.0;
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.arc(isl.x, isl.y, isl.radius + pulse * 8, 0, Math.PI * 2);
         ctx.stroke();

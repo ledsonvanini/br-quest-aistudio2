@@ -67,7 +67,7 @@ Teus risonhos, lindos campos têm mais flores;
 Ó Pátria amada,
 Dos filhos deste solo és mãe gentil,
 Pátria amada, Brasil!`,
-    historicalCuriosityPt: 'A música foi composta em 1831 para celebrar a abdicação de D. Pedro I. A letra oficial atual foi oficializada pelo Decreto 15.671 de 1922.',
+    historicalCuriosityPt: 'A melodia foi composta em 1831 por Francisco Manuel da Silva para celebrar a abdicação de D. Pedro I. A letra oficial atual de Joaquim Osório Duque-Estrada foi oficializada pelo Decreto 15.671 de 1922 e pela Lei Federal nº 5.700 de 1971.',
     frequenciesHz: [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 880.0, 1046.5],
     tempoBpm: 120,
   },
@@ -1373,6 +1373,137 @@ Ergueu este solo triunfal!`,
         historicalCuriosityPt: 'Délio & Delinha gravaram dezenas de sucessos que ecoam há mais de 60 anos no Centro-Oeste.',
         frequenciesHz: [392, 440, 493.88, 523.25, 587.33],
         tempoBpm: 128,
+      },
+    ],
+  },
+
+  DF: {
+    stateId: 'DF',
+    stateName: 'Distrito Federal',
+    region: 'Centro-Oeste',
+    capitalName: 'Brasília',
+    famousBroadcastingStation: 'Rádio Nacional de Brasília (OC / AM 980 kHz - EBC)',
+    frequencyDialKHz: 980,
+    goldenAgeRadioHistoryPt: 'Inaugurada em 31 de maio de 1958 durante a epopeia da construção da nova capital pelo Presidente Juscelino Kubitschek, a Rádio Nacional de Brasília integrou o Brasil central com os candangos e os pioneiros.',
+    stateAnthem: {
+      id: 'DF_ANTHEM',
+      title: 'Hino de Brasília (Hino Oficial do DF)',
+      artist: 'Neusa Pinho França & Geir Campos',
+      genre: 'Hino Oficial do Distrito Federal',
+      year: '1960',
+      descriptionPt: 'Hino cívico oficial da capital da República, instituído pelo Decreto nº 51 de 3 de dezembro de 1960.',
+      lyricsExcerptPt: 'Todo o Brasil vibrou / E nova luz brilhou / Quando aquela flor nasceu: Brasília...',
+      fullLyricsPt: `[Estrofe I]
+Todo o Brasil vibrou
+E nova luz brilhou
+Quando aquela flor nasceu:
+Brasília, orgulho dos brasileiros,
+Cujo destino é a glória do amanhã!
+
+[Refrão]
+Brasília, capital da esperança!
+Brasília, joia do Planalto Central!
+No coração da Pátria desabrocha,
+O símbolo da união nacional!
+
+[Estrofe II]
+Do sonho de Dom Bosco iluminado,
+Ao traço de Niemeyer e de Lucio Costa,
+Ergueu-se o monumento do trabalho,
+Da fibra dos pioneiros em resposta!
+
+[Refrão Final]
+Brasília, capital da esperança!
+Brasília, joia do Planalto Central!
+No coração da Pátria desabrocha,
+O símbolo da união nacional!`,
+      historicalCuriosityPt: 'A partitura foi composta por Neusa Pinho França e os versos pelo poeta Geir Campos, oficializado como hino cívico do DF em dezembro de 1960 pelo prefeito Israel Pinheiro.',
+      frequenciesHz: [440, 493.88, 523.25, 587.33, 659.25, 783.99],
+      tempoBpm: 112,
+    },
+    capitalAnthem: {
+      id: 'BSB_ANTHEM',
+      title: 'Sinfonia da Alvorada',
+      artist: 'Tom Jobim & Vinicius de Moraes',
+      genre: 'Poema Sinfônico / MPB Orquestral',
+      year: '1960',
+      descriptionPt: 'Obra sinfônica encomendada por Juscelino Kubitschek aos mestres da Bossa Nova para a inauguração de Brasília.',
+      lyricsExcerptPt: 'Planalto de luz e de pedra, onde o vento canta a canção do pioneiro...',
+      fullLyricsPt: `[Movimento I: O Planalto Vazio]
+Era a terra quieta, o cerrado sem fim,
+Onde a brisa soprava a saudade e o luar.
+Mas no peito dos bravos ardia o clarim,
+Que chamava o Brasil a marchar e criar!
+
+[Movimento II: Os Candangos]
+Braços fortes vindos de todos os rincões,
+Do Nordeste, do Sul, da Caatinga ao Litoral!
+Misturaram o suor, as canções e os corações,
+Para erguer a cidade da luz imortal!`,
+      historicalCuriosityPt: 'Tom Jobim e Vinicius de Moraes passaram semanas no Catetinho em 1958 compondo esta obra monumental em um piano levado de caminhão até o cerrado.',
+      frequenciesHz: [392, 440, 523.25, 587.33, 659.25, 783.99],
+      tempoBpm: 96,
+    },
+    top5Tracks: [
+      {
+        id: 'DF_T1',
+        title: 'Faroeste Caboclo',
+        artist: 'Renato Russo (Legião Urbana)',
+        genre: 'Rock de Brasília / Poema Épico',
+        year: '1987',
+        descriptionPt: 'O maior épico do rock brasileiro, narrando a saga de João de Santo Cristo em Brasília.',
+        lyricsExcerptPt: 'Não tinha medo o tal João de Santo Cristo / Era o que todos diziam quando ele se perdeu...',
+        historicalCuriosityPt: 'Composta por Renato Russo em 1979 em seu quarto na Asa Sul com 159 versos e sem nenhum refrão.',
+        frequenciesHz: [440, 493.88, 523.25, 587.33, 659.25, 783.99],
+        tempoBpm: 148,
+      },
+      {
+        id: 'DF_T2',
+        title: 'Tempo Perdido',
+        artist: 'Renato Russo (Legião Urbana)',
+        genre: 'Rock Nacional / Poesia Urbana',
+        year: '1986',
+        descriptionPt: 'Hino geracional sobre o tempo, a juventude e a esperança em um país em transformação.',
+        lyricsExcerptPt: 'Todos os dias quando acordo / Não tenho mais o tempo que passou...',
+        historicalCuriosityPt: 'Gravada no álbum Dois, eleita uma das maiores canções em língua portuguesa de todos os tempos.',
+        frequenciesHz: [392, 440, 523.25, 587.33, 659.25],
+        tempoBpm: 126,
+      },
+      {
+        id: 'DF_T3',
+        title: 'Eduardo e Mônica',
+        artist: 'Renato Russo (Legião Urbana)',
+        genre: 'Folk Rock de Brasília',
+        year: '1986',
+        descriptionPt: 'A história do casal improvável que se conheceu numa festa estranha com gente esquisita em Brasília.',
+        lyricsExcerptPt: 'Quem um dia irá dizer que existe razão nas coisas feitas pelo coração?...',
+        historicalCuriosityPt: 'Inspirada no casal real de amigos de Renato Russo, Leonice de Araújo e Fernando Coimbra.',
+        frequenciesHz: [440, 493.88, 523.25, 587.33, 659.25],
+        tempoBpm: 130,
+      },
+      {
+        id: 'DF_T4',
+        title: 'Primeiros Erros (Chove)',
+        artist: 'Kiko Zambianchi (Voz de Capital Inicial)',
+        genre: 'Pop Rock / Rock Candango',
+        year: '1985 / 2000',
+        descriptionPt: 'Clássico imortal que une a cena de Brasília às ondas de rádio de todo o continente.',
+        lyricsExcerptPt: 'Meu caminho é cada manhã / Não procure saber onde vou...',
+        historicalCuriosityPt: 'O acústico do Capital Inicial em 2000 revitalizou a música como hino absoluto das rádios brasileiras.',
+        frequenciesHz: [392, 440, 493.88, 523.25, 587.33],
+        tempoBpm: 110,
+      },
+      {
+        id: 'DF_T5',
+        title: 'Vento no Litoral',
+        artist: 'Renato Russo / Dado Villa-Lobos / Marcelo Bonfá',
+        genre: 'MPB / Rock Lírico',
+        year: '1991',
+        descriptionPt: 'Uma das mais comoventes baladas líricas compostas pela mítica banda candanga.',
+        lyricsExcerptPt: 'De tarde quero descansar / Chegar até a praia e ver...',
+        historicalCuriosityPt: 'Arranjos de cordas orquestrados por Arthur Moreira Lima.',
+        frequenciesHz: [440, 523.25, 587.33, 659.25, 783.99],
+        tempoBpm: 76,
       },
     ],
   },
