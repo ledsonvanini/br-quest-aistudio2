@@ -49,6 +49,7 @@ export const ApiStatusModal: React.FC<ApiStatusModalProps> = ({ isOpen, onClose 
     setIsTesting(true);
     try {
       await fetchLiveClimateTelemetry();
+      await apiTracker.pingAllProviders();
     } catch {
       // Handled in tracker
     } finally {

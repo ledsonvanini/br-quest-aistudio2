@@ -91,6 +91,80 @@ class ApiTrackerService {
     this.notify();
   }
 
+  public async pingAllProviders(): Promise<void> {
+    const promises = [
+      // 1. Open-Meteo
+      (async () => {
+        const t0 = performance.now();
+        try {
+          const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-15.79&longitude=-47.88&current=temperature_2m,wind_speed_10m&timezone=America%2FSao_Paulo', { signal: AbortSignal.timeout(4000) });
+          const dur = performance.now() - t0;
+          if (res.ok) {
+            const data = await res.json();
+            this.trackCall('open-meteo', '/v1/forecast (Brasília Diagnostic)', dur, 'success', 200, 'Telemetria ECMWF ativa', JSON.stringify(data).length / 1024);
+          } else {
+            this.trackCall('open-meteo', '/v1/forecast (Brasília Diagnostic)', dur, 'error', res.status, `HTTP ${res.status}`);
+          }
+        } catch (e: any) {
+          this.trackCall('open-meteo', '/v1/forecast (Brasília Diagnostic)', performance.now() - t0, 'error', 0, e?.message || 'Network error');
+        }
+      })(),
+
+      // 2. IBGE GeoJSON / Malhas Estaduais
+      (async () => {
+        const t0 = performance.now();
+        try {
+          const res = await fetch('/br/br.json');
+          const dur = performance.now() - t0;
+          if (res.ok) {
+            const data = await res.json();
+            this.trackCall('ibge-geo', '/br/br.json (Malhas SIRGAS 2000)', dur, 'success', 200, '27 UFs geodésicas carregadas', JSON.stringify(data).length / 1024);
+          } else {
+            this.trackCall('ibge-geo', '/br/br.json', dur, 'fallback', 200, 'Malha vetorial local');
+          }
+        } catch (e: any) {
+          this.trackCall('ibge-geo', '/br/br.json', performance.now() - t0, 'fallback', 200, 'Cache local SIRGAS');
+        }
+      })(),
+
+      // 3. CartoDB Tiles (Voyager / Light)
+      (async () => {
+        const t0 = performance.now();
+        try {
+          const res = await fetch('https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/5/10/16.png', { signal: AbortSignal.timeout(4000) });
+          const dur = performance.now() - t0;
+          if (res.ok) {
+            const blob = await res.blob();
+            this.trackCall('cartodb-tiles', '/rastertiles/voyager_nolabels/5/10/16.png', dur, 'success', 200, 'CartoDB Voyager tile verificado', blob.size / 1024);
+          } else {
+            this.trackCall('cartodb-tiles', '/rastertiles/voyager_nolabels/5/10/16.png', dur, 'error', res.status, `HTTP ${res.status}`);
+          }
+        } catch (e: any) {
+          this.trackCall('cartodb-tiles', '/rastertiles/voyager_nolabels/5/10/16.png', performance.now() - t0, 'error', 0, e?.message || 'Network error');
+        }
+      })(),
+
+      // 4. NASA Earth / ESRI TrueColor HD Satellite
+      (async () => {
+        const t0 = performance.now();
+        try {
+          const res = await fetch('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/5/16/10', { signal: AbortSignal.timeout(4000) });
+          const dur = performance.now() - t0;
+          if (res.ok) {
+            const blob = await res.blob();
+            this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', dur, 'success', 200, 'NASA/ESRI TrueColor orbital tile verificado', blob.size / 1024);
+          } else {
+            this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', dur, 'error', res.status, `HTTP ${res.status}`);
+          }
+        } catch (e: any) {
+          this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', performance.now() - t0, 'error', 0, e?.message || 'Network error');
+        }
+      })(),
+    ];
+
+    await Promise.allSettled(promises);
+  }
+
   public getLogs(): ApiCallLog[] {
     return [...this.logs];
   }

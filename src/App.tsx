@@ -16,6 +16,7 @@ import { Sparkles, Activity, Gauge } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
 import { fetchLiveClimateTelemetry } from './services/climateService';
+import { apiTracker } from './services/apiTracker';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -85,6 +86,13 @@ export function App() {
   const [focusedStateId, setFocusedStateId] = useState<string | null>(null);
   const [centerMapTrigger, setCenterMapTrigger] = useState<number>(0);
 
+  // Globe 3D States
+  const [globeTextureMode, setGlobeTextureMode] = useState<'nasa_satellite' | 'night_lights' | 'natural_earth'>('nasa_satellite');
+  const [isGlobeCloudsActive, setIsGlobeCloudsActive] = useState<boolean>(true);
+  const [isGlobeAutoRotateActive, setIsGlobeAutoRotateActive] = useState<boolean>(false);
+  const [isGlobeBordersActive, setIsGlobeBordersActive] = useState<boolean>(true);
+  const [globePinMode, setGlobePinMode] = useState<'all' | 'compact' | 'none'>('all');
+
   const handleSelectMainMode = (newMode: AppMainMode) => {
     setMainMode(newMode);
 
@@ -128,6 +136,14 @@ export function App() {
       setShowNeighbors(false);
       setSelectedRegionFilter('todos');
       setIsObservatorioOpen(false);
+    } else if (newMode === 'globo3d') {
+      // Modo Globo 3D Padrão: NASA Satellite Blue Marble, nuvens orbitais, brasões 40% preto translúcidos e bordas douradas
+      setGlobeTextureMode('nasa_satellite');
+      setIsGlobeCloudsActive(true);
+      setIsGlobeBordersActive(true);
+      setGlobePinMode('all');
+      setIsGlobeAutoRotateActive(false);
+      setIsObservatorioOpen(false);
     }
 
     if (activeTab !== 'map') {
@@ -138,8 +154,9 @@ export function App() {
 
   // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
-    // Preload GeoJSON cartographic data in background
+    // Preload GeoJSON cartographic data in background & verify integrated APIs
     loadBrazilGeoData().catch(() => {});
+    apiTracker.pingAllProviders().catch(() => {});
 
     const handleHashChange = () => {
       const rawHash = window.location.hash || '';
@@ -326,6 +343,17 @@ export function App() {
           onSelectMusicCategory={setActiveMusicCategory}
           selectedRadioEraId={selectedRadioEraId}
           onSelectRadioEra={setSelectedRadioEraId}
+          globeTextureMode={globeTextureMode}
+          onGlobeTextureModeChange={setGlobeTextureMode}
+          isGlobeCloudsActive={isGlobeCloudsActive}
+          onToggleGlobeClouds={() => setIsGlobeCloudsActive((prev) => !prev)}
+          isGlobeAutoRotateActive={isGlobeAutoRotateActive}
+          onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((prev) => !prev)}
+          isGlobeBordersActive={isGlobeBordersActive}
+          onToggleGlobeBorders={() => setIsGlobeBordersActive((prev) => !prev)}
+          globePinMode={globePinMode}
+          onGlobePinModeChange={setGlobePinMode}
+          onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onResetView={() => setCenterMapTrigger((prev) => prev + 1)}
           onResetViewIfNotCentered={() => setCenterMapTrigger((prev) => prev + 1)}
@@ -398,6 +426,11 @@ export function App() {
               onSelectMusicCategory={setActiveMusicCategory}
               selectedRadioEraId={selectedRadioEraId}
               onSelectRadioEra={setSelectedRadioEraId}
+              globeTextureMode={globeTextureMode}
+              globeClouds={isGlobeCloudsActive}
+              globeAutoRotate={isGlobeAutoRotateActive}
+              globeBorders={isGlobeBordersActive}
+              globePinMode={globePinMode}
               focusedStateId={focusedStateId}
               onFocusStateHandled={() => setFocusedStateId(null)}
               onHoverStateChange={setHoveredStateId}

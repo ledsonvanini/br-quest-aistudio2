@@ -147,6 +147,19 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </div>
           )}
 
+          {/* CASO B: Modo Globo 3D no Mapa (Carrossel Compacto de Navegação Orbital) */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'globo3d' && (
+            <div className="container-carrossel-globo3d-wrapper w-full max-w-[480px] sm:max-w-[540px] flex items-center justify-center">
+              <MapStateCarousel
+                completedStateIds={completedSet}
+                hoveredStateId={hoveredStateId}
+                selectedStateId={selectedStateId}
+                onStateHover={(id) => onStateHover(id)}
+                onStateClick={onStateClick}
+              />
+            </div>
+          )}
+
           {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (
             <div

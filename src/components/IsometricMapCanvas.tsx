@@ -97,6 +97,11 @@ interface Props {
   timeOverride?: 'auto' | 'day' | 'night';
   centerTrigger?: number;
   onHoverStateChange?: (stateId: string | null) => void;
+  globeTextureMode?: 'nasa_satellite' | 'night_lights' | 'natural_earth';
+  globeClouds?: boolean;
+  globeAutoRotate?: boolean;
+  globeBorders?: boolean;
+  globePinMode?: 'all' | 'compact' | 'none';
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -133,6 +138,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   timeOverride: propTimeOverride,
   centerTrigger,
   onHoverStateChange,
+  globeTextureMode = 'nasa_satellite',
+  globeClouds = true,
+  globeAutoRotate = false,
+  globeBorders = true,
+  globePinMode = 'all',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -177,6 +187,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
 
     if (mainMode === 'clima') {
+      setIsGlobe3DActive(false);
       setIsClimateActive(true);
       setInternalIsClimatePanelOpen(false);
       setInternalShowNeighbors(false);
@@ -184,7 +195,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       previousVisualStyleRef.current = visualStyle;
       setVisualStyle('tiles');
       setTerrainProvider('muted_gray');
+    } else if (mainMode === 'globo3d') {
+      setIsGlobe3DActive(true);
+      setIsClimateActive(false);
+      setInternalIsClimatePanelOpen(false);
+      setInternalShowNeighbors(false);
     } else {
+      setIsGlobe3DActive(false);
       setIsClimateActive(false);
       setInternalIsClimatePanelOpen(false);
       if (mainMode === 'musicalidades') {
@@ -1217,6 +1234,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           onStateHover={(id) => (id ? handleStateEnter(id) : hoveredStateId && handleStateLeave(hoveredStateId))}
           onStateClick={handleStateClick}
           onSelectGuardian={onSelectGuardian}
+          textureMode={globeTextureMode}
+          cloudsEnabled={globeClouds}
+          autoRotate={globeAutoRotate}
+          showBorders={globeBorders}
+          pinDisplayMode={globePinMode}
+          timeOverride={timeOverride}
+          focusedStateId={focusedStateId}
         />
       ) : (
         <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
@@ -1498,15 +1522,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       )}
 
       {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave */}
-      {!isGlobe3DActive && (
-        <CustomCanvasCursor
-          isDragging={isDragging}
-          hoveredStateId={hoveredStateId}
-          hoveredCountryId={hoveredCountryId}
-          isDwellZoomed={isDwellZoomedRef.current}
-          containerRef={containerRef}
-        />
-      )}
+      <CustomCanvasCursor
+        isDragging={isDragging}
+        hoveredStateId={hoveredStateId}
+        hoveredCountryId={hoveredCountryId}
+        isDwellZoomed={isDwellZoomedRef.current}
+        containerRef={containerRef}
+      />
     </div>
   );
 };

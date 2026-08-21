@@ -41,7 +41,7 @@ import { SpeechBubbleTooltip } from './common/SpeechBubbleTooltip';
 import { ECMWF_TEMP_COLOR_STOPS } from '../services/climateService';
 import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme } from '../types';
 
-export type AppMainMode = 'aventura' | 'clima' | 'musicalidades';
+export type AppMainMode = 'aventura' | 'clima' | 'musicalidades' | 'globo3d';
 
 interface Props {
   // Active App Module
@@ -96,6 +96,19 @@ interface Props {
   currentTrackTitle?: string;
   selectedStateId?: string | null;
   isRadioPlaying?: boolean;
+
+  // Globe 3D Module States & Tools
+  globeTextureMode?: 'nasa_satellite' | 'night_lights' | 'natural_earth';
+  onGlobeTextureModeChange?: (mode: 'nasa_satellite' | 'night_lights' | 'natural_earth') => void;
+  isGlobeCloudsActive?: boolean;
+  onToggleGlobeClouds?: () => void;
+  isGlobeAutoRotateActive?: boolean;
+  onToggleGlobeAutoRotate?: () => void;
+  isGlobeBordersActive?: boolean;
+  onToggleGlobeBorders?: () => void;
+  globePinMode?: 'all' | 'compact' | 'none';
+  onGlobePinModeChange?: (mode: 'all' | 'compact' | 'none') => void;
+  onResetGlobeCamera?: () => void;
 
   // General Settings
   onOpenSettings?: () => void;
@@ -158,6 +171,17 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   currentTrackTitle = 'Hino Oficial',
   selectedStateId = 'RJ',
   isRadioPlaying = false,
+  globeTextureMode = 'nasa_satellite',
+  onGlobeTextureModeChange,
+  isGlobeCloudsActive = true,
+  onToggleGlobeClouds,
+  isGlobeAutoRotateActive = false,
+  onToggleGlobeAutoRotate,
+  isGlobeBordersActive = true,
+  onToggleGlobeBorders,
+  globePinMode = 'all',
+  onGlobePinModeChange,
+  onResetGlobeCamera,
   onOpenSettings,
   onResetView,
   onResetViewIfNotCentered,
@@ -291,6 +315,32 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 aria-label="Musicalidades do Brasil"
               >
                 <Radio className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* MODO 4: GLOBO 3D */}
+            <div className="relative">
+              <button
+                id="btn-modo-globo3d"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onSelectMainMode('globo3d');
+                }}
+                {...bindTooltip({
+                  title: 'Globo Terrestre 3D',
+                  badge: 'NASA Orbit',
+                  badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-400/40',
+                  description:
+                    'Planeta Terra em 3D com dados de satélite da NASA, vetores dourados dos 27 estados e brasões heráldicos.',
+                })}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                  mainMode === 'globo3d'
+                    ? 'bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 text-slate-950 border-cyan-300 shadow-md font-black scale-105'
+                    : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 border-transparent'
+                }`}
+                aria-label="Globo Terrestre 3D"
+              >
+                <Globe className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -728,6 +778,193 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     aria-label="Exibir/Ocultar Rádio"
                   >
                     <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2.D QUANDO EM GLOBO 3D: [Texturas NASA / Luzes / Biomas] + [Fronteiras 3D] + [Nuvens Orbitais] + [Auto-Rotação] + [Modo Brasões] */}
+          {mainMode === 'globo3d' && (
+            <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shrink-0">
+              {/* Seletor de Texturas Orbitais */}
+              {onGlobeTextureModeChange && (
+                <div className="flex items-center gap-0.5 pr-1 border-r border-slate-800">
+                  {/* NASA Blue Marble (Satélite de Alta Precisão) */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        audioEngine.playSfx('click');
+                        onGlobeTextureModeChange('nasa_satellite');
+                      }}
+                      {...bindTooltip({
+                        title: 'NASA Blue Marble',
+                        badge: 'Satélite HD',
+                        badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-400/40',
+                        description:
+                          'Fotografia orbital de alta precisão capturada pelas missões de satélites da NASA.',
+                      })}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                        globeTextureMode === 'nasa_satellite'
+                          ? 'bg-blue-500 text-slate-950 font-black shadow-md scale-105'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                      aria-label="Textura NASA Blue Marble"
+                    >
+                      <Globe className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* NASA Night Lights (Cidades Iluminadas à Noite) */}
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        audioEngine.playSfx('click');
+                        onGlobeTextureModeChange('night_lights');
+                      }}
+                      {...bindTooltip({
+                        title: 'Luzes Noturnas da Terra',
+                        badge: 'NASA Earth at Night',
+                        badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
+                        description:
+                          'Visualização das metrópoles e polos econômicos iluminados na face noturna do planeta.',
+                      })}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                        globeTextureMode === 'night_lights'
+                          ? 'bg-indigo-500 text-slate-950 font-black shadow-md scale-105'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      }`}
+                      aria-label="Luzes Noturnas da Terra"
+                    >
+                      <Moon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Fronteiras Vetoriais Douradas dos 27 Estados */}
+              {onToggleGlobeBorders && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleGlobeBorders();
+                    }}
+                    {...bindTooltip({
+                      title: 'Fronteiras Vetoriais Douradas',
+                      badge: isGlobeBordersActive ? 'Ativo' : 'Inativo',
+                      description:
+                        'Sobrepõe linhas vetoriais tridimensionais em ouro puro para os 27 estados e América do Sul.',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                      isGlobeBordersActive
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md scale-105'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Fronteiras Vetoriais Douradas"
+                  >
+                    <Layers className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Nuvens Atmosféricas Orbitais */}
+              {onToggleGlobeClouds && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleGlobeClouds();
+                    }}
+                    {...bindTooltip({
+                      title: 'Nuvens Atmosféricas 3D',
+                      badge: isGlobeCloudsActive ? 'Ativo' : 'Inativo',
+                      description:
+                        'Camada orbital semitransparente de massas de nuvens equatoriais e ZCAS em rotação sutil.',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                      isGlobeCloudsActive
+                        ? 'bg-cyan-500 text-slate-950 font-black shadow-md scale-105'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Nuvens Atmosféricas Orbitais"
+                  >
+                    <Cloud className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Auto-Rotação Orbital (Auto-Spin) */}
+              {onToggleGlobeAutoRotate && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleGlobeAutoRotate();
+                    }}
+                    {...bindTooltip({
+                      title: 'Rotação Orbital Contínua',
+                      badge: isGlobeAutoRotateActive ? 'Girando' : 'Pausado',
+                      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                      description:
+                        'Ativa o giro orbital contínuo e suave do Planeta Terra em velocidade cinematográfica.',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                      isGlobeAutoRotateActive
+                        ? 'bg-emerald-500 text-slate-950 font-black shadow-md scale-105'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Rotação Orbital Contínua"
+                  >
+                    <Activity className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Modo de Exibição dos Brasões */}
+              {onGlobePinModeChange && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onGlobePinModeChange(globePinMode === 'all' ? 'compact' : globePinMode === 'compact' ? 'none' : 'all');
+                    }}
+                    {...bindTooltip({
+                      title: 'Modo dos Brasões Heráldicos',
+                      badge: globePinMode === 'all' ? 'Brasões Completos' : globePinMode === 'compact' ? 'Siglas UF' : 'Oculto',
+                      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                      description:
+                        'Alterna a visualização dos 27 brasões estaduais (40% preto translúcido + borda dourada).',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                      globePinMode === 'all'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md scale-105'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Modo de Exibição dos Brasões"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Centralizar Brasil / Reset Câmera */}
+              {onResetGlobeCamera && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onResetGlobeCamera();
+                    }}
+                    {...bindTooltip({
+                      title: 'Centralizar no Brasil',
+                      badge: 'Reset Órbita',
+                      description: 'Posiciona a câmera orbital centrada na América do Sul e nos 27 estados do Brasil.',
+                    })}
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer text-slate-400 hover:text-amber-300 hover:bg-slate-800"
+                    aria-label="Centralizar no Brasil"
+                  >
+                    <Crosshair className="w-4 h-4" />
                   </button>
                 </div>
               )}

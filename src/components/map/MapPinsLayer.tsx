@@ -208,25 +208,30 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                   {/* Subtle Clean Radiant Accent (No Blurry Low Quality Glow) */}
                   <div className="aura-halo-luz absolute -inset-2 rounded-2xl bg-amber-400/20 pointer-events-none" />
 
-                  {/* Medieval RPG Heraldic Crest Shield */}
+                  {/* Medieval RPG Heraldic Crest Shield (40% Black translucent + Gold Border + Official State Coat of Arms) */}
                   <div
                     className={`moldura-heraldica-brasao relative w-18 h-22 sm:w-20 sm:h-24 rounded-b-2xl rounded-t-sm flex items-center justify-center p-1.5 shadow-2xl transition-all duration-200 z-10 ${
                       isCompleted
-                        ? 'bg-gradient-to-b from-amber-400 via-amber-700 to-amber-950 border-2 border-amber-200 shadow-[0_4px_16px_rgba(0,0,0,0.8)]'
+                        ? 'border-2 border-amber-300 shadow-[0_0_18px_rgba(245,158,11,0.85)] ring-1 ring-yellow-200/60'
                         : isSelected
-                        ? 'bg-gradient-to-b from-yellow-300 via-amber-600 to-slate-950 border-2.5 border-yellow-100 shadow-[0_4px_20px_rgba(0,0,0,0.85)]'
-                        : 'bg-gradient-to-b from-yellow-400 via-amber-800 to-slate-950 border-2 border-yellow-200 shadow-[0_4px_16px_rgba(0,0,0,0.8)]'
+                        ? 'border-2.5 border-yellow-300 shadow-[0_0_24px_rgba(251,191,36,0.95)] scale-110 ring-1 ring-amber-300/80'
+                        : 'border-1.5 border-amber-400/90 shadow-[0_4px_16px_rgba(0,0,0,0.85),0_0_10px_rgba(245,158,11,0.4)]'
                     }`}
                     style={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.40)',
+                      backdropFilter: 'blur(6px)',
                       clipPath: 'polygon(0% 0%, 100% 0%, 100% 78%, 50% 100%, 0% 78%)',
                     }}
                   >
+                    {/* Subtle Inner Gold Vignette */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-amber-400/10 via-transparent to-black/60 pointer-events-none rounded-b-2xl" />
+
                     {/* Coat of Arms Image or Fallback */}
                     {coatOfArmsUrl && !hasImgError ? (
                       <img
                         src={coatOfArmsUrl}
                         alt={`Brasão de ${stateInfo.name}`}
-                        className="imagem-brasao-estado w-full h-full object-contain p-0.5 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] brightness-110 hover:scale-105 transition-transform"
+                        className="imagem-brasao-estado w-full h-full object-contain p-0.5 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] brightness-110 hover:scale-105 transition-transform"
                         referrerPolicy="no-referrer"
                         onError={() => {
                           setImageErrors((prev) => ({ ...prev, [stateId]: true }));
@@ -257,10 +262,10 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                   <div
                     className={`pill-sigla-estado mt-1 px-2.5 py-0.5 rounded border shadow-lg flex items-center gap-1.5 transition-all ${
                       isCompleted
-                        ? 'bg-amber-950/95 border-amber-300 text-amber-100 font-bold'
+                        ? 'bg-black/60 backdrop-blur-sm border-amber-300 text-amber-100 font-bold'
                         : isSelected
-                        ? 'bg-amber-900/95 border-yellow-200 text-yellow-100 font-black'
-                        : 'bg-slate-950/95 border-yellow-300 text-amber-200 font-bold'
+                        ? 'bg-black/70 backdrop-blur-sm border-yellow-300 text-yellow-100 font-black'
+                        : 'bg-black/50 backdrop-blur-sm border-amber-400/80 text-amber-200 font-bold'
                     }`}
                   >
                     <span className="texto-sigla-estado text-xs font-serif font-black tracking-widest leading-none">

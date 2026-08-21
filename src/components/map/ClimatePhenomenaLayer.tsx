@@ -11,9 +11,24 @@ import {
   StateWeatherData,
   getEcmwfTempColor,
   ECMWF_TEMP_COLOR_STOPS,
+  BRAZIL_STATES_COORDINATES,
 } from '../../services/climateService';
 import { geoPath } from 'd3-geo';
-import { Wind, Thermometer, CloudRain, Flame, Activity, Compass, Droplets, Gauge, Info, AlertTriangle } from 'lucide-react';
+import {
+  Wind,
+  Thermometer,
+  CloudRain,
+  Flame,
+  Activity,
+  Compass,
+  Droplets,
+  Gauge,
+  Info,
+  AlertTriangle,
+  Waves,
+  ArrowUpRight,
+  TrendingUp,
+} from 'lucide-react';
 
 export type ClimateMode = 'temperaturas_frentes' | 'ventos_aliseos' | 'precipitacao_zcas' | 'el_nino_la_nina';
 
@@ -43,6 +58,17 @@ interface ParticleStreamline {
   maxLife: number;
   trajectoryId: number;
   color: string;
+  arrowSize: number;
+}
+
+interface WindVectorGridPoint {
+  x: number;
+  y: number;
+  lat: number;
+  lng: number;
+  speed: number; // km/h
+  direction: number; // degrees 0-360
+  name?: string;
 }
 
 interface StatePathItem {
@@ -54,6 +80,51 @@ interface StatePathItem {
   weather: StateWeatherData | undefined;
   temp: number;
   colorHex: string;
+}
+
+// Convert temperature in °C to RGB tuple for fast canvas interpolation
+function getInterpolatedRgb(temp: number): [number, number, number] {
+  const stops = ECMWF_TEMP_COLOR_STOPS;
+  if (temp <= stops[0].temp) {
+    return hexToRgb(stops[0].hex);
+  }
+  if (temp >= stops[stops.length - 1].temp) {
+    return hexToRgb(stops[stops.length - 1].hex);
+  }
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const s1 = stops[i];
+    const s2 = stops[i + 1];
+    if (temp >= s1.temp && temp <= s2.temp) {
+      const t = (temp - s1.temp) / (s2.temp - s1.temp);
+      const rgb1 = hexToRgb(s1.hex);
+      const rgb2 = hexToRgb(s2.hex);
+      return [
+        Math.round(rgb1[0] + (rgb2[0] - rgb1[0]) * t),
+        Math.round(rgb1[1] + (rgb2[1] - rgb1[1]) * t),
+        Math.round(rgb1[2] + (rgb2[2] - rgb1[2]) * t),
+      ];
+    }
+  }
+  return [253, 224, 71];
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.substring(0, 2), 16) || 0;
+  const g = parseInt(clean.substring(2, 4), 16) || 0;
+  const b = parseInt(clean.substring(4, 6), 16) || 0;
+  return [r, g, b];
+}
+
+// Meteorological Wind Arrow Color Scale (km/h)
+function getWindArrowColor(speedKmH: number): string {
+  if (speedKmH < 10) return '#38bdf8'; // Brisa muito leve (Azul Claro)
+  if (speedKmH < 18) return '#22d3ee'; // Brisa moderada (Ciano)
+  if (speedKmH < 26) return '#34d399'; // Vento constante (Verde Esmeralda)
+  if (speedKmH < 35) return '#facc15'; // Vento forte (Amarelo)
+  if (speedKmH < 45) return '#fb923c'; // Ventania (Laranja)
+  return '#f43f5e'; // Vendaval / Jato intenso (Rosa / Vermelho)
 }
 
 export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
@@ -69,7 +140,8 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
   speedMultiplier = 1.0,
   dateTimeFormatted,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const windCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const heatMapCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const projection = useMemo(() => createBrazilMercatorProjection(), []);
 
@@ -111,7 +183,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         // Fallback
       }
 
-      const temp = weather?.temperature ?? 24;
+      const temp = weather?.temperature ?? 25;
       const colorObj = getEcmwfTempColor(temp);
 
       return {
@@ -127,6 +199,368 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     });
   }, [geoData, projection, stateWeather]);
 
+  // Meteorological Wind Vector Grid across Brazil and the Atlantic
+  const windVectorGrid = useMemo<WindVectorGridPoint[]>(() => {
+    const grid: WindVectorGridPoint[] = [];
+
+    // 1. Grid points based on state coordinates
+    BRAZIL_STATES_COORDINATES.forEach((st) => {
+      const pt = projection([st.lng, st.lat]);
+      if (pt) {
+        const weather = stateWeather[st.id];
+        grid.push({
+          x: pt[0],
+          y: pt[1],
+          lat: st.lat,
+          lng: st.lng,
+          speed: weather?.windSpeed ?? st.baseClimate.wind,
+          direction: weather?.windDirection ?? st.baseClimate.windDir,
+          name: st.name,
+        });
+      }
+    });
+
+    // 2. Extra maritime wind grid points in the Atlantic (Trade Winds & Marine currents)
+    const marinePoints = [
+      { lng: -42.0, lat: 2.0, speed: 24, dir: 65, name: 'Atlântico Equatorial Norte' },
+      { lng: -35.0, lat: -1.0, speed: 26, dir: 75, name: 'Atlântico Tropical' },
+      { lng: -31.0, lat: -7.0, speed: 28, dir: 110, name: 'Alísios SE Litoral Nordeste' },
+      { lng: -34.0, lat: -14.0, speed: 22, dir: 120, name: 'Oceano Atlântico Leste' },
+      { lng: -37.0, lat: -21.0, speed: 20, dir: 140, name: 'Bacia de Campos Oceânica' },
+      { lng: -41.0, lat: -26.0, speed: 25, dir: 170, name: 'Bacia de Santos Oceânica' },
+      { lng: -46.0, lat: -32.0, speed: 30, dir: 200, name: 'Atlântico Sul Polar' },
+    ];
+
+    marinePoints.forEach((mp) => {
+      const pt = projection([mp.lng, mp.lat]);
+      if (pt) {
+        grid.push({
+          x: pt[0],
+          y: pt[1],
+          lat: mp.lat,
+          lng: mp.lng,
+          speed: mp.speed,
+          direction: mp.dir,
+          name: mp.name,
+        });
+      }
+    });
+
+    return grid;
+  }, [projection, stateWeather]);
+
+  // =========================================================================
+  // 1. PROFESSIONAL CONTINUOUS HEAT MAP RENDERING (IDW Inverse Distance Weighting)
+  // =========================================================================
+  useEffect(() => {
+    if (!active || mode !== 'temperaturas_frentes') {
+      const heatCanvas = heatMapCanvasRef.current;
+      if (heatCanvas) {
+        const ctx = heatCanvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, heatCanvas.width, heatCanvas.height);
+      }
+      return;
+    }
+
+    const canvas = heatMapCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = MAP_CANVAS_WIDTH;
+    const h = MAP_CANVAS_HEIGHT;
+
+    // Collect valid temperature sampling points
+    const samples: { x: number; y: number; temp: number }[] = [];
+    statePathList.forEach((st) => {
+      if (st.centroidX && st.centroidY) {
+        samples.push({ x: st.centroidX, y: st.centroidY, temp: st.temp });
+      }
+    });
+
+    if (samples.length < 5) return;
+
+    // Generate low-resolution IDW grid and upscale smoothly with bilinear filtering
+    const gridScale = 8; // 8x downscaled grid for 60fps fast computation
+    const gw = Math.ceil(w / gridScale);
+    const gh = Math.ceil(h / gridScale);
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = gw;
+    offscreen.height = gh;
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) return;
+
+    const imgData = offCtx.createImageData(gw, gh);
+    const data = imgData.data;
+
+    // IDW Power parameter (p=2.2 for smooth meteorological interpolation)
+    const p = 2.2;
+
+    for (let gy = 0; gy < gh; gy++) {
+      const py = gy * gridScale;
+      for (let gx = 0; gx < gw; gx++) {
+        const px = gx * gridScale;
+
+        let totalWeight = 0;
+        let weightedTemp = 0;
+        let exactMatch = false;
+
+        for (let i = 0; i < samples.length; i++) {
+          const s = samples[i];
+          const dist = Math.hypot(px - s.x, py - s.y);
+
+          if (dist < 1.0) {
+            weightedTemp = s.temp;
+            exactMatch = true;
+            break;
+          }
+
+          const weight = 1.0 / Math.pow(dist, p);
+          totalWeight += weight;
+          weightedTemp += s.temp * weight;
+        }
+
+        const finalTemp = exactMatch ? weightedTemp : weightedTemp / (totalWeight || 1);
+        const [r, g, b] = getInterpolatedRgb(finalTemp);
+
+        const idx = (gy * gw + gx) * 4;
+        data[idx] = r;
+        data[idx + 1] = g;
+        data[idx + 2] = b;
+        data[idx + 3] = 190; // High saturation opacity
+      }
+    }
+
+    offCtx.putImageData(imgData, 0, 0);
+
+    // Draw upscaled smoothed heat map onto the main canvas
+    ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(offscreen, 0, 0, w, h);
+
+  }, [active, mode, statePathList]);
+
+  // =========================================================================
+  // 2. PROFESSIONAL WIND DIRECTION & VECTOR FLOW SYSTEM WITH ARROWHEADS
+  // =========================================================================
+  useEffect(() => {
+    if (!active || (mode !== 'ventos_aliseos' && mode !== 'precipitacao_zcas')) {
+      const canvas = windCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const canvas = windCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const w = MAP_CANVAS_WIDTH;
+    const h = MAP_CANVAS_HEIGHT;
+
+    // Atmospheric Streamlines with Directional Arrowheads
+    const PARTICLE_COUNT = 160;
+    const particles: ParticleStreamline[] = [];
+
+    const initParticle = (p?: ParticleStreamline): ParticleStreamline => {
+      const trajectoryId = Math.floor(Math.random() * 4);
+      let sx = 0;
+      let sy = 0;
+      let color = 'rgba(56, 189, 248, 0.9)';
+
+      if (trajectoryId === 0) {
+        // 1. NE Trade Winds (Ventos Alísios de Nordeste) -> Ciano
+        sx = 1100 + Math.random() * 450;
+        sy = 80 + Math.random() * 320;
+        color = 'rgba(56, 189, 248, 0.9)';
+      } else if (trajectoryId === 1) {
+        // 2. Amazon Flying Rivers (Rios Voadores) -> Esmeralda
+        sx = 420 + Math.random() * 320;
+        sy = 180 + Math.random() * 260;
+        color = 'rgba(52, 211, 153, 0.95)';
+      } else if (trajectoryId === 2) {
+        // 3. SE Trade Winds (Alísios de Sudeste) -> Azul Royal
+        sx = 1220 + Math.random() * 380;
+        sy = 620 + Math.random() * 420;
+        color = 'rgba(96, 165, 250, 0.9)';
+      } else {
+        // 4. Polar Cold Front Flow (Jato Polar / Frente Fria) -> Gelo
+        sx = 750 + Math.random() * 320;
+        sy = 960 + Math.random() * 300;
+        color = 'rgba(147, 197, 253, 0.95)';
+      }
+
+      return {
+        x: sx,
+        y: sy,
+        startX: sx,
+        startY: sy,
+        speed: (1.6 + Math.random() * 2.0) * speedMultiplier,
+        size: 2.2,
+        alpha: 0.1,
+        age: 0,
+        maxLife: 75 + Math.random() * 95,
+        trajectoryId,
+        color,
+        arrowSize: 7.0,
+      };
+    };
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const p = initParticle();
+      p.age = Math.random() * p.maxLife;
+      particles.push(p);
+    }
+
+    let animId: number;
+    let frame = 0;
+
+    const render = () => {
+      frame++;
+      ctx.clearRect(0, 0, w, h);
+
+      // =======================================================================
+      // A. REGULAR METEOROLOGICAL WIND VECTOR ARROWS ON GRID (SETAS VETORIAIS)
+      // =======================================================================
+      if (mode === 'ventos_aliseos') {
+        windVectorGrid.forEach((pt) => {
+          // Meteorological direction: 0 = North, 90 = East, 180 = South, 270 = West
+          // Angle of wind flow in canvas space
+          const rad = ((pt.direction - 90) * Math.PI) / 180;
+          const arrowColor = getWindArrowColor(pt.speed);
+          const arrowLen = Math.min(32, Math.max(16, pt.speed * 0.9));
+
+          ctx.save();
+          ctx.translate(pt.x, pt.y);
+          ctx.rotate(rad);
+
+          // Vector shaft
+          ctx.strokeStyle = arrowColor;
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.moveTo(-arrowLen * 0.5, 0);
+          ctx.lineTo(arrowLen * 0.5, 0);
+          ctx.stroke();
+
+          // Vector Arrowhead (Seta na ponta do vetor)
+          ctx.fillStyle = arrowColor;
+          ctx.beginPath();
+          ctx.moveTo(arrowLen * 0.5 + 4, 0);
+          ctx.lineTo(arrowLen * 0.5 - 5, -4);
+          ctx.lineTo(arrowLen * 0.5 - 2, 0);
+          ctx.lineTo(arrowLen * 0.5 - 5, 4);
+          ctx.closePath();
+          ctx.fill();
+
+          // Subtle speed circle at base
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+          ctx.strokeStyle = arrowColor;
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.arc(-arrowLen * 0.5, 0, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+        });
+      }
+
+      // =======================================================================
+      // B. DYNAMIC STREAMLINES WITH PROMINENT DIRECTIONAL ARROWHEADS
+      // =======================================================================
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.age++;
+        if (p.age >= p.maxLife) {
+          particles[i] = initParticle(p);
+          continue;
+        }
+
+        // Calculate flow angle along authentic meteorological trajectories
+        let angle = 0;
+        if (p.trajectoryId === 0) {
+          // Alísios de Nordeste: sopra de NE para SW
+          angle = Math.PI * 0.88 + Math.sin(p.y * 0.003) * 0.2;
+        } else if (p.trajectoryId === 1) {
+          // Rios Voadores: da Amazônia para o Centro-Oeste e Sudeste
+          if (p.x < 650) {
+            angle = Math.PI * 0.65;
+          } else {
+            angle = Math.PI * 0.25;
+          }
+        } else if (p.trajectoryId === 2) {
+          // Alísios de Sudeste: de SE para NW
+          angle = Math.PI * 0.95;
+        } else {
+          // Jato Polar / Frente Fria: de SW para NE
+          angle = -Math.PI * 0.35;
+        }
+
+        const prevX = p.x;
+        const prevY = p.y;
+
+        p.x += Math.cos(angle) * p.speed;
+        p.y += Math.sin(angle) * p.speed;
+
+        const tailLen = p.speed * 5.5;
+        const tailX = p.x - Math.cos(angle) * tailLen;
+        const tailY = p.y - Math.sin(angle) * tailLen;
+
+        const lifeRatio = p.age / p.maxLife;
+        const fadeAlpha = lifeRatio < 0.2 ? lifeRatio / 0.2 : lifeRatio > 0.8 ? (1 - lifeRatio) / 0.2 : 1.0;
+
+        ctx.save();
+        ctx.globalAlpha = fadeAlpha * 0.9;
+
+        // 1. Streamline Tail
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+
+        // 2. DIRECTIONAL ARROWHEAD AT PARTICLE TIP (SETA DIRECIONAL LUMINOSA)
+        const arrowAngle = angle;
+        const arrSize = p.arrowSize;
+
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(arrowAngle) * 3, p.y + Math.sin(arrowAngle) * 3);
+        ctx.lineTo(
+          p.x - Math.cos(arrowAngle - Math.PI / 6) * arrSize,
+          p.y - Math.sin(arrowAngle - Math.PI / 6) * arrSize
+        );
+        ctx.lineTo(
+          p.x - Math.cos(arrowAngle) * (arrSize * 0.45),
+          p.y - Math.sin(arrowAngle) * (arrSize * 0.45)
+        );
+        ctx.lineTo(
+          p.x - Math.cos(arrowAngle + Math.PI / 6) * arrSize,
+          p.y - Math.sin(arrowAngle + Math.PI / 6) * arrSize
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [active, mode, speedMultiplier, windVectorGrid]);
+
   const hoveredStateInfo = useMemo(() => {
     if (!hoveredStateId || !stateWeather[hoveredStateId]) return null;
     return stateWeather[hoveredStateId];
@@ -139,152 +573,6 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     return { x: item.centroidX, y: item.centroidY };
   }, [hoveredStateId, statePathList]);
 
-  // Atmospheric Streamlines (Execute ONLY in 'ventos_aliseos' mode)
-  useEffect(() => {
-    if (!active || mode !== 'ventos_aliseos') {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const w = MAP_CANVAS_WIDTH;
-    const h = MAP_CANVAS_HEIGHT;
-
-    const PARTICLE_COUNT = 180;
-    const particles: ParticleStreamline[] = [];
-
-    const initParticle = (p?: ParticleStreamline): ParticleStreamline => {
-      const trajectoryId = Math.floor(Math.random() * 4);
-      let sx = 0;
-      let sy = 0;
-      let color = 'rgba(56, 189, 248, 0.75)';
-
-      if (trajectoryId === 0) {
-        // 1. Trade Winds from NE (Alísios de Nordeste) -> Azul Claro
-        sx = 1100 + Math.random() * 400;
-        sy = 100 + Math.random() * 300;
-        color = 'rgba(56, 189, 248, 0.75)';
-      } else if (trajectoryId === 1) {
-        // 2. Flying Rivers (Rios Voadores da Amazônia até Sudeste) -> Verde Esmeralda
-        sx = 450 + Math.random() * 300;
-        sy = 200 + Math.random() * 250;
-        color = 'rgba(52, 211, 153, 0.85)';
-      } else if (trajectoryId === 2) {
-        // 3. Trade Winds from SE (Alísios de Sudeste) -> Azul Royal
-        sx = 1200 + Math.random() * 350;
-        sy = 600 + Math.random() * 400;
-        color = 'rgba(96, 165, 250, 0.75)';
-      } else {
-        // 4. Polar Cold Front Flow (Frente Polar no Sul) -> Ciano Gelo
-        sx = 750 + Math.random() * 300;
-        sy = 950 + Math.random() * 300;
-        color = 'rgba(147, 197, 253, 0.8)';
-      }
-
-      return {
-        x: sx,
-        y: sy,
-        startX: sx,
-        startY: sy,
-        speed: (1.4 + Math.random() * 1.8) * speedMultiplier,
-        size: 2.0,
-        alpha: 0.1,
-        age: 0,
-        maxLife: 80 + Math.random() * 90,
-        trajectoryId,
-        color,
-      };
-    };
-
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const p = initParticle();
-      p.age = Math.random() * p.maxLife;
-      particles.push(p);
-    }
-
-    let animId: number;
-
-    const render = () => {
-      ctx.clearRect(0, 0, w, h);
-
-      // Group particles by trajectoryId for batched drawing
-      const groups: { [key: number]: { color: string; lines: { x1: number; y1: number; x2: number; y2: number }[] } } = {
-        0: { color: 'rgba(56, 189, 248, 0.75)', lines: [] },
-        1: { color: 'rgba(52, 211, 153, 0.85)', lines: [] },
-        2: { color: 'rgba(96, 165, 250, 0.75)', lines: [] },
-        3: { color: 'rgba(147, 197, 253, 0.8)', lines: [] },
-      };
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.age++;
-        if (p.age >= p.maxLife) {
-          particles[i] = initParticle(p);
-          continue;
-        }
-
-        // Calculate flow angle along meteorological trajectories
-        let angle = 0;
-        if (p.trajectoryId === 0) {
-          angle = Math.PI * 0.88 + Math.sin(p.y * 0.003) * 0.2;
-        } else if (p.trajectoryId === 1) {
-          if (p.x < 650) {
-            angle = Math.PI * 0.65;
-          } else {
-            angle = Math.PI * 0.25;
-          }
-        } else if (p.trajectoryId === 2) {
-          angle = Math.PI * 0.95;
-        } else {
-          angle = -Math.PI * 0.35;
-        }
-
-        p.x += Math.cos(angle) * p.speed;
-        p.y += Math.sin(angle) * p.speed;
-
-        const tailLen = p.speed * 4.5;
-        groups[p.trajectoryId]?.lines.push({
-          x1: p.x,
-          y1: p.y,
-          x2: p.x - Math.cos(angle) * tailLen,
-          y2: p.y - Math.sin(angle) * tailLen,
-        });
-      }
-
-      // Draw all 4 groups in 4 batched strokes
-      ctx.lineWidth = 2.0;
-      ctx.lineCap = 'round';
-      Object.keys(groups).forEach((key) => {
-        const grp = groups[Number(key)];
-        if (!grp.lines.length) return;
-        ctx.strokeStyle = grp.color;
-        ctx.beginPath();
-        for (let l = 0; l < grp.lines.length; l++) {
-          const line = grp.lines[l];
-          ctx.moveTo(line.x1, line.y1);
-          ctx.lineTo(line.x2, line.y2);
-        }
-        ctx.stroke();
-      });
-
-      animId = requestAnimationFrame(render);
-    };
-
-    animId = requestAnimationFrame(render);
-
-    return () => {
-      cancelAnimationFrame(animId);
-    };
-  }, [active, mode, speedMultiplier]);
-
   if (!active) return null;
 
   return (
@@ -292,17 +580,33 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
       className="camada-fenomenos-climaticos absolute inset-0 pointer-events-none overflow-visible"
       style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT }}
     >
-      {/* 1. Streamlines Dynamic Flow Canvas (Only active in Wind Mode) */}
+      {/* 1. Continuous Meteorological Heat Map Canvas (Clipped to Brazil's geometry) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          clipPath: 'url(#brazil-boundary-clip)',
+          WebkitClipPath: 'url(#brazil-boundary-clip)',
+        }}
+      >
+        <canvas
+          ref={heatMapCanvasRef}
+          width={MAP_CANVAS_WIDTH}
+          height={MAP_CANVAS_HEIGHT}
+          className="mapa-calor-canvas absolute inset-0 pointer-events-none opacity-85 transition-opacity duration-300"
+        />
+      </div>
+
+      {/* 2. Meteorological Wind Streamlines & Vector Arrows Canvas */}
       <canvas
-        ref={canvasRef}
+        ref={windCanvasRef}
         width={MAP_CANVAS_WIDTH}
         height={MAP_CANVAS_HEIGHT}
-        className="streamlines-canvas absolute inset-0 pointer-events-none"
+        className="streamlines-canvas absolute inset-0 pointer-events-none z-20"
       />
 
-      {/* 2. Vector Outlines & Badges */}
+      {/* 3. SVG Overlays: Badges, Isotherms, Wind Guides, ENSO Gradients */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+        className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-25"
         viewBox={`0 0 ${MAP_CANVAS_WIDTH} ${MAP_CANVAS_HEIGHT}`}
       >
         <defs>
@@ -313,7 +617,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </radialGradient>
         </defs>
 
-        {/* 2.1 Temperature Badges on State Centroids */}
+        {/* 3.1 Temperature Badges on State Centroids (Mode: Temperaturas & Frentes) */}
         {mode === 'temperaturas_frentes' && (
           <g className="badges-temperatura-estados pointer-events-none">
             {statePathList.map((item) => {
@@ -324,20 +628,24 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                 <g
                   key={`temp-badge-${item.stateId}`}
                   transform={`translate(${item.centroidX}, ${item.centroidY})`}
+                  className="transition-transform duration-150"
                 >
+                  {/* Badge Container */}
                   <rect
-                    x="-24"
-                    y="-12"
-                    width="48"
-                    height="24"
-                    rx="12"
-                    fill="rgba(15, 23, 42, 0.90)"
-                    stroke={isHovered ? '#ffffff' : '#38bdf8'}
-                    strokeWidth={isHovered ? '2' : '1'}
+                    x="-26"
+                    y="-13"
+                    width="52"
+                    height="26"
+                    rx="13"
+                    fill="rgba(15, 23, 42, 0.92)"
+                    stroke={isHovered ? '#fbbf24' : item.colorHex}
+                    strokeWidth={isHovered ? '2.5' : '1.5'}
+                    className="shadow-xl"
                   />
 
+                  {/* UF Tag */}
                   <text
-                    x="-8"
+                    x="-10"
                     y="4"
                     textAnchor="middle"
                     fill="#94a3b8"
@@ -348,12 +656,13 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                     {item.stateId}
                   </text>
 
+                  {/* Temperature Value */}
                   <text
                     x="12"
                     y="4"
                     textAnchor="middle"
-                    fill="#ffffff"
-                    fontSize="12"
+                    fill={item.colorHex}
+                    fontSize="13"
                     fontWeight="900"
                     fontFamily="sans-serif"
                   >
@@ -365,36 +674,40 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </g>
         )}
 
-        {/* 2.3 Cartographic Labels & Atmospheric Guides */}
+        {/* 3.2 Atmospheric Wind Guides with Prominent Directional Labels */}
         {mode === 'ventos_aliseos' && (
           <g className="labels-ventos pointer-events-none animate-in fade-in duration-300">
+            {/* NE Trade Winds Label */}
             <g transform="translate(1320, 240)">
-              <rect x="-115" y="-14" width="230" height="28" rx="8" fill="rgba(15, 23, 42, 0.92)" stroke="#38bdf8" strokeWidth="1.5" />
-              <text x="0" y="4" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="bold" fontFamily="serif">
-                ↗ Ventos Alísios de Nordeste (Azul)
+              <rect x="-130" y="-16" width="260" height="32" rx="10" fill="rgba(15, 23, 42, 0.94)" stroke="#38bdf8" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold" fontFamily="serif">
+                ↙ Ventos Alísios de Nordeste (NE)
               </text>
             </g>
 
+            {/* SE Trade Winds Label */}
             <g transform="translate(1420, 680)">
-              <rect x="-115" y="-14" width="230" height="28" rx="8" fill="rgba(15, 23, 42, 0.92)" stroke="#60a5fa" strokeWidth="1.5" />
-              <text x="0" y="4" textAnchor="middle" fill="#60a5fa" fontSize="11" fontWeight="bold" fontFamily="serif">
-                ↖ Ventos Alísios de Sudeste (Azul)
+              <rect x="-130" y="-16" width="260" height="32" rx="10" fill="rgba(15, 23, 42, 0.94)" stroke="#60a5fa" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#60a5fa" fontSize="12" fontWeight="bold" fontFamily="serif">
+                ↖ Ventos Alísios de Sudeste (SE)
               </text>
             </g>
 
+            {/* Amazon Flying Rivers Conduit */}
             <g transform="translate(560, 580)">
-              <rect x="-135" y="-14" width="270" height="28" rx="8" fill="rgba(6, 78, 59, 0.92)" stroke="#34d399" strokeWidth="1.5" />
-              <text x="0" y="4" textAnchor="middle" fill="#6ee7b7" fontSize="11" fontWeight="bold" fontFamily="serif">
-                ⚡ Rios Voadores da Amazônia (Verde)
+              <rect x="-145" y="-16" width="290" height="32" rx="10" fill="rgba(6, 78, 59, 0.94)" stroke="#34d399" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#6ee7b7" fontSize="12" fontWeight="bold" fontFamily="serif">
+                ↘ Rios Voadores da Amazônia (Umidade)
               </text>
             </g>
           </g>
         )}
 
+        {/* 3.3 ZCAS Precipitation Guides */}
         {mode === 'precipitacao_zcas' && (
           <g className="labels-zcas pointer-events-none animate-in fade-in duration-300">
             <g transform="translate(860, 560)">
-              <rect x="-140" y="-16" width="280" height="32" rx="8" fill="rgba(8, 47, 73, 0.92)" stroke="#0284c7" strokeWidth="1.5" />
+              <rect x="-150" y="-18" width="300" height="36" rx="10" fill="rgba(8, 47, 73, 0.94)" stroke="#0284c7" strokeWidth="1.8" />
               <text x="0" y="5" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold" fontFamily="serif">
                 🌧️ Eixo da ZCAS (Convergência de Umidade)
               </text>
@@ -402,40 +715,38 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
             <g transform="translate(980, 1020)">
               <path d="M -160,20 L 160,-20" stroke="#3b82f6" strokeWidth="3" strokeDasharray="6 4" />
-              <rect x="-100" y="-14" width="200" height="28" rx="8" fill="rgba(15, 23, 42, 0.9)" stroke="#3b82f6" strokeWidth="1.5" />
-              <text x="0" y="4" textAnchor="middle" fill="#93c5fd" fontSize="11" fontWeight="bold" fontFamily="serif">
+              <rect x="-110" y="-16" width="220" height="32" rx="10" fill="rgba(15, 23, 42, 0.92)" stroke="#3b82f6" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="bold" fontFamily="serif">
                 ❄️ Frente Fria Sinótica Polar
               </text>
             </g>
           </g>
         )}
 
+        {/* 3.4 ENSO Pacific Anomaly */}
         {mode === 'el_nino_la_nina' && (
           <g className="labels-enso pointer-events-none animate-in fade-in duration-300">
-            {/* Pacific Equatorial SST Pool */}
             <g transform="translate(240, 480)">
               <circle cx="0" cy="0" r="140" fill="url(#ensoDroughtGrad)" className="animate-pulse" />
-              <rect x="-130" y="-22" width="260" height="44" rx="10" fill="rgba(15, 23, 42, 0.95)" stroke="#f59e0b" strokeWidth="2" />
-              <text x="0" y="-4" textAnchor="middle" fill="#fef08a" fontSize="11" fontWeight="bold" fontFamily="serif">
+              <rect x="-140" y="-24" width="280" height="48" rx="12" fill="rgba(15, 23, 42, 0.95)" stroke="#f59e0b" strokeWidth="2" />
+              <text x="0" y="-5" textAnchor="middle" fill="#fef08a" fontSize="12" fontWeight="bold" fontFamily="serif">
                 Oceano Pacífico Equatorial
               </text>
-              <text x="0" y="12" textAnchor="middle" fill="#f59e0b" fontSize="10" fontWeight="mono" fontFamily="sans-serif">
+              <text x="0" y="14" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="mono" fontFamily="sans-serif">
                 Aquecimento TSM: +2.3°C (Super El Niño)
               </text>
             </g>
 
-            {/* Northeast Drought Highlight */}
             <g transform="translate(1220, 430)">
-              <rect x="-135" y="-16" width="270" height="32" rx="8" fill="rgba(69, 10, 10, 0.94)" stroke="#ef4444" strokeWidth="1.5" />
-              <text x="0" y="5" textAnchor="middle" fill="#fca5a5" fontSize="11" fontWeight="bold" fontFamily="serif">
+              <rect x="-140" y="-18" width="280" height="36" rx="10" fill="rgba(69, 10, 10, 0.94)" stroke="#ef4444" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#fca5a5" fontSize="12" fontWeight="bold" fontFamily="serif">
                 🔥 Seca Severa & Bloqueio Atmosférico
               </text>
             </g>
 
-            {/* South Heavy Rains Highlight */}
             <g transform="translate(860, 980)">
-              <rect x="-130" y="-16" width="260" height="32" rx="8" fill="rgba(8, 47, 73, 0.94)" stroke="#06b6d4" strokeWidth="1.5" />
-              <text x="0" y="5" textAnchor="middle" fill="#67e8f9" fontSize="11" fontWeight="bold" fontFamily="serif">
+              <rect x="-135" y="-18" width="270" height="36" rx="10" fill="rgba(8, 47, 73, 0.94)" stroke="#06b6d4" strokeWidth="1.8" />
+              <text x="0" y="5" textAnchor="middle" fill="#67e8f9" fontSize="12" fontWeight="bold" fontFamily="serif">
                 🌊 Enchentes & Intensificação do Jato
               </text>
             </g>
@@ -443,7 +754,65 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         )}
       </svg>
 
-      {/* 4. Floating Meteorological Tooltip Card on Hover */}
+      {/* 4. Professional ECMWF Thermal Colorbar Legend (Escala Térmica Contínua) */}
+      {mode === 'temperaturas_frentes' && (
+        <div className="absolute bottom-6 left-8 z-30 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/80 shadow-2xl flex flex-col gap-1.5 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between text-[11px] font-serif font-bold text-slate-200">
+            <span className="flex items-center gap-1.5">
+              <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+              Escala Térmica ECMWF / INMET
+            </span>
+            <span className="font-mono text-[10px] text-amber-300">°C</span>
+          </div>
+
+          {/* Continuous gradient strip */}
+          <div
+            className="w-56 h-3.5 rounded-md border border-slate-700 shadow-inner"
+            style={{
+              background: `linear-gradient(to right, ${ECMWF_TEMP_COLOR_STOPS.map((s) => s.hex).join(', ')})`,
+            }}
+          />
+
+          {/* Scale labels */}
+          <div className="flex justify-between text-[9px] font-mono text-slate-400 px-0.5">
+            <span>-4°C</span>
+            <span>8°C</span>
+            <span>20°C</span>
+            <span>28°C</span>
+            <span>36°C+</span>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Wind Beaufort Scale Legend */}
+      {mode === 'ventos_aliseos' && (
+        <div className="absolute bottom-6 left-8 z-30 pointer-events-auto bg-slate-950/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/80 shadow-2xl flex flex-col gap-1.5 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between text-[11px] font-serif font-bold text-slate-200">
+            <span className="flex items-center gap-1.5">
+              <Wind className="w-3.5 h-3.5 text-cyan-400" />
+              Velocidade dos Ventos (km/h)
+            </span>
+            <span className="font-mono text-[10px] text-cyan-300">Vetores</span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-1 text-[9px] font-mono text-center">
+            <div className="p-1 rounded bg-sky-950/60 border border-sky-500/40 text-sky-300">
+              &lt; 15 km/h
+            </div>
+            <div className="p-1 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
+              15-25
+            </div>
+            <div className="p-1 rounded bg-amber-950/60 border border-amber-500/40 text-amber-300">
+              25-35
+            </div>
+            <div className="p-1 rounded bg-rose-950/60 border border-rose-500/40 text-rose-300">
+              &gt; 35 km/h
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Floating Meteorological Tooltip Card on Hover */}
       {hoveredStateInfo && hoverPos && (
         <div
           className="absolute pointer-events-none z-50 transition-all duration-150"
