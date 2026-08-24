@@ -235,18 +235,92 @@ body {
   color: #f8fafc;
 }
 
-/* Hide native OS cursor completely inside the cartographic map canvas */
+/* Custom cartographic canvas hides default browser cursor completely so only CustomCanvasCursor renders on map */
 .container-canva-mapa-br,
 .container-canva-mapa-br *,
 .container-canva-mapa-br svg,
 .container-canva-mapa-br path,
-.container-canva-mapa-br div,
-.container-canva-mapa-br button,
-.container-canva-mapa-br canvas {
+.container-canva-mapa-br g {
   cursor: none !important;
 }
 
-button, a, [role="button"], input, select, .interactive-pin {
+/* Restores native OS cursor exclusively on floating dialogs, modals, top navigation, and footer */
+.modal-dialog-climatologia-estado,
+.modal-dialog-climatologia-estado *,
+[role="dialog"],
+[role="dialog"] *,
+.menu-superior-status,
+.menu-superior-status *,
+.rodape-aplicacao,
+.rodape-aplicacao *,
+.modal-backdrop,
+.modal-backdrop *,
+.modal-conteudo,
+.modal-conteudo *,
+.modal-arvore-habilidades,
+.modal-arvore-habilidades *,
+.modal-quiz-guardiao,
+.modal-quiz-guardiao *,
+.modal-configuracoes,
+.modal-configuracoes *,
+.modal-inventario-guardiao,
+.modal-inventario-guardiao *,
+.modal-filosofia-sobre,
+.modal-filosofia-sobre *,
+.modal-neighbor-country,
+.modal-neighbor-country *,
+[data-scrollable],
+[data-scrollable] *,
+.overflow-y-auto,
+.overflow-y-auto *,
+.overflow-x-auto,
+.overflow-x-auto *,
+.scrollbar-thin,
+.scrollbar-thin * {
+  cursor: default !important;
+}
+
+.modal-dialog-climatologia-estado button,
+.modal-dialog-climatologia-estado button *,
+.modal-dialog-climatologia-estado a,
+.modal-dialog-climatologia-estado a *,
+.modal-dialog-climatologia-estado [role="button"],
+.modal-dialog-climatologia-estado [role="button"] *,
+.modal-dialog-climatologia-estado [role="tab"],
+.modal-dialog-climatologia-estado [role="tab"] *,
+.modal-dialog-climatologia-estado input,
+.modal-dialog-climatologia-estado select,
+.modal-dialog-climatologia-estado .cursor-pointer,
+.menu-superior-status button,
+.menu-superior-status button *,
+.menu-superior-status a,
+.menu-superior-status a *,
+.menu-superior-status [role="button"],
+.menu-superior-status [role="button"] *,
+.menu-superior-status [role="tab"],
+.menu-superior-status [role="tab"] *,
+.rodape-aplicacao button,
+.rodape-aplicacao button *,
+.rodape-aplicacao a,
+.rodape-aplicacao a *,
+.rodape-aplicacao [role="button"],
+.rodape-aplicacao [role="button"] *,
+[role="dialog"] button,
+[role="dialog"] button *,
+[role="dialog"] a,
+[role="dialog"] a *,
+[role="dialog"] [role="button"],
+[role="dialog"] [role="button"] *,
+[role="dialog"] [role="tab"],
+[role="dialog"] [role="tab"] *,
+[role="dialog"] input,
+[role="dialog"] select,
+[role="dialog"] .cursor-pointer,
+[role="dialog"] .cursor-pointer * {
+  cursor: pointer !important;
+}
+
+button, a, [role="button"], [role="tab"], input, select, .interactive-pin {
   cursor: pointer;
 }
 

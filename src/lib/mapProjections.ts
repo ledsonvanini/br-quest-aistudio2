@@ -215,16 +215,25 @@ export function clampPanZoom(
 }
 
 /**
- * Mathematical center of Brazil based on the calibrated projection (-54.39°, -15.18°).
- * Centers the entire territorial mass of Brazil (Acre to Paraíba and Roraima to RS)
- * in the center of the screen in both 2D and 3D with 30% increased zoom (0.73).
+ * Mathematical center of Brazil based on the calibrated border between GO, TO, and MT
+ * (Rio Araguaia / Ilha do Bananal region, slightly above the geographic center of Goiás).
+ * Centers the entire territorial mass of Brazil in the viewport with 30% increased default zoom (0.95).
  */
-export const DEFAULT_BRAZIL_ZOOM = 0.73;
+export const DEFAULT_BRAZIL_ZOOM = 0.95;
+
+/**
+ * Pivot center point coordinates on the 2560x1440 canvas:
+ * Border between Goiás (GO), Tocantins (TO), and Mato Grosso (MT) [1235, 640].
+ */
+export const BRAZIL_MAP_PIVOT_CENTER: [number, number] = [1235, 640];
 
 export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
+  const offsetX = BRAZIL_MAP_PIVOT_CENTER[0] - MAP_CANVAS_WIDTH / 2; // 1235 - 1280 = -45
+  const offsetY = BRAZIL_MAP_PIVOT_CENTER[1] - MAP_CANVAS_HEIGHT / 2; // 640 - 720 = -80
+
   return {
-    x: 0,
-    y: Math.round((is3D ? -20 : 0) * zoom),
+    x: Math.round(-offsetX * zoom),
+    y: Math.round((-offsetY * (is3D ? 0.80 : 1.0) - (is3D ? 20 : 0)) * zoom),
   };
 }
 
@@ -250,20 +259,61 @@ export function getSouthAmericaMidpointPan(zoom = 0.52, is3D = true): { x: numbe
 
 /**
  * Calculates the exact pan needed to center any specific state centroid
- * at the center of the viewport during state zoom-in transitions.
+ * at the center of the viewport (or offset for side panels) during state zoom-in transitions.
  */
 export function calculateStateCenterPan(
   centroid: [number, number],
   zoom = 2.4,
-  is3D = true
+  is3D = true,
+  screenOffsetX = 0,
+  screenOffsetY = 0
 ): { x: number; y: number } {
   const [cx, cy] = centroid;
   const offsetX = cx - MAP_CANVAS_WIDTH / 2; // cx - 1280
   const offsetY = cy - MAP_CANVAS_HEIGHT / 2; // cy - 720
   return {
-    x: Math.round(-offsetX * zoom),
-    y: Math.round((is3D ? -offsetY * 0.74 : -offsetY) * zoom),
+    x: Math.round(-offsetX * zoom + screenOffsetX),
+    y: Math.round((is3D ? -offsetY * 0.74 : -offsetY) * zoom + screenOffsetY),
   };
+}
+
+/**
+ * Calculates the exact zoom & pan to focus on a state while taking into account
+ * the width occupied by the Climate Detail Dialog on the left side of the viewport.
+ */
+export function getClimateFocusZoomAndPan(
+  centroid: [number, number],
+  stateId: string,
+  containerWidth: number,
+  is3D = true
+): { targetZoom: number; targetPan: { x: number; y: number } } {
+  const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
+  const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
+
+  let baseZoom = isSmallState ? 2.1 : isLargeState ? 1.4 : 1.75;
+
+  let screenOffsetX = 0;
+  if (containerWidth >= 768) {
+    // Left climate dialog is 560px + 24px margin = 584px
+    screenOffsetX = 292;
+    if (containerWidth < 1200) {
+      const avail = containerWidth - 584;
+      baseZoom *= Math.max(0.70, Math.min(1.0, avail / 600));
+    }
+  } else if (containerWidth >= 640) {
+    // Left climate dialog is 520px + 16px margin = 536px
+    screenOffsetX = 268;
+    if (containerWidth < 900) {
+      const avail = containerWidth - 536;
+      baseZoom *= Math.max(0.60, Math.min(1.0, avail / 400));
+    }
+  } else {
+    // Mobile screen: modal takes full screen
+    screenOffsetX = 0;
+  }
+
+  const targetPan = calculateStateCenterPan(centroid, baseZoom, is3D, screenOffsetX);
+  return { targetZoom: baseZoom, targetPan };
 }
 
 /**

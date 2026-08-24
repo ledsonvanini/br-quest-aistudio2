@@ -111,7 +111,7 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
         <div
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="painel-observatorio-clima fixed top-24 right-4 sm:right-6 z-40 w-80 sm:w-96 max-h-[82vh] bg-slate-950/95 backdrop-blur-xl border border-slate-800/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100 animate-in fade-in slide-in-from-right-4 duration-300 pointer-events-auto select-none"
+          className="painel-observatorio-clima fixed top-16 sm:top-24 right-2 sm:right-6 z-40 w-[calc(100vw-16px)] sm:w-96 max-h-[82vh] bg-slate-950/95 backdrop-blur-xl border border-slate-800/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100 animate-in fade-in slide-in-from-right-4 duration-300 pointer-events-auto select-none"
         >
           {/* Header */}
           <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900/90 to-slate-950">

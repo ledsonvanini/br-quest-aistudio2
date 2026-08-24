@@ -14,6 +14,7 @@ import {
 import { findNeighborCountry, NeighborCountryData } from '../../data/southAmericaNeighborsData';
 import { ClippedMapTilesLayer, TerrainTileProvider } from './ClippedMapTilesLayer';
 import { AntiqueCartographyDecor } from './AntiqueCartographyDecor';
+import { CartographicGraticuleLayer } from './CartographicGraticuleLayer';
 import { StateWeatherData, getEcmwfTempColor } from '../../services/climateService';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 
@@ -34,6 +35,7 @@ interface MapStatesLayerProps {
   isClimateActive?: boolean;
   climateMode?: ClimateMode;
   stateWeather?: Record<string, StateWeatherData>;
+  focusedClimateStateId?: string | null;
   is3D?: boolean;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
@@ -98,6 +100,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   isClimateActive = false,
   climateMode = 'temperaturas_frentes',
   stateWeather,
+  focusedClimateStateId = null,
   is3D = false,
   onStateEnter,
   onStateLeave,
@@ -182,6 +185,23 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   const getStateVisuals = (stateId: string, isHovered: boolean, isSelected: boolean) => {
     const isCompleted = completedStateIds.has(stateId);
     const weather = stateWeather?.[stateId];
+    const isParchment = !isClimateActive && terrainProvider === 'voyager_parchment';
+
+    // Quando um estado está focado especificamente no modo Clima (analítico),
+    // o estado focado é o ÚNICO a preservar a cor. Todos os outros 26 estados ficam cinza neutro sólido.
+    // Nos outros modos (Aventura, Rádio/Musicalidades), as cores completas dos biomas/relevo são sempre mantidas!
+    if (isClimateActive && focusedClimateStateId) {
+      if (stateId !== focusedClimateStateId) {
+        return {
+          stateFill: '#27272a', // Cinza neutro escuro sólido fosco (Zinc 800)
+          stateFillOpacity: 1.0,
+          strokeColor: '#52525b', // Linha de fronteira cinza neutra suave
+          strokeWidth: 1.2,
+          underglowColor: 'transparent',
+          wallGradId: 'url(#extrusionWallGradDefault)',
+        };
+      }
+    }
 
     let stateFill = 'transparent';
     let stateFillOpacity = 0.0;
@@ -194,9 +214,9 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       if (climateMode === 'temperaturas_frentes') {
         const temp = weather?.temperature ?? 24;
         stateFill = getEcmwfTempColor(temp).hex;
-        stateFillOpacity = isSelected ? 0.98 : isHovered ? 0.92 : 0.72;
-        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : '#ffffff';
-        strokeWidth = isSelected ? 2.8 : isHovered ? 2.2 : 0.8;
+        stateFillOpacity = isSelected ? 0.98 : isHovered ? 0.94 : 0.78;
+        strokeColor = isSelected ? '#ffffff' : isHovered ? '#ffffff' : '#ffffff';
+        strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.6;
         underglowColor = temp > 28 ? '#f97316' : temp > 20 ? '#38bdf8' : '#60a5fa';
         wallGradId = temp > 28 ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
       } else if (climateMode === 'precipitacao_zcas') {
@@ -211,26 +231,26 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
             : rain > 2
             ? '#059669'
             : '#d97706';
-        stateFillOpacity = isSelected ? 0.96 : isHovered ? 0.90 : 0.68;
-        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : rain > 30 ? '#67e8f9' : '#fde047';
-        strokeWidth = isSelected ? 2.8 : isHovered ? 2.2 : 0.8;
+        stateFillOpacity = isSelected ? 0.96 : isHovered ? 0.90 : 0.72;
+        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : '#ffffff';
+        strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.5;
         underglowColor = rain > 30 ? '#00f0ff' : '#38bdf8';
         wallGradId = 'url(#extrusionWallGradCyan)';
       } else if (climateMode === 'ventos_aliseos') {
         const isFlyingRiverCorridor = ['AM', 'RO', 'MT', 'MS', 'SP', 'PR', 'SC'].includes(stateId);
         stateFill = isFlyingRiverCorridor ? '#10b981' : '#0369a1';
-        stateFillOpacity = isSelected ? 0.94 : isHovered ? 0.88 : 0.62;
-        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : isFlyingRiverCorridor ? '#6ee7b7' : '#38bdf8';
-        strokeWidth = isSelected ? 2.8 : isHovered ? 2.2 : 0.8;
+        stateFillOpacity = isSelected ? 0.94 : isHovered ? 0.88 : 0.68;
+        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : '#ffffff';
+        strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.5;
         underglowColor = isFlyingRiverCorridor ? '#10b981' : '#0284c7';
         wallGradId = isFlyingRiverCorridor ? 'url(#extrusionWallGradEmerald)' : 'url(#extrusionWallGradCyan)';
       } else if (climateMode === 'el_nino_la_nina') {
         const isDroughtZone = ['AM', 'PA', 'MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'].includes(stateId);
         const isFloodZone = ['RS', 'SC', 'PR'].includes(stateId);
         stateFill = isDroughtZone ? '#ef4444' : isFloodZone ? '#06b6d4' : '#1e293b';
-        stateFillOpacity = isSelected ? 0.96 : isHovered ? 0.90 : 0.65;
-        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : isDroughtZone ? '#fca5a5' : isFloodZone ? '#67e8f9' : '#64748b';
-        strokeWidth = isSelected ? 2.8 : isHovered ? 2.2 : 0.8;
+        stateFillOpacity = isSelected ? 0.96 : isHovered ? 0.90 : 0.70;
+        strokeColor = isSelected ? '#fef08a' : isHovered ? '#ffffff' : '#ffffff';
+        strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.5;
         underglowColor = isDroughtZone ? '#ef4444' : isFloodZone ? '#06b6d4' : '#64748b';
         wallGradId = isDroughtZone ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
       }
@@ -271,7 +291,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
         ? '#f59e0b'
         : colors.stroke;
 
-      strokeWidth = isSelected ? 3.0 : isHovered ? 2.4 : 1.0;
+      strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.4;
       underglowColor = isCompleted ? '#10b981' : isSelected ? '#facc15' : '#f59e0b';
       wallGradId = isCompleted ? 'url(#extrusionWallGradEmerald)' : (visualStyle === 'tiles' || terrainProvider === 'voyager_parchment') ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradDefault)';
     }
@@ -289,7 +309,9 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   if (!pathGenerator || !geoData) return null;
 
   // Active state for dedicated 3D elevation block overlay
-  const activeElevatedStateId = hoveredStateId || selectedStateId;
+  const activeElevatedStateId = isClimateActive && focusedClimateStateId
+    ? focusedClimateStateId
+    : (hoveredStateId || selectedStateId);
   const activePathD = activeElevatedStateId ? statePathMap[activeElevatedStateId] : null;
   const activeVisuals = activeElevatedStateId ? getStateVisuals(activeElevatedStateId, hoveredStateId === activeElevatedStateId, selectedStateId === activeElevatedStateId) : null;
 
@@ -336,10 +358,12 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       </defs>
 
       {/* =========================================================================
-          1. MASSA CONTINENTAL DA AMÉRICA DO SUL & PAÍSES VIZINHOS (SEM CONTORNOS EXTRAS)
-             Contraste garantido puramente por variação harmônica de cores de terra.
+          1. MASSA CONTINENTAL DA AMÉRICA DO SUL & PAÍSES VIZINHOS
+             Contraste harmônico e nítido de tons de terra, mantendo cores e divisões limpas.
          ========================================================================= */}
-      <g className={`camada-america-do-sul south-america-context ${showNeighbors ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+      <g
+        className={`camada-america-do-sul south-america-context ${showNeighbors ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      >
         {neighborFeaturesList.map(({ pathD, countryName, matchedCountry, key }) => {
           const effectiveCountry = matchedCountry || {
             id: countryName.toUpperCase().slice(0, 3),
@@ -420,7 +444,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       {/* =========================================================================
           2. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite)
          ========================================================================= */}
-      {visualStyle === 'tiles' && (
+      {visualStyle === 'tiles' && !focusedClimateStateId && (
         <ClippedMapTilesLayer
           geoData={geoData}
           projection={projection}
@@ -428,6 +452,13 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           opacity={isClimateActive ? 0.50 : 1.0}
         />
       )}
+
+      {/* Cartographic Graticule Grid (Equator 0°, Tropic of Capricorn 23°26'S, Meridians, Parallels, Greenwich Ref) */}
+      <CartographicGraticuleLayer
+        projection={projection}
+        isParchmentMode={terrainProvider === 'voyager_parchment'}
+        isClimateActive={isClimateActive}
+      />
 
       {/* Antique Cartography Embellishments */}
       {!isClimateActive && (
@@ -479,9 +510,9 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
               <path
                 d={pathD}
                 fill="none"
-                stroke="#010409"
-                strokeWidth={visuals.strokeWidth + 1.2}
-                strokeOpacity={0.88}
+                stroke="#000000"
+                strokeWidth={visuals.strokeWidth + 1.8}
+                strokeOpacity={0.95}
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
@@ -493,28 +524,36 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 id={`state-path-${stateId}`}
                 d={pathD}
                 fill={
-                  isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
+                  isClimateActive && focusedClimateStateId
+                    ? visuals.stateFill
+                    : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
                     ? '#10b981'
                     : isNeighborOfSelected && visualStyle === 'tiles'
                     ? '#0284c7'
                     : visuals.stateFill
                 }
                 fillOpacity={
-                  isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
+                  isClimateActive && focusedClimateStateId
+                    ? visuals.stateFillOpacity
+                    : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
                     ? 0.40
                     : isNeighborOfSelected && visualStyle === 'tiles'
                     ? 0.30
                     : visuals.stateFillOpacity
                 }
                 stroke={
-                  isRegionActive && belongsToActiveRegion
+                  isClimateActive && focusedClimateStateId
+                    ? visuals.strokeColor
+                    : isRegionActive && belongsToActiveRegion
                     ? '#34d399'
                     : isNeighborOfSelected
                     ? '#38bdf8'
                     : visuals.strokeColor
                 }
                 strokeWidth={
-                  isRegionActive && belongsToActiveRegion
+                  isClimateActive && focusedClimateStateId
+                    ? visuals.strokeWidth
+                    : isRegionActive && belongsToActiveRegion
                     ? 2.2
                     : isNeighborOfSelected
                     ? 2.0
@@ -523,14 +562,17 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
-                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} cursor-pointer transition-all duration-150 pointer-events-auto`}
+                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} ${
+                  isClimateActive && focusedClimateStateId && stateId !== focusedClimateStateId
+                    ? 'cursor-default pointer-events-none'
+                    : 'cursor-pointer pointer-events-auto'
+                } transition-all duration-150`}
                 onMouseEnter={() => onStateEnter(stateId)}
                 onMouseLeave={() => onStateLeave(stateId)}
                 onClick={(e) => onStateClick(stateId, e)}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onStateContextMenu?.(stateId, e);
                 }}
               />
 
@@ -542,14 +584,17 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeWidth={18}
                 strokeLinejoin="round"
                 strokeLinecap="round"
-                className="hit-target-estado-expandido pointer-events-auto cursor-pointer"
+                className={`hit-target-estado-expandido ${
+                  isClimateActive && focusedClimateStateId && stateId !== focusedClimateStateId
+                    ? 'pointer-events-none'
+                    : 'pointer-events-auto cursor-pointer'
+                }`}
                 onMouseEnter={() => onStateEnter(stateId)}
                 onMouseLeave={() => onStateLeave(stateId)}
                 onClick={(e) => onStateClick(stateId, e)}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onStateContextMenu?.(stateId, e);
                 }}
               />
             </g>
@@ -584,7 +629,6 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              onStateContextMenu?.(activeElevatedStateId, e);
             }}
             onMouseEnter={() => onStateEnter(activeElevatedStateId)}
             onMouseLeave={() => onStateLeave(activeElevatedStateId)}

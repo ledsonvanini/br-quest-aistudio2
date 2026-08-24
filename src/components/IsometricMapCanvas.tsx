@@ -11,8 +11,10 @@ import {
   getBrazilACtoPBMidpointPan,
   getSouthAmericaMidpointPan,
   calculateStateCenterPan,
+  getClimateFocusZoomAndPan,
   calculateAnchoredZoomPan,
   DEFAULT_BRAZIL_ZOOM,
+  BRAZIL_MAP_PIVOT_CENTER,
   MAP_CANVAS_WIDTH,
   MAP_CANVAS_HEIGHT,
 } from '../lib/mapProjections';
@@ -21,8 +23,10 @@ import { MapVisualStyle, ChoroplethSubTheme } from '../lib/mapColorScales';
 // Modular Sub-components
 import { ProceduralTerrainFilter } from './map/ProceduralTerrainFilter';
 import { ParchmentTextureFilter } from './map/ParchmentTextureFilter';
-import { AgedParchmentOverlay } from './map/AgedParchmentOverlay';
-import { ProceduralOceanCanvas } from './map/ProceduralOceanCanvas';
+import {
+  ProceduralOceanCanvas,
+  FINE_PAPER_NOISE_SVG,
+} from './map/ProceduralOceanCanvas';
 import { CoastalWavesCanvas } from './map/CoastalWavesCanvas';
 import { AtmosphericCloudsLayer } from './map/AtmosphericCloudsLayer';
 import { RainSimulationLayer } from './map/RainSimulationLayer';
@@ -57,6 +61,7 @@ import { MusicalStateMapCard } from './music/MusicalStateMapCard';
 import { vintageRadioEngine } from '../lib/vintageRadioEngine';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
+import { StateClimateDialog } from './map/StateClimateDialog';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio } from 'lucide-react';
 
 interface Props {
@@ -146,6 +151,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const getContainerWidth = useCallback(() => {
+    return containerRef.current?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+  }, []);
+
   // Visual Modes & Customization
   const [internalVisualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
   const [internalTerrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
@@ -175,6 +184,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [isClimateActive, setIsClimateActive] = useState<boolean>(mainMode === 'clima');
   const [internalIsClimatePanelOpen, setInternalIsClimatePanelOpen] = useState<boolean>(false);
   const isClimatePanelOpen = propIsObservatorioOpen !== undefined ? propIsObservatorioOpen : internalIsClimatePanelOpen;
+  const [selectedClimateStateId, setSelectedClimateStateId] = useState<string | null>(null);
 
   // Synchronize internal climate active state with global mainMode
   useEffect(() => {
@@ -299,13 +309,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [showAnchorPoint, setShowAnchorPoint] = useState<boolean>(false);
   const anchorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Focus & Inspection Mode via Right-Click (Focus on State + Zoom for Reading)
-  const [focusedInspectionState, setFocusedInspectionState] = useState<{
-    id: string;
-    name: string;
-    region: string;
-  } | null>(null);
-
   // GeoJSON Data (instant cache retrieval)
   const [geoData, setGeoData] = useState<any>(() => getCachedGeoData());
 
@@ -374,13 +377,29 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     if (focusedStateId && centroids[focusedStateId]) {
       setSelectedStateId(focusedStateId);
       setTransitionMode('button');
-      const targetZoom = Math.min(2.0, Math.max(1.2, zoom));
-      const targetPan = calculateStateCenterPan(centroids[focusedStateId], targetZoom, is3D);
-      setPan(targetPan);
-      setZoom(targetZoom);
+      if (isClimateActive || mainMode === 'clima') {
+        const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
+          centroids[focusedStateId],
+          focusedStateId,
+          getContainerWidth(),
+          is3D
+        );
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+        setSelectedClimateStateId(focusedStateId);
+      } else {
+        const targetZoom = Math.min(2.0, Math.max(1.2, zoom));
+        const targetPan = calculateStateCenterPan(centroids[focusedStateId], targetZoom, is3D);
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      }
       onFocusStateHandled?.();
     }
-  }, [focusedStateId, centroids, is3D, onFocusStateHandled]);
+  }, [focusedStateId, centroids, getContainerWidth, is3D, isClimateActive, mainMode, onFocusStateHandled, zoom]);
 
   // Spherical Globe Dynamic Angles
   const sphericalAngles = useMemo(() => {
@@ -492,6 +511,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
     if (isEnteringScene) return;
+    // No modo de análise de Clima com diálogo aberto, evita conflitos de arrasto no mapa
+    if (isClimateActive && selectedClimateStateId) return;
 
     stopInertia();
     if (stateHoverDwellTimeoutRef.current) {
@@ -519,6 +540,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     currentMousePosRef.current = { x: e.clientX, y: e.clientY };
 
     if (!isDragging) return;
+    if (isClimateActive && selectedClimateStateId) return;
     const now = performance.now();
 
     lastMousePosRef.current = { x: e.clientX, y: e.clientY, time: now };
@@ -578,8 +600,23 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   // Ultra-fluid focal scroll wheel zoom anchored directly at the mouse cursor position
   const handleWheel = useCallback((e: WheelEvent | React.WheelEvent) => {
+    const target = (e.target as HTMLElement | null);
+
+    // If mouse wheel is over any modal, dialog, scrollable window, allow native scrolling!
+    const isOverScrollable = Boolean(
+      target?.closest?.(
+        '.modal-dialog-climatologia-estado, #dialog-climatologia-estado, [data-scrollable], .overflow-y-auto, .overflow-x-auto, [role="dialog"], .dialog-overlay, .modal-backdrop, .modal-conteudo, .scrollbar-thin'
+      )
+    );
+    if (isOverScrollable) {
+      return;
+    }
+
     e.preventDefault();
     if (isEnteringScene) return;
+    // No modo de análise de Clima com diálogo aberto, evita zoom acidental enquanto lê os dados
+    if (isClimateActive && selectedClimateStateId) return;
+
     stopInertia();
     if (stateHoverDwellTimeoutRef.current) {
       clearTimeout(stateHoverDwellTimeoutRef.current);
@@ -624,7 +661,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserZoomRef.current = clamped.zoom;
       return clamped.zoom;
     });
-  }, [isEnteringScene, stopInertia, pan, mainMode]);
+  }, [isEnteringScene, stopInertia, pan, mainMode, isClimateActive, selectedClimateStateId]);
 
   // Native non-passive wheel event listener ensuring 100% reliable wheel zooming across all browser layouts
   useEffect(() => {
@@ -644,6 +681,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   // Background canvas click: When clicking ocean/background (not on states or UI), deselect all states and close radio
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (hasMovedRef.current || isDragging || isEnteringScene) return;
+    // No modo de análise de clima com foco/diálogo aberto, cliques fora do mapa NÃO fecham o modo!
+    // Apenas os botões de controle 'x' e a tecla 'Esc' fecham esse modo e centralizam o mapa.
+    if (isClimateActive && selectedClimateStateId) {
+      return;
+    }
 
     const target = e.target as HTMLElement;
     if (
@@ -662,10 +704,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    if (selectedStateId || focusedInspectionState || selectedCountry) {
+    if (selectedStateId || selectedCountry) {
       audioEngine.playSfx('click');
       setSelectedStateId(null);
-      setFocusedInspectionState(null);
       setSelectedCountry(null);
       setHoveredStateId(null);
       if (onHoverStateChange) {
@@ -677,39 +718,69 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
   };
 
-  // State selection: Clicks zoom in deeply onto the state's pulsing centroid as the pivot
-  const handleStateClick = (stateId: string) => {
+  // State selection: Behavior is customized independently per mode
+  const handleStateClick = useCallback((stateId: string) => {
     if (hasMovedRef.current || isDragging || isEnteringScene) return;
     stopInertia();
 
-    setSelectedStateId(stateId);
-    audioEngine.playSfx('travel');
+    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
+    const centroid = centroids[stateId];
 
-    // In Musical Heritage mode, tune radio, ensure radio is open, and focus camera smoothly without opening RPG scene
-    if (mainMode === 'musicalidades') {
-      if (!isRadioOpen && onToggleRadio) {
-        onToggleRadio();
-      }
-      const centroid = centroids[stateId];
+    // 1. MODO CLIMA: Abre o diálogo de clima local e foca na telemetria
+    if (isClimateActive || mainMode === 'clima') {
       if (centroid) {
+        const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
+          centroid,
+          stateId,
+          getContainerWidth(),
+          is3D
+        );
+
         setTransitionMode('button');
-        const targetZoom = Math.min(2.0, Math.max(1.1, zoom));
-        const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
         setPan(targetPan);
         setZoom(targetZoom);
         baseUserPanRef.current = targetPan;
         baseUserZoomRef.current = targetZoom;
       }
+      setSelectedStateId(stateId);
+      setSelectedClimateStateId(stateId);
+      audioEngine.playSfx('travel');
       return;
     }
 
+    // 2. MODO MUSICALIDADES: Sintoniza a rádio do estado instantaneamente sem travar o mapa nem cores
+    if (mainMode === 'musicalidades') {
+      setSelectedStateId(stateId);
+      if (!isRadioOpen && onToggleRadio) {
+        onToggleRadio();
+      }
+      audioEngine.playSfx('click');
+      return;
+    }
+
+    // 3. MODO AVENTURA / GERAL: Seleciona o estado com suavidade, mantendo navegação livre e cores ativas
+    setSelectedStateId(stateId);
+    audioEngine.playSfx('click');
+
+    if (centroid) {
+      const targetZoom = Math.max(zoom, 1.4);
+      const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+    }
+  }, [centroids, getContainerWidth, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleRadio, stopInertia, zoom]);
+
+  // Transição suave para a cena do Guardião RPG
+  const handleEnterGuardianScene = useCallback((stateId: string) => {
     const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
     if (guardian) {
       setEnteringGuardianName(guardian.stateNamePt);
       setIsEnteringScene(true);
       setTransitionMode('entry');
 
-      // Lock onto the pulsing circle centroid of this state as the absolute pivot
       const centroid = centroids[stateId];
       if (centroid) {
         const targetZoom = 2.5;
@@ -718,50 +789,16 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         setZoom(targetZoom);
       }
 
-      // Transition smoothly into guardian details scene
       setTimeout(() => {
         onSelectGuardian(guardian);
-      }, 1500);
+      }, 1400);
     }
-  };
-
-  // Right-Click State Centralization & Inspection (Zooms into the center of the screen for reading)
-  const handleStateRightClick = useCallback((stateId: string, e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    if (isEnteringScene) return;
-    stopInertia();
-
-    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
-    const centroid = centroids[stateId];
-    if (!centroid) return;
-
-    // Small states get higher magnification for reading, large states get comfortable framing
-    const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
-    const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
-    const targetZoom = isSmallState ? 2.3 : isLargeState ? 1.55 : 1.9;
-    const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
-
-    setTransitionMode('button');
-    setPan(targetPan);
-    setZoom(targetZoom);
-    baseUserPanRef.current = targetPan;
-    baseUserZoomRef.current = targetZoom;
-
-    setFocusedInspectionState({
-      id: stateId,
-      name: guardian ? guardian.stateNamePt : stateId,
-      region: guardian ? guardian.regionId.replace('_', '-').toUpperCase() : '',
-    });
-
-    audioEngine.playSfx('travel');
-  }, [centroids, is3D, isEnteringScene, stopInertia]);
+  }, [centroids, is3D, onSelectGuardian]);
 
   // Close focus & return camera smoothly to centered full Brazil map
   const handleCloseInspection = useCallback(() => {
-    setFocusedInspectionState(null);
+    setSelectedClimateStateId(null);
+    setSelectedStateId(null);
     audioEngine.playMenuHover();
     const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
     setTransitionMode('button');
@@ -775,24 +812,25 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (focusedInspectionState) {
+        if (selectedClimateStateId) {
+          setSelectedClimateStateId(null);
           handleCloseInspection();
-        }
-        if (selectedStateId) {
+        } else if (selectedStateId) {
           setSelectedStateId(null);
-        }
-        if (selectedCountry) {
+          handleCloseInspection();
+        } else if (selectedCountry) {
           setSelectedCountry(null);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedInspectionState, selectedStateId, selectedCountry, handleCloseInspection]);
+  }, [selectedStateId, selectedCountry, selectedClimateStateId, handleCloseInspection]);
 
   // Custom onEnter handler for Brazilian States: Highlights state, updates HUD & plays sound
   const handleStateEnter = useCallback((stateId: string) => {
     if (isMouseDownRef.current || hasMovedRef.current || isEnteringScene) return;
+    if (isClimateActive && selectedClimateStateId) return;
 
     if (stateLeaveTimeoutRef.current) {
       clearTimeout(stateLeaveTimeoutRef.current);
@@ -811,11 +849,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       lastSoundPlayedStateRef.current = stateId;
       audioEngine.playMenuHover();
     }
-  }, [isEnteringScene, onHoverStateChange]);
+  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId]);
 
   // Graceful debounce on leaving state
   const handleStateLeave = useCallback((stateId: string) => {
     if (isEnteringScene) return;
+    if (isClimateActive && selectedClimateStateId) return;
 
     if (stateLeaveTimeoutRef.current) {
       clearTimeout(stateLeaveTimeoutRef.current);
@@ -830,11 +869,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         lastSoundPlayedStateRef.current = null;
       }
     }, 120);
-  }, [isEnteringScene, onHoverStateChange]);
+  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId]);
 
   // Custom onEnter handler for South America Neighbor Countries: Fires ONCE upon entering
   const handleCountryEnter = useCallback((countryId: string) => {
     if (isMouseDownRef.current || hasMovedRef.current || isEnteringScene) return;
+    if (isClimateActive && selectedClimateStateId) return;
 
     if (countryLeaveTimeoutRef.current) {
       clearTimeout(countryLeaveTimeoutRef.current);
@@ -850,10 +890,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       lastSoundPlayedCountryRef.current = countryId;
       audioEngine.playMenuHover();
     }
-  }, [isEnteringScene]);
+  }, [isEnteringScene, isClimateActive, selectedClimateStateId]);
 
   const handleCountryLeave = useCallback((countryId: string) => {
     if (isEnteringScene) return;
+    if (isClimateActive && selectedClimateStateId) return;
 
     if (countryLeaveTimeoutRef.current) {
       clearTimeout(countryLeaveTimeoutRef.current);
@@ -1083,15 +1124,24 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       }`}
       style={{
         perspective: '1600px',
-        backgroundColor: !isClimateActive && terrainProvider === 'voyager_parchment' ? '#b08f58' : '#031526',
+        background:
+          !isClimateActive && terrainProvider === 'voyager_parchment'
+            ? 'radial-gradient(circle at 50% 50%, #fbf2df 0%, #eedbb8 30%, #dfc59b 55%, #b08f58 85%, #8c6a38 100%)'
+            : 'radial-gradient(circle at 50% 50%, #0e568e 0%, #0a3d68 25%, #062846 50%, #03172b 75%, #020d1c 95%)',
       }}
     >
+      {/* 0. Seamless Full-Viewport Subtle Aged Paper Noise Overlay */}
+      <div
+        className="camada-ruido-oceano-global absolute inset-0 pointer-events-none z-0 mix-blend-overlay opacity-20 select-none"
+        style={{
+          backgroundImage: `url("${FINE_PAPER_NOISE_SVG}")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '256px 256px',
+        }}
+      />
       {/* 1. Procedural SVG Filters Definition (Relief & Antique Parchment Paper) */}
       <ProceduralTerrainFilter />
       <ParchmentTextureFilter />
-
-      {/* 2. Full-Screen Aged Parchment Noise & Fiber Grain Overlay (No Grid Lines, Pure Vintage Texture) */}
-      <AgedParchmentOverlay isParchmentMode={!isClimateActive && terrainProvider === 'voyager_parchment'} />
 
       {/* 3. Cinematic Zoom-In & Fade Veil (Triggered on State Click in Adventure mode) */}
       {isEnteringScene && (
@@ -1255,7 +1305,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               transition: stageTransition,
             }}
           >
-            {/* Layer 0: Seamless Infinite Procedural Ocean (Game Engine Fluid Simulation) */}
+            {/* Layer 0: Seamless Infinite Procedural Ocean with Linear Gradient & Overlay Noise */}
             <ProceduralOceanCanvas
               isPlayingAnimation={true}
               isParchmentMode={!isClimateActive && terrainProvider === 'voyager_parchment'}
@@ -1283,11 +1333,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 isClimateActive={isClimateActive}
                 climateMode={currentClimateMode}
                 stateWeather={stateWeather}
+                focusedClimateStateId={isClimateActive ? selectedClimateStateId : null}
                 is3D={is3D}
                 onStateEnter={handleStateEnter}
                 onStateLeave={handleStateLeave}
                 onStateClick={handleStateClick}
-                onStateContextMenu={handleStateRightClick}
                 onCountryEnter={handleCountryEnter}
                 onCountryLeave={handleCountryLeave}
                 onCountryClick={(country) => {
@@ -1311,6 +1361,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 onSelectStation={handleSelectClimateStation}
                 speedMultiplier={climateSpeedMultiplier}
                 dateTimeFormatted={climateDateTimeFormatted}
+                focusedStateId={isClimateActive ? selectedClimateStateId : null}
+                disableHoverTooltip={Boolean(isClimateActive && selectedClimateStateId)}
               />
             </div>
 
@@ -1344,7 +1396,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                   onSelectGuardian={handleStateClick}
                   onStateEnter={handleStateEnter}
                   onStateLeave={handleStateLeave}
-                  onStateContextMenu={handleStateRightClick}
                 />
               </div>
             )}
@@ -1370,13 +1421,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               <ProceduralAtmosphereLayer enabled={atmosphereEnabled} timeOverride={timeOverride} />
             </div>
 
-            {/* Layer 5: Animated Anchor Point Reticle (Pivô de Rotação Goiás - GO em Vermelho por 1s) */}
+            {/* Layer 5: Animated Anchor Point Reticle (Pivô de Rotação Fronteira GO • TO • MT em Vermelho por 1s) */}
             {showAnchorPoint && (
               <div
-                className="pivo-anchor-point-goias absolute pointer-events-none z-30 transition-opacity duration-300 animate-fadeIn"
+                className="pivo-anchor-point-brasil absolute pointer-events-none z-30 transition-opacity duration-300 animate-fadeIn"
                 style={{
-                  left: 1280,
-                  top: 720,
+                  left: BRAZIL_MAP_PIVOT_CENTER[0],
+                  top: BRAZIL_MAP_PIVOT_CENTER[1],
                   transform: 'translate(-50%, -50%)',
                 }}
               >
@@ -1396,11 +1447,41 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                   {/* Red Pill Label */}
                   <div className="absolute top-14 whitespace-nowrap px-3 py-1.5 rounded-lg bg-red-950/95 border border-red-500 text-red-200 font-serif font-bold text-xs shadow-2xl shadow-black flex items-center gap-1.5 animate-bounce">
                     <MapPin className="w-3.5 h-3.5 text-red-400" />
-                    Pivô: Goiás (GO)
+                    Pivô: Fronteira GO • TO • MT
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Floating Close 'X' Button on Map next to highlighted climate state */}
+            {(() => {
+              if (!isClimateActive || !selectedClimateStateId || !centroids[selectedClimateStateId]) return null;
+              return (
+                <div
+                  className="btn-fechar-foco-estado-flutuante absolute z-50 pointer-events-auto transition-transform hover:scale-110 active:scale-95 animate-in fade-in zoom-in-75 duration-200 touch-manipulation"
+                  style={{
+                    left: centroids[selectedClimateStateId][0] + 42,
+                    top: centroids[selectedClimateStateId][1] - 42,
+                    transform: 'translate(-50%, -50%) translateZ(40px)',
+                    transformStyle: 'preserve-3d',
+                  }}
+                >
+                  <button
+                    id="btn-fechar-foco-flutuante-mapa"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCloseInspection();
+                    }}
+                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/95 border-2 border-cyan-400 hover:border-cyan-300 text-cyan-300 hover:text-white shadow-[0_0_24px_rgba(6,182,212,0.75),0_8px_24px_rgba(0,0,0,0.9)] cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-black"
+                    title="Fechar foco no estado e centralizar o mapa do Brasil (Esc)"
+                  >
+                    <X className="w-4 h-4 text-cyan-300 group-hover:rotate-90 transition-transform duration-200" />
+                    <span className="text-[11px] pr-0.5 font-bold">Fechar Foco</span>
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1473,52 +1554,14 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         />
       )}
 
-      {/* 13.5. Banner Flutuante de Foco & Leitura do Estado (Ativado por Botão Direito) */}
-      {focusedInspectionState && (
-        <div
-          id="banner-hud-foco-estado"
-          className="banner-hud-foco-estado absolute top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3.5 px-4 py-2.5 rounded-xl bg-slate-950/90 backdrop-blur-md border border-amber-400/80 shadow-[0_8px_32px_rgba(0,0,0,0.8),0_0_20px_rgba(245,158,11,0.25)] animate-in fade-in slide-in-from-top-3 duration-200 select-none"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0">
-              <Crosshair className="w-4 h-4 text-amber-300 animate-pulse" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                  {focusedInspectionState.id}
-                </span>
-                <span className="text-sm font-serif font-bold text-amber-100 tracking-wide">
-                  {focusedInspectionState.name}
-                </span>
-                {focusedInspectionState.region && (
-                  <span className="text-[10px] text-amber-300/70 font-sans">
-                    • Região {focusedInspectionState.region}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] text-amber-200/60 font-mono tracking-wider">
-                Foco Topográfico & Leitura Centralizada
-              </span>
-            </div>
-          </div>
-
-          <div className="h-6 w-px bg-amber-500/30 mx-1 shrink-0" />
-
-          <button
-            id="btn-fechar-foco-estado"
-            type="button"
-            onClick={handleCloseInspection}
-            className="btn-fechar-foco-estado flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/60 hover:border-amber-300 text-amber-200 text-xs font-serif font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-            title="Voltar a centralizar todo o Brasil (Esc)"
-          >
-            <X className="w-3.5 h-3.5 text-amber-300" />
-            <span>Fechar</span>
-            <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-slate-900/90 border border-amber-400/40 rounded text-amber-300 shadow-inner">
-              Esc
-            </kbd>
-          </button>
-        </div>
+      {/* 13.6. Diálogo Completo de Climatologia, Relevos, Enchentes e Extremos Históricos (Ativado por Botão Esquerdo no Modo Clima) */}
+      {isClimateActive && selectedClimateStateId && (
+        <StateClimateDialog
+          stateId={selectedClimateStateId}
+          weatherData={stateWeather[selectedClimateStateId]}
+          allStatesWeather={stateWeather}
+          onClose={handleCloseInspection}
+        />
       )}
 
       {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave */}

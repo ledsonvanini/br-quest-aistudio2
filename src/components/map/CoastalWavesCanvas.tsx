@@ -211,19 +211,33 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
         // Directional arrowhead
         ctx.fillStyle = curr.color;
         ctx.beginPath();
-        ctx.moveTo(arrowLen + 4, 0);
-        ctx.lineTo(arrowLen - 6, -4.5);
+        ctx.moveTo(arrowLen + 6, 0);
+        ctx.lineTo(arrowLen - 6, -5);
         ctx.lineTo(arrowLen - 3, 0);
-        ctx.lineTo(arrowLen - 6, 4.5);
+        ctx.lineTo(arrowLen - 6, 5);
         ctx.closePath();
         ctx.fill();
 
-        // Oceanic current label
-        ctx.fillStyle = 'rgba(186, 230, 253, 0.75)';
-        ctx.font = 'bold 9px serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(curr.name, 0, -10);
+        ctx.restore();
 
+        // Oceanic current label with clear dark badge
+        ctx.save();
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        const textMetrics = ctx.measureText(curr.name);
+        const textW = textMetrics.width;
+
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
+        ctx.beginPath();
+        ctx.roundRect(curr.x - textW / 2 - 8, curr.y - 25, textW + 16, 20, 10);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#7dd3fc';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(curr.name, curr.x, curr.y - 15);
         ctx.restore();
       });
 
@@ -384,14 +398,28 @@ export const CoastalWavesCanvas: React.FC<CoastalWavesCanvasProps> = ({ enabled 
         ctx.arc(isl.x, isl.y, isl.radius * 1.5 + outerPulse * 12, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Island name tag & pin
-        ctx.fillStyle = 'rgba(240, 249, 255, 0.95)';
-        ctx.font = 'bold 11px serif';
+        // Island name tag & pin with clear high-contrast badge
+        ctx.save();
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        const textMetrics = ctx.measureText(isl.name);
+        const textW = textMetrics.width;
+
+        const badgeX = isl.x + isl.radius + 8;
+        const badgeY = isl.y - 9;
+
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
+        ctx.beginPath();
+        ctx.roundRect(badgeX - 6, badgeY - 3, textW + 12, 20, 6);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.7)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#f0f9ff';
         ctx.textAlign = 'left';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 4;
-        ctx.fillText(isl.name, isl.x + isl.radius + 8, isl.y + 4);
-        ctx.shadowBlur = 0;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isl.name, badgeX, badgeY + 7);
+        ctx.restore();
       });
 
       animId = requestAnimationFrame(render);

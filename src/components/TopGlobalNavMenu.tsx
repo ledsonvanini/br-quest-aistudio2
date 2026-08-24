@@ -1172,14 +1172,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               <div className="flex items-center gap-1 font-medium">
                 <MousePointerClick className="w-3 h-3 text-emerald-400" />
                 <span className="text-slate-300">
-                  <strong className="text-emerald-300">Botão Esquerdo:</strong> Selecionar
-                </span>
-              </div>
-              <span className="text-slate-700">•</span>
-              <div className="flex items-center gap-1 font-medium">
-                <Crosshair className="w-3 h-3 text-amber-400" />
-                <span className="text-slate-300">
-                  <strong className="text-amber-300">Botão Direito:</strong> Centralizar
+                  <strong className="text-emerald-300">Botão Esquerdo:</strong> Focar & Inspecionar
                 </span>
               </div>
               <span className="text-slate-700">•</span>
@@ -1187,7 +1180,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 <kbd className="px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 font-mono text-[9px] text-amber-300 font-bold">
                   Esc
                 </kbd>
-                <span>Restaurar</span>
+                <span>Restaurar Mapa</span>
               </div>
             </div>
           </div>

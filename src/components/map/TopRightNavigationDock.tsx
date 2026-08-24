@@ -68,7 +68,7 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
       {/* Divisor Vertical */}
       <div className="h-5 w-[1px] bg-slate-800 shrink-0" />
 
-      {/* Centralizar Brasil (Pivô Goiás - GO) */}
+      {/* Centralizar Brasil (Pivô Fronteira GO • TO • MT) */}
       <div className="relative group">
         <button
           id="btn-centralizar-brasil-topo"
@@ -84,9 +84,9 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
 
         <SpeechBubbleTooltip
           title="Centralizar no Brasil"
-          badge="Pivô GO"
+          badge="Pivô GO-TO-MT"
           badgeColor="bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
-          description="Restaura a visão do mapa centralizada no marco geográfico central (Goiás)."
+          description="Restaura a visão centralizada no pivô da fronteira GO • TO • MT com zoom ampliado."
           align="right"
         />
       </div>

@@ -38,6 +38,25 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
     let rafId: number;
 
     const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+
+      // Check if mouse is over any modal, dialog, top menu, footer, scrollable window or scrollbar
+      const isOverModalOrScrollable = Boolean(
+        target?.closest?.(
+          '.modal-dialog-climatologia-estado, #dialog-climatologia-estado, [role="dialog"], .dialog-overlay, .modal-backdrop, .modal-conteudo, .modal-arvore-habilidades, .modal-quiz-guardiao, .modal-configuracoes, .modal-inventario-guardiao, .modal-filosofia-sobre, .modal-neighbor-country, [data-scrollable], .overflow-y-auto, .overflow-x-auto, .scrollbar-thin, .menu-superior-status, #menu-global-topo-unificado, .rodape-aplicacao, #rodape-aplicacao-dinamico, .painel-toolbar-relevo'
+        )
+      );
+
+      if (isOverModalOrScrollable) {
+        if (cursorRef.current) cursorRef.current.style.display = 'none';
+        setIsVisible(false);
+        isOverClickableRef.current = false;
+        setIsOverClickable(false);
+        isOverRadioRef.current = false;
+        setIsOverRadio(false);
+        return;
+      }
+
       const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -45,6 +64,7 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
       targetPosRef.current = { x, y };
 
       if (!cursorRef.current?.style.display || cursorRef.current.style.display === 'none') {
+        if (cursorRef.current) cursorRef.current.style.display = 'block';
         setIsVisible(true);
       }
 
@@ -52,7 +72,6 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
       const now = performance.now();
       if (now - lastHitTestTimeRef.current > 80) {
         lastHitTestTimeRef.current = now;
-        const target = e.target as HTMLElement | null;
         const overRadio = Boolean(
           target?.closest?.(
             '.painel-radio-vintage-player, #painel-radio-vintage-player, [data-radio-interactive], .radio-device-cabinet'

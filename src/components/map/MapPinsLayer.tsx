@@ -17,7 +17,6 @@ interface MapPinsLayerProps {
   onSelectGuardian: (stateId: string) => void;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
-  onStateContextMenu?: (stateId: string, e: React.MouseEvent) => void;
 }
 
 export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
@@ -30,7 +29,6 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
   onSelectGuardian,
   onStateEnter,
   onStateLeave,
-  onStateContextMenu,
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -90,7 +88,6 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
               onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onStateContextMenu?.(stateId, e);
               }}
               title={stateInfo.name}
             />
@@ -111,7 +108,6 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
               onContextMenu={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onStateContextMenu?.(stateId, e);
               }}
             >
               {/* Soft Expanding Pulse Wave */}

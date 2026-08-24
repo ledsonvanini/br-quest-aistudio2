@@ -44,6 +44,8 @@ interface ClimatePhenomenaLayerProps {
   onSelectStation?: (station: ClimateStationData) => void;
   speedMultiplier?: number;
   dateTimeFormatted?: string;
+  focusedStateId?: string | null;
+  disableHoverTooltip?: boolean;
 }
 
 interface ParticleStreamline {
@@ -139,9 +141,12 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
   onSelectStation,
   speedMultiplier = 1.0,
   dateTimeFormatted,
+  focusedStateId = null,
+  disableHoverTooltip = false,
 }) => {
   const windCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const heatMapCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const focusedHeatMapCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const projection = useMemo(() => createBrazilMercatorProjection(), []);
 
@@ -339,6 +344,18 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(offscreen, 0, 0, w, h);
+
+    // Also draw onto focused state canvas if present
+    const focusedCanvas = focusedHeatMapCanvasRef.current;
+    if (focusedCanvas) {
+      const fCtx = focusedCanvas.getContext('2d');
+      if (fCtx) {
+        fCtx.clearRect(0, 0, w, h);
+        fCtx.imageSmoothingEnabled = true;
+        fCtx.imageSmoothingQuality = 'high';
+        fCtx.drawImage(offscreen, 0, 0, w, h);
+      }
+    }
 
   }, [active, mode, statePathList]);
 
@@ -562,9 +579,28 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
   }, [active, mode, speedMultiplier, windVectorGrid]);
 
   const hoveredStateInfo = useMemo(() => {
-    if (!hoveredStateId || !stateWeather[hoveredStateId]) return null;
+    // Quando um estado está inspecionado/focado, desativa o balão com dicas breves
+    if (focusedStateId || disableHoverTooltip || !hoveredStateId || !stateWeather[hoveredStateId]) {
+      return null;
+    }
     return stateWeather[hoveredStateId];
-  }, [hoveredStateId, stateWeather]);
+  }, [focusedStateId, disableHoverTooltip, hoveredStateId, stateWeather]);
+
+  // Identificação das UFs com Extremos de Temperatura (Máxima e Mínima Nacional)
+  const { maxTempStateInfo, minTempStateInfo } = useMemo(() => {
+    const list = Object.values(stateWeather);
+    if (!list.length) return { maxTempStateInfo: null, minTempStateInfo: null };
+
+    let maxSt = list[0];
+    let minSt = list[0];
+
+    list.forEach((st) => {
+      if (st.temperature > maxSt.temperature) maxSt = st;
+      if (st.temperature < minSt.temperature) minSt = st;
+    });
+
+    return { maxTempStateInfo: maxSt, minTempStateInfo: minSt };
+  }, [stateWeather]);
 
   const hoverPos = useMemo(() => {
     if (!hoveredStateId) return null;
@@ -580,7 +616,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
       className="camada-fenomenos-climaticos absolute inset-0 pointer-events-none overflow-visible"
       style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT }}
     >
-      {/* 1. Continuous Meteorological Heat Map Canvas (Clipped to Brazil's geometry) */}
+      {/* 1.A Background Continuous Heat Map Canvas (Muted / Grayscale when a state is focused, full opacity otherwise) */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -592,16 +628,38 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           ref={heatMapCanvasRef}
           width={MAP_CANVAS_WIDTH}
           height={MAP_CANVAS_HEIGHT}
-          className="mapa-calor-canvas absolute inset-0 pointer-events-none opacity-85 transition-opacity duration-300"
+          className={`mapa-calor-canvas absolute inset-0 pointer-events-none transition-all duration-300 ${
+            focusedStateId ? 'opacity-20 grayscale brightness-75' : 'opacity-85'
+          }`}
         />
       </div>
+
+      {/* 1.B Focused State Continuous Heat Map Canvas (Vibrant, full-color IDW shader strictly inside the focused state) */}
+      {focusedStateId && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            clipPath: 'url(#focused-state-climate-clip)',
+            WebkitClipPath: 'url(#focused-state-climate-clip)',
+          }}
+        >
+          <canvas
+            ref={focusedHeatMapCanvasRef}
+            width={MAP_CANVAS_WIDTH}
+            height={MAP_CANVAS_HEIGHT}
+            className="mapa-calor-canvas-focado absolute inset-0 pointer-events-none opacity-95 transition-opacity duration-300"
+          />
+        </div>
+      )}
 
       {/* 2. Meteorological Wind Streamlines & Vector Arrows Canvas */}
       <canvas
         ref={windCanvasRef}
         width={MAP_CANVAS_WIDTH}
         height={MAP_CANVAS_HEIGHT}
-        className="streamlines-canvas absolute inset-0 pointer-events-none z-20"
+        className={`streamlines-canvas absolute inset-0 pointer-events-none z-20 transition-opacity duration-300 ${
+          focusedStateId ? 'opacity-35' : 'opacity-100'
+        }`}
       />
 
       {/* 3. SVG Overlays: Badges, Isotherms, Wind Guides, ENSO Gradients */}
@@ -610,6 +668,29 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         viewBox={`0 0 ${MAP_CANVAS_WIDTH} ${MAP_CANVAS_HEIGHT}`}
       >
         <defs>
+          {/* Dynamic Clip-path for the Focused State (Precise isolation of the vibrant shader) */}
+          {focusedStateId && (
+            <clipPath id="focused-state-climate-clip">
+              <path d={statePathList.find((s) => s.stateId === focusedStateId)?.d || ''} />
+            </clipPath>
+          )}
+
+          {/* Gradiente Radial de Mancha de Calor Crítico (Hotspot Orgânico) */}
+          <radialGradient id="hotspotGlowGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.85" />
+            <stop offset="30%" stopColor="#f97316" stopOpacity="0.65" />
+            <stop offset="60%" stopColor="#fbbf24" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.0" />
+          </radialGradient>
+
+          {/* Gradiente Radial de Mancha de Frio Crítico (Coldspot Orgânico) */}
+          <radialGradient id="coldspotGlowGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.85" />
+            <stop offset="30%" stopColor="#38bdf8" stopOpacity="0.65" />
+            <stop offset="65%" stopColor="#bae6fd" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#bae6fd" stopOpacity="0.0" />
+          </radialGradient>
+
           <radialGradient id="ensoDroughtGrad" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#ef4444" stopOpacity="0.45" />
             <stop offset="70%" stopColor="#f59e0b" stopOpacity="0.2" />
@@ -617,60 +698,232 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </radialGradient>
         </defs>
 
-        {/* 3.1 Temperature Badges on State Centroids (Mode: Temperaturas & Frentes) */}
+        {/* 3.1 Temperature Badges, Thermal Hotspots & Coldspots on State Centroids */}
         {mode === 'temperaturas_frentes' && (
-          <g className="badges-temperatura-estados pointer-events-none">
-            {statePathList.map((item) => {
-              if (!item.centroidX || !item.centroidY) return null;
-              const isHovered = hoveredStateInfo?.stateId === item.stateId;
+          <g className="camada-termica-extremos-e-badges pointer-events-none">
+            {/* 3.1.1 MANCHAS TÉRMICAS DE CALOR EXTREMO (HOTSPOTS CRÍTICOS) */}
+            {statePathList
+              .filter(
+                (item) =>
+                  item.centroidX &&
+                  item.centroidY &&
+                  (item.temp >= 32 || item.stateId === maxTempStateInfo?.stateId) &&
+                  (!focusedStateId || focusedStateId === item.stateId)
+              )
+              .map((item) => {
+                const isMaxNational = item.stateId === maxTempStateInfo?.stateId;
+                const rx = isMaxNational ? 110 : 75;
+                const ry = isMaxNational ? 80 : 55;
 
-              return (
-                <g
-                  key={`temp-badge-${item.stateId}`}
-                  transform={`translate(${item.centroidX}, ${item.centroidY})`}
-                  className="transition-transform duration-150"
-                >
-                  {/* Badge Container */}
-                  <rect
-                    x="-26"
-                    y="-13"
-                    width="52"
-                    height="26"
-                    rx="13"
-                    fill="rgba(15, 23, 42, 0.92)"
-                    stroke={isHovered ? '#fbbf24' : item.colorHex}
-                    strokeWidth={isHovered ? '2.5' : '1.5'}
-                    className="shadow-xl"
-                  />
-
-                  {/* UF Tag */}
-                  <text
-                    x="-10"
-                    y="4"
-                    textAnchor="middle"
-                    fill="#94a3b8"
-                    fontSize="10"
-                    fontWeight="bold"
-                    fontFamily="sans-serif"
+                return (
+                  <g
+                    key={`hotspot-${item.stateId}`}
+                    transform={`translate(${item.centroidX}, ${item.centroidY})`}
+                    className="mancha-calor-termica"
                   >
-                    {item.stateId}
-                  </text>
+                    {/* Difusão Térmica Orgânica sem círculos pontilhados */}
+                    <ellipse
+                      cx="0"
+                      cy="0"
+                      rx={rx}
+                      ry={ry}
+                      fill="url(#hotspotGlowGrad)"
+                      className="animate-pulse"
+                      style={{ animationDuration: isMaxNational ? '2.2s' : '3.5s' }}
+                    />
+                    <ellipse
+                      cx="0"
+                      cy="0"
+                      rx={rx * 0.55}
+                      ry={ry * 0.55}
+                      fill="url(#hotspotGlowGrad)"
+                      opacity={0.8}
+                    />
 
-                  {/* Temperature Value */}
-                  <text
-                    x="12"
-                    y="4"
-                    textAnchor="middle"
-                    fill={item.colorHex}
-                    fontSize="13"
-                    fontWeight="900"
-                    fontFamily="sans-serif"
+                    {/* Tag de Destaque Nacional para o Ponto Mais Quente do Brasil */}
+                    {isMaxNational && (
+                      <g transform="translate(0, -38)" className="tag-polo-calor-maximo">
+                        <rect
+                          x="-82"
+                          y="-13"
+                          width="164"
+                          height="26"
+                          rx="13"
+                          fill="rgba(69, 10, 10, 0.95)"
+                          stroke="#ef4444"
+                          strokeWidth="1.8"
+                          className="shadow-xl"
+                        />
+                        <text
+                          x="0"
+                          y="4"
+                          textAnchor="middle"
+                          fill="#fecaca"
+                          fontSize="11"
+                          fontWeight="bold"
+                          fontFamily="sans-serif"
+                        >
+                          🔥 Máxima Brasil: {item.stateId} {item.temp}°C
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+            {/* 3.1.2 MANCHAS TÉRMICAS DE FRIO INTENSO (COLDSPOTS CRÍTICOS) */}
+            {statePathList
+              .filter(
+                (item) =>
+                  item.centroidX &&
+                  item.centroidY &&
+                  (item.temp <= 21 || item.stateId === minTempStateInfo?.stateId) &&
+                  (!focusedStateId || focusedStateId === item.stateId)
+              )
+              .map((item) => {
+                const isMinNational = item.stateId === minTempStateInfo?.stateId;
+                const rx = isMinNational ? 105 : 70;
+                const ry = isMinNational ? 75 : 50;
+
+                return (
+                  <g
+                    key={`coldspot-${item.stateId}`}
+                    transform={`translate(${item.centroidX}, ${item.centroidY})`}
+                    className="mancha-frio-termica"
                   >
-                    {Math.round(item.temp)}°
-                  </text>
-                </g>
-              );
-            })}
+                    {/* Difusão Criogênica Orgânica sem círculos pontilhados */}
+                    <ellipse
+                      cx="0"
+                      cy="0"
+                      rx={rx}
+                      ry={ry}
+                      fill="url(#coldspotGlowGrad)"
+                      className="animate-pulse"
+                      style={{ animationDuration: isMinNational ? '2.5s' : '4s' }}
+                    />
+                    <ellipse
+                      cx="0"
+                      cy="0"
+                      rx={rx * 0.55}
+                      ry={ry * 0.55}
+                      fill="url(#coldspotGlowGrad)"
+                      opacity={0.8}
+                    />
+
+                    {/* Tag de Destaque Nacional para o Ponto Mais Frio do Brasil */}
+                    {isMinNational && (
+                      <g transform="translate(0, 36)" className="tag-polo-frio-minimo">
+                        <rect
+                          x="-80"
+                          y="-13"
+                          width="160"
+                          height="26"
+                          rx="13"
+                          fill="rgba(8, 47, 73, 0.95)"
+                          stroke="#38bdf8"
+                          strokeWidth="1.8"
+                          className="shadow-xl"
+                        />
+                        <text
+                          x="0"
+                          y="4"
+                          textAnchor="middle"
+                          fill="#bae6fd"
+                          fontSize="11"
+                          fontWeight="bold"
+                          fontFamily="sans-serif"
+                        >
+                          ❄️ Mínima Brasil: {item.stateId} {item.temp}°C
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+            {/* 3.1.3 Badges de Temperatura Centróides com Contraste Marcante (Mantém labels correntes de todos os estados) */}
+            <g className="badges-temperatura-estados pointer-events-none">
+              {statePathList.map((item) => {
+                if (!item.centroidX || !item.centroidY) return null;
+                const isFocused = focusedStateId === item.stateId;
+                const isMuted = focusedStateId && !isFocused;
+
+                const isHovered = hoveredStateInfo?.stateId === item.stateId;
+                const isMax = item.stateId === maxTempStateInfo?.stateId;
+                const isMin = item.stateId === minTempStateInfo?.stateId;
+
+                return (
+                  <g
+                    key={`temp-badge-${item.stateId}`}
+                    transform={`translate(${item.centroidX}, ${item.centroidY})`}
+                    className={`transition-all duration-200 ${
+                      isFocused ? 'scale-125 z-40' : isMuted ? 'opacity-70 scale-95' : 'opacity-90'
+                    }`}
+                  >
+                    {/* Badge Container */}
+                    <rect
+                      x="-26"
+                      y="-13"
+                      width="52"
+                      height="26"
+                      rx="13"
+                      fill={
+                        isFocused
+                          ? 'rgba(8, 47, 73, 0.98)'
+                          : isMuted
+                          ? 'rgba(24, 24, 27, 0.92)'
+                          : isMax
+                          ? 'rgba(69, 10, 10, 0.96)'
+                          : isMin
+                          ? 'rgba(8, 47, 73, 0.96)'
+                          : 'rgba(15, 23, 42, 0.94)'
+                      }
+                      stroke={
+                        isFocused
+                          ? '#38bdf8'
+                          : isMuted
+                          ? '#52525b'
+                          : isHovered
+                          ? '#fbbf24'
+                          : isMax
+                          ? '#ef4444'
+                          : isMin
+                          ? '#38bdf8'
+                          : item.colorHex
+                      }
+                      strokeWidth={isFocused ? '3.2' : isMuted ? '1.2' : isHovered ? '2.8' : isMax || isMin ? '2.2' : '1.6'}
+                      className={`shadow-xl ${isFocused ? 'shadow-cyan-500/50' : ''}`}
+                    />
+
+                    {/* UF Tag */}
+                    <text
+                      x="-10"
+                      y="4"
+                      textAnchor="middle"
+                      fill={isFocused ? '#38bdf8' : isMuted ? '#a1a1aa' : '#e2e8f0'}
+                      fontSize={isFocused ? '10.5' : '10'}
+                      fontWeight="bold"
+                      fontFamily="sans-serif"
+                    >
+                      {item.stateId}
+                    </text>
+
+                    {/* Temperature Value */}
+                    <text
+                      x="12"
+                      y="4"
+                      textAnchor="middle"
+                      fill={isFocused ? '#ffffff' : isMuted ? '#d4d4d8' : item.colorHex}
+                      fontSize={isFocused ? '13.5' : '13'}
+                      fontWeight="900"
+                      fontFamily="sans-serif"
+                    >
+                      {Math.round(item.temp)}°
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
           </g>
         )}
 
@@ -812,55 +1065,97 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         </div>
       )}
 
-      {/* 6. Floating Meteorological Tooltip Card on Hover */}
-      {hoveredStateInfo && hoverPos && (
+      {/* 6. Floating Meteorological Tooltip Card on Hover (Edge & Viewport Aware Dynamic Positioning) */}
+      {hoveredStateInfo && hoverPos && !disableHoverTooltip && (
         <div
-          className="absolute pointer-events-none z-50 transition-all duration-150"
+          id="balao-telemetria-estado-hover"
+          className="balao-telemetria-estado-hover absolute pointer-events-none transition-all duration-150 z-50 select-none"
           style={{
-            left: `${hoverPos.x + 35}px`,
-            top: `${hoverPos.y - 70}px`,
-            transform: 'translate(0, -50%)',
+            left: `${
+              hoverPos.x > 1680
+                ? hoverPos.x - 30
+                : hoverPos.x < 720
+                ? hoverPos.x + 30
+                : hoverPos.x + 30
+            }px`,
+            top: `${
+              hoverPos.y < 400
+                ? hoverPos.y + 40
+                : hoverPos.y > 1020
+                ? hoverPos.y - 40
+                : hoverPos.y
+            }px`,
+            transform: `translate(${hoverPos.x > 1680 ? '-100%' : '0%'}, ${
+              hoverPos.y < 400 ? '0%' : hoverPos.y > 1020 ? '-100%' : '-50%'
+            })`,
+            zIndex: 9999,
+            isolation: 'isolate',
           }}
         >
-          <div className="bg-slate-950/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-4 shadow-2xl min-w-[240px] text-white">
+          <div className="card-balao-conteudo bg-slate-950/95 backdrop-blur-md border border-slate-700/90 rounded-2xl p-3 sm:p-4 shadow-[0_16px_48px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] w-[min(90vw,290px)] max-w-[calc(100vw-24px)] text-white">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
-              <div>
-                <h4 className="font-black text-sm text-slate-100 flex items-center gap-1.5">
-                  <span className="text-amber-400 font-mono font-bold">{hoveredStateInfo.stateId}</span>
-                  <span>{hoveredStateInfo.stateName}</span>
+              <div className="min-w-0">
+                <h4 className="font-black text-sm text-slate-100 flex items-center gap-1.5 truncate">
+                  <span className="text-amber-400 font-mono font-bold shrink-0">{hoveredStateInfo.stateId}</span>
+                  <span className="truncate">{hoveredStateInfo.stateName}</span>
                 </h4>
-                <p className="text-[11px] text-slate-400 font-medium">Cap: {hoveredStateInfo.capital}</p>
+                <p className="text-[11px] text-slate-400 font-medium truncate">Cap: {hoveredStateInfo.capital}</p>
               </div>
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 shadow-inner shrink-0 ml-2">
                 <Thermometer className="w-4 h-4 text-amber-400" />
-                <span className="font-black text-base text-amber-300">
+                <span className="font-black text-sm sm:text-base text-amber-300 font-mono">
                   {hoveredStateInfo.temperature}°C
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
               <div className="flex items-center gap-1.5 text-slate-300">
-                <Droplets className="w-3.5 h-3.5 text-cyan-400" />
+                <Droplets className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>Umid: <strong className="text-white">{hoveredStateInfo.humidity}%</strong></span>
               </div>
               <div className="flex items-center gap-1.5 text-slate-300">
-                <CloudRain className="w-3.5 h-3.5 text-sky-400" />
+                <CloudRain className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                 <span>Chuva: <strong className="text-white">{hoveredStateInfo.precipitation} mm</strong></span>
               </div>
               <div className="flex items-center gap-1.5 text-slate-300">
-                <Wind className="w-3.5 h-3.5 text-emerald-400" />
+                <Wind className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Vento: <strong className="text-white">{hoveredStateInfo.windSpeed} km/h</strong></span>
               </div>
               <div className="flex items-center gap-1.5 text-slate-300">
-                <Gauge className="w-3.5 h-3.5 text-indigo-400" />
+                <Gauge className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                 <span>Pressão: <strong className="text-white">{hoveredStateInfo.surfacePressure} hPa</strong></span>
               </div>
             </div>
 
-            <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-              <span>Sensação: <strong className="text-amber-200">{hoveredStateInfo.apparentTemperature}°C</strong></span>
-              <span className="text-emerald-400 font-semibold">● Open-Meteo ECMWF</span>
+            {/* Destaque das Temperaturas Mínima e Máxima do Estado com truncamento a 2 casas decimais */}
+            <div className="mt-2.5 pt-2 border-t border-slate-800/90 grid grid-cols-2 gap-2 bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono">
+                <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_#38bdf8] shrink-0" />
+                <span className="text-blue-300 font-semibold">Mín:</span>
+                <strong className="text-white font-bold tracking-tight">
+                  {Number(hoveredStateInfo.minTemperature ?? (hoveredStateInfo.temperature - 4.45)).toFixed(2)}°C
+                </strong>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono">
+                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e] shrink-0" />
+                <span className="text-rose-300 font-semibold">Máx:</span>
+                <strong className="text-white font-bold tracking-tight">
+                  {Number(hoveredStateInfo.maxTemperature ?? (hoveredStateInfo.temperature + 3.25)).toFixed(2)}°C
+                </strong>
+              </div>
+            </div>
+
+            <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+              <div className="flex items-center gap-2">
+                <span>Sensação: <strong className="text-amber-200">{Number(hoveredStateInfo.apparentTemperature).toFixed(1)}°C</strong></span>
+                <span className="text-slate-600">•</span>
+                <span>UV: <strong className="text-amber-300">{Number(hoveredStateInfo.uvIndex ?? 7.0).toFixed(1)}</strong></span>
+              </div>
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                ECMWF
+              </span>
             </div>
           </div>
         </div>

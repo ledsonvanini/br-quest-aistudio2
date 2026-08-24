@@ -13,13 +13,16 @@ export interface StateWeatherData {
   capital: string;
   lat: number;
   lng: number;
-  temperature: number; // °C
+  temperature: number; // °C (Atual)
+  minTemperature: number; // °C (Mínima diária)
+  maxTemperature: number; // °C (Máxima diária)
   apparentTemperature: number; // Sensação térmica (°C)
   humidity: number; // %
   precipitation: number; // mm
   windSpeed: number; // km/h
   windDirection: number; // graus (0-360)
   surfacePressure: number; // hPa
+  uvIndex: number; // Índice Ultravioleta (0 a 14)
   weatherCode: number; // WMO Weather interpretation code
 }
 
@@ -143,8 +146,8 @@ const OCEANIC_MONITORING_POINTS = [
 ];
 
 /**
- * Escala Termométrica Oficial ECMWF / Meteored (Imagem 1 de Referência):
- * -4°C a 36°C+
+ * Escala Termométrica Oficial ECMWF / Meteored:
+ * -4°C a 40°C+
  */
 export const ECMWF_TEMP_COLOR_STOPS = [
   { temp: -4, hex: '#bae6fd', label: '-4°C' }, // Gelo Claro
@@ -206,7 +209,65 @@ export function formatMeteoredDateTime(): string {
   return `${capitalizedDay} ${dayNum}, ${hours}:${minutes} (-03)`;
 }
 
-export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryResponse> {
+// Cache em memória e localStorage com TTL de 60 minutos (3600000 ms)
+const CLIMATE_CACHE_KEY = 'br_quest_climate_cache_v2';
+const CLIMATE_CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutos
+
+interface ClimateCacheEntry {
+  timestamp: number;
+  data: ClimateTelemetryResponse;
+}
+
+let inMemoryClimateCache: ClimateCacheEntry | null = null;
+
+function getCachedClimateData(): ClimateTelemetryResponse | null {
+  const now = Date.now();
+  if (inMemoryClimateCache && now - inMemoryClimateCache.timestamp < CLIMATE_CACHE_TTL_MS) {
+    return inMemoryClimateCache.data;
+  }
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const raw = localStorage.getItem(CLIMATE_CACHE_KEY);
+      if (raw) {
+        const parsed: ClimateCacheEntry = JSON.parse(raw);
+        if (parsed && parsed.timestamp && now - parsed.timestamp < CLIMATE_CACHE_TTL_MS) {
+          inMemoryClimateCache = parsed;
+          return parsed.data;
+        }
+      }
+    } catch {
+      // Ignorar erro de leitura de cache
+    }
+  }
+
+  return null;
+}
+
+function saveClimateDataToCache(data: ClimateTelemetryResponse) {
+  const entry: ClimateCacheEntry = {
+    timestamp: Date.now(),
+    data,
+  };
+  inMemoryClimateCache = entry;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(CLIMATE_CACHE_KEY, JSON.stringify(entry));
+    } catch {
+      // Ignorar erro de armazenamento local
+    }
+  }
+}
+
+export async function fetchLiveClimateTelemetry(forceRefresh = false): Promise<ClimateTelemetryResponse> {
+  // 0. Verificar se os dados já estão em cache de 60min
+  if (!forceRefresh) {
+    const cached = getCachedClimateData();
+    if (cached) {
+      return cached;
+    }
+  }
+
   const stateWeather: Record<string, StateWeatherData> = {};
   const stations: ClimateStationData[] = [];
   const startTime = performance.now();
@@ -216,9 +277,9 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
     const lats = BRAZIL_STATES_COORDINATES.map((s) => s.lat).join(',');
     const lngs = BRAZIL_STATES_COORDINATES.map((s) => s.lng).join(',');
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&timezone=America%2FSao_Paulo`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,uv_index&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     const duration = performance.now() - startTime;
 
     if (!res.ok) {
@@ -232,23 +293,31 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
 
     apiTracker.trackCall(
       'open-meteo',
-      '/v1/forecast (27 UFs ECMWF Batch)',
+      '/v1/forecast (27 UFs ECMWF Batch - Cache 60min)',
       duration,
       'success',
       200,
-      '27 estados sincronizados com telemetria horária real',
+      '27 estados sincronizados com telemetria horária real (Cache 60m)',
       payloadSizeKb
     );
 
     BRAZIL_STATES_COORDINATES.forEach((state, idx) => {
       const current = dataList[idx]?.current || {};
-      const temp = typeof current.temperature_2m === 'number' ? Math.round(current.temperature_2m * 10) / 10 : state.baseClimate.temp;
+      const daily = dataList[idx]?.daily || {};
+      const temp = typeof current.temperature_2m === 'number' ? Math.round(current.temperature_2m * 100) / 100 : state.baseClimate.temp;
+      const maxDailyTemp = Array.isArray(daily.temperature_2m_max) && typeof daily.temperature_2m_max[0] === 'number'
+        ? Math.round(daily.temperature_2m_max[0] * 100) / 100
+        : Math.round((temp + 3.25) * 100) / 100;
+      const minDailyTemp = Array.isArray(daily.temperature_2m_min) && typeof daily.temperature_2m_min[0] === 'number'
+        ? Math.round(daily.temperature_2m_min[0] * 100) / 100
+        : Math.round((temp - 4.45) * 100) / 100;
       const appTemp = typeof current.apparent_temperature === 'number' ? Math.round(current.apparent_temperature * 10) / 10 : temp + 1;
       const hum = typeof current.relative_humidity_2m === 'number' ? Math.round(current.relative_humidity_2m) : state.baseClimate.hum;
       const rain = typeof current.precipitation === 'number' ? Math.round(current.precipitation * 10) / 10 : state.baseClimate.rain;
       const windSpd = typeof current.wind_speed_10m === 'number' ? Math.round(current.wind_speed_10m) : state.baseClimate.wind;
       const windDir = typeof current.wind_direction_10m === 'number' ? Math.round(current.wind_direction_10m) : state.baseClimate.windDir;
       const press = typeof current.surface_pressure === 'number' ? Math.round(current.surface_pressure) : 1013;
+      const uvIdx = typeof current.uv_index === 'number' ? Math.round(current.uv_index * 10) / 10 : (state.lat > -15 ? 8.5 : 6.0);
       const wCode = current.weather_code ?? 1;
 
       stateWeather[state.id] = {
@@ -258,12 +327,15 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
         lat: state.lat,
         lng: state.lng,
         temperature: temp,
+        minTemperature: minDailyTemp,
+        maxTemperature: maxDailyTemp,
         apparentTemperature: appTemp,
         humidity: hum,
         precipitation: rain,
         windSpeed: windSpd,
         windDirection: windDir,
         surfacePressure: press,
+        uvIndex: uvIdx,
         weatherCode: wCode,
       };
     });
@@ -271,19 +343,23 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
     console.warn('Usando base climatológica calibrada para os estados:', err);
     // Fallback climatológico caso a rede oscile
     BRAZIL_STATES_COORDINATES.forEach((state) => {
+      const baseT = state.baseClimate.temp;
       stateWeather[state.id] = {
         stateId: state.id,
         stateName: state.name,
         capital: state.capital,
         lat: state.lat,
         lng: state.lng,
-        temperature: state.baseClimate.temp,
-        apparentTemperature: state.baseClimate.temp + 1,
+        temperature: baseT,
+        minTemperature: Math.round((baseT - 4.45) * 100) / 100,
+        maxTemperature: Math.round((baseT + 3.25) * 100) / 100,
+        apparentTemperature: baseT + 1,
         humidity: state.baseClimate.hum,
         precipitation: state.baseClimate.rain,
         windSpeed: state.baseClimate.wind,
         windDirection: state.baseClimate.windDir,
         surfacePressure: 1013,
+        uvIndex: state.lat > -15 ? 8.5 : 6.0,
         weatherCode: 1,
       };
     });
@@ -340,7 +416,7 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
     },
   };
 
-  return {
+  const responsePayload: ClimateTelemetryResponse = {
     updatedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     dateTimeFormatted: formatMeteoredDateTime(),
     stateWeather,
@@ -350,4 +426,9 @@ export async function fetchLiveClimateTelemetry(): Promise<ClimateTelemetryRespo
     maxTempState,
     minTempState,
   };
+
+  // Salvar no cache de 60 minutos
+  saveClimateDataToCache(responsePayload);
+
+  return responsePayload;
 }

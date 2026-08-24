@@ -451,12 +451,12 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
 
           <div className="w-[1px] h-4 bg-amber-500/30 mx-0.5" />
 
-          {/* Centralize on Goiás (GO) */}
+          {/* Centralize on border GO - TO - MT */}
           <button
             id="hud-btn-camera-recenter-go"
             onClick={onResetView}
             className="p-2 rounded-lg bg-slate-900 text-amber-300 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950 hover:border-amber-300 transition-all group"
-            title="Centralizar Mapa no Brasil (Pivô Goiás - GO)"
+            title="Centralizar Mapa no Brasil (Pivô Fronteira GO • TO • MT)"
           >
             <LocateFixed className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
           </button>

@@ -19,7 +19,7 @@ import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
 import { getStateMusicalHeritage } from '../data/musicalHeritageData';
-import { ECMWF_TEMP_COLOR_STOPS } from '../services/climateService';
+import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor } from '../services/climateService';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -160,81 +160,126 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </div>
           )}
 
-          {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (
-            <div
-              id="painel-telemetria-clima-rodape"
-              className="painel-telemetria-clima-rodape flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1 rounded-xl bg-slate-950/80 border border-cyan-500/40 text-xs shadow-md animate-in fade-in duration-200 max-w-full overflow-hidden"
-            >
-              {/* Badge ECMWF */}
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-cyan-950/70 border border-cyan-400/50 text-[10px] font-mono text-cyan-300 font-bold shrink-0">
-                <CloudSun className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline">ECMWF</span>
-              </div>
+          {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real com Destaque Máx/Mín) */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (() => {
+            const maxColor = getEcmwfTempColor(maxTempState.temp);
+            const minColor = getEcmwfTempColor(minTempState.temp);
+            const minPosPct = Math.max(0, Math.min(100, ((minTempState.temp - (-4)) / 44) * 100));
+            const maxPosPct = Math.max(0, Math.min(100, ((maxTempState.temp - (-4)) / 44) * 100));
 
-              {/* CARTELA DE CORES TÉRMICAS COMPACTA */}
-              <div className="secao-cartela-cores-clima flex items-center gap-1.5 shrink-0">
-                <span className="text-[9px] font-mono text-slate-400 hidden xl:inline">-4°C</span>
-                <div
-                  className="w-24 sm:w-32 md:w-36 h-2 rounded-full overflow-hidden border border-slate-700/80 flex shadow-inner shrink-0"
-                  title="Cartela Térmica Oficial ECMWF (-4°C a 40°C+)"
-                >
-                  {ECMWF_TEMP_COLOR_STOPS.map((stop) => (
-                    <div
-                      key={stop.temp}
-                      className="h-full flex-1"
-                      style={{ backgroundColor: stop.hex }}
-                    />
-                  ))}
+            return (
+              <div
+                id="painel-telemetria-clima-rodape"
+                className="painel-telemetria-clima-rodape flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 rounded-xl bg-slate-950/95 border border-cyan-500/50 text-xs shadow-lg animate-in fade-in duration-200 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
+              >
+                {/* Badge ECMWF */}
+                <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-950/90 border border-cyan-400/60 text-[10px] font-mono text-cyan-300 font-bold shrink-0">
+                  <CloudSun className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="hidden xs:inline">ECMWF</span>
                 </div>
-                <span className="text-[9px] font-mono text-slate-400 hidden xl:inline">40°C</span>
-              </div>
 
-              <div className="h-3.5 w-px bg-cyan-500/30" />
+                {/* CARTELA DE CORES TÉRMICAS COM MARCADORES DINÂMICOS DE MÁX E MÍN */}
+                <div className="secao-cartela-cores-clima flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">-4°</span>
+                  <div
+                    className="relative w-20 xs:w-28 sm:w-36 md:w-40 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
+                    title={`Cartela Térmica ECMWF (-4°C a 40°C) | Mín: ${minTempState.stateId} ${minTempState.temp}°C | Máx: ${maxTempState.stateId} ${maxTempState.temp}°C`}
+                  >
+                    <div className="absolute inset-0 rounded-full overflow-hidden flex">
+                      {ECMWF_TEMP_COLOR_STOPS.map((stop) => (
+                        <div
+                          key={stop.temp}
+                          className="h-full flex-1"
+                          style={{ backgroundColor: stop.hex }}
+                        />
+                      ))}
+                    </div>
 
-              {/* Média Brasil */}
-              <div className="flex items-center gap-1 text-[11px] font-mono text-cyan-100 shrink-0">
-                <Thermometer className="w-3.5 h-3.5 text-cyan-300" />
-                <span className="text-slate-400 hidden sm:inline">Média:</span>
-                <span className="font-bold text-amber-300">{avgTempBrazil.toFixed(1)}°C</span>
-              </div>
+                    {/* Marcador Dinâmico de Posição da Mínima Nacional */}
+                    <div
+                      className="absolute -top-1 w-1.5 sm:w-2 h-4 sm:h-5 rounded-full border border-white shadow-md z-10 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{
+                        left: `${minPosPct}%`,
+                        backgroundColor: minColor.hex,
+                      }}
+                    />
 
-              <div className="h-3.5 w-px bg-cyan-500/30 hidden md:block" />
+                    {/* Marcador Dinâmico de Posição da Máxima Nacional */}
+                    <div
+                      className="absolute -top-1 w-1.5 sm:w-2 h-4 sm:h-5 rounded-full border border-white shadow-md z-10 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{
+                        left: `${maxPosPct}%`,
+                        backgroundColor: maxColor.hex,
+                      }}
+                    />
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">40°</span>
+                </div>
 
-              {/* Máxima Nacional */}
-              <div className="hidden md:flex items-center gap-1 text-[11px] font-mono text-rose-300 shrink-0">
-                <Flame className="w-3.5 h-3.5 text-rose-400" />
-                <span className="font-bold">{maxTempState.stateId} {maxTempState.temp.toFixed(1)}°C</span>
-              </div>
+                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
 
-              <div className="h-3.5 w-px bg-cyan-500/30 hidden lg:block" />
+                {/* Média Brasil */}
+                <div className="flex items-center gap-1 text-[11px] font-mono text-cyan-100 shrink-0">
+                  <Thermometer className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
+                  <span className="text-slate-400 hidden md:inline">Méd:</span>
+                  <span className="font-bold text-amber-300">{avgTempBrazil.toFixed(1)}°</span>
+                </div>
 
-              {/* Mínima Nacional */}
-              <div className="hidden lg:flex items-center gap-1 text-[11px] font-mono text-blue-300 shrink-0">
-                <Snowflake className="w-3.5 h-3.5 text-blue-400" />
-                <span className="font-bold">{minTempState.stateId} {minTempState.temp.toFixed(1)}°C</span>
-              </div>
+                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
 
-              {/* Botão do Observatório Ambiental */}
-              {onOpenObservatorio && (
-                <button
-                  id="btn-toggle-observatorio-rodape"
-                  onClick={() => {
-                    audioEngine.playSfx('click');
-                    onOpenObservatorio();
+                {/* Destaque da Máxima Nacional com a cor real da escala ECMWF */}
+                <div
+                  className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md border font-mono text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0"
+                  style={{
+                    backgroundColor: `${maxColor.hex}22`,
+                    borderColor: maxColor.hex,
+                    color: maxColor.hex,
                   }}
-                  className={`btn-abrir-observatorio px-2 py-0.5 rounded-lg border text-[10px] font-mono font-bold transition-all cursor-pointer shrink-0 ${
-                    isObservatorioOpen
-                      ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/40'
-                      : 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-200 hover:text-white'
-                  }`}
-                  title="Abrir / Fechar Observatório Ambiental"
+                  title={`Máxima Nacional: ${maxTempState.stateId} (${maxTempState.temp.toFixed(1)}°C)`}
                 >
-                  Observatório
-                </button>
-              )}
-            </div>
-          )}
+                  <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse shrink-0" style={{ color: maxColor.hex }} />
+                  <span className="hidden xs:inline">Máx:</span>
+                  <span className="text-white bg-slate-900/80 px-1 rounded text-[10px]">{maxTempState.stateId}</span>
+                  <span>{maxTempState.temp.toFixed(1)}°</span>
+                </div>
+
+                {/* Destaque da Mínima Nacional com a cor real da escala ECMWF */}
+                <div
+                  className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md border font-mono text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0"
+                  style={{
+                    backgroundColor: `${minColor.hex}22`,
+                    borderColor: minColor.hex,
+                    color: minColor.hex,
+                  }}
+                  title={`Mínima Nacional: ${minTempState.stateId} (${minTempState.temp.toFixed(1)}°C)`}
+                >
+                  <Snowflake className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse shrink-0" style={{ color: minColor.hex }} />
+                  <span className="hidden xs:inline">Mín:</span>
+                  <span className="text-white bg-slate-900/80 px-1 rounded text-[10px]">{minTempState.stateId}</span>
+                  <span>{minTempState.temp.toFixed(1)}°</span>
+                </div>
+
+                {/* Botão do Observatório Ambiental */}
+                {onOpenObservatorio && (
+                  <button
+                    id="btn-toggle-observatorio-rodape"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onOpenObservatorio();
+                    }}
+                    className={`btn-abrir-observatorio ml-0.5 px-2 py-0.5 rounded-md border text-[10px] font-mono font-bold transition-all cursor-pointer shrink-0 ${
+                      isObservatorioOpen
+                        ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/40'
+                        : 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-200 hover:text-white'
+                    }`}
+                    title="Abrir / Fechar Observatório Ambiental"
+                  >
+                    Observatório
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* CASO C: Modo Musicalidades no Mapa (Ticker Reativo Integrado ao Rádio) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'musicalidades' && (
