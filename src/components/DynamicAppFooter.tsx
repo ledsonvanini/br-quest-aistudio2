@@ -11,6 +11,10 @@ import {
   Thermometer,
   Flame,
   Snowflake,
+  Leaf,
+  Bug,
+  Trees,
+  ShieldAlert,
 } from 'lucide-react';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { GuardianData } from '../types';
@@ -20,6 +24,7 @@ import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
 import { getStateMusicalHeritage } from '../data/musicalHeritageData';
 import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor } from '../services/climateService';
+import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityData';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -280,6 +285,31 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
               </div>
             );
           })()}
+
+          {/* CASO C: Modo Biodiversidade no Mapa */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
+            <div
+              id="painel-biodiversidade-ticker-rodape"
+              className="painel-biodiversidade-ticker-rodape flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200"
+            >
+              <div className="flex items-center gap-1.5 text-emerald-300 font-serif font-bold">
+                <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Biodiversidade do Brasil</span>
+              </div>
+              <div className="h-3.5 w-px bg-emerald-500/30 hidden sm:block" />
+              <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-300">
+                <span className="flex items-center gap-1 text-amber-300">
+                  <Bug className="w-3 h-3 text-amber-400" /> Fauna
+                </span>
+                <span className="flex items-center gap-1 text-emerald-300">
+                  <Trees className="w-3 h-3 text-emerald-400" /> Flora
+                </span>
+                <span className="flex items-center gap-1 text-rose-300">
+                  <ShieldAlert className="w-3 h-3 text-rose-400" /> SisCITES / IBAMA
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* CASO C: Modo Musicalidades no Mapa (Ticker Reativo Integrado ao Rádio) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'musicalidades' && (

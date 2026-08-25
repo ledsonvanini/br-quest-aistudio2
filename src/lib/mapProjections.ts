@@ -317,6 +317,53 @@ export function getClimateFocusZoomAndPan(
 }
 
 /**
+ * Calculates the exact zoom & pan to focus on a state while taking into account
+ * the width occupied by the Biodiversity Detail Dialog on the left side of the viewport.
+ * Uses the remaining screen area as the active visible viewport.
+ */
+export function getBiodiversityFocusZoomAndPan(
+  centroid: [number, number],
+  stateId: string,
+  containerWidth: number,
+  is3D = true
+): { targetZoom: number; targetPan: { x: number; y: number } } {
+  const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
+  const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
+
+  let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.38 : 1.72;
+
+  let screenOffsetX = 0;
+  if (containerWidth >= 1024) {
+    // Left biodiversity dialog is 600px + 24px margin = 624px
+    screenOffsetX = 312;
+    if (containerWidth < 1300) {
+      const avail = containerWidth - 624;
+      baseZoom *= Math.max(0.70, Math.min(1.0, avail / 650));
+    }
+  } else if (containerWidth >= 768) {
+    // Left biodiversity dialog is 540px + 16px margin = 556px
+    screenOffsetX = 278;
+    if (containerWidth < 1100) {
+      const avail = containerWidth - 556;
+      baseZoom *= Math.max(0.65, Math.min(1.0, avail / 500));
+    }
+  } else if (containerWidth >= 640) {
+    // Left biodiversity dialog is 520px + 16px margin = 536px
+    screenOffsetX = 268;
+    if (containerWidth < 900) {
+      const avail = containerWidth - 536;
+      baseZoom *= Math.max(0.60, Math.min(1.0, avail / 400));
+    }
+  } else {
+    // Mobile screen: modal takes full screen
+    screenOffsetX = 0;
+  }
+
+  const targetPan = calculateStateCenterPan(centroid, baseZoom, is3D, screenOffsetX);
+  return { targetZoom: baseZoom, targetPan };
+}
+
+/**
  * Calculates the exact pan adjustment to zoom in/out while keeping the point
  * directly under the mouse cursor invariant on the screen (zero displacement & zero flicker).
  */

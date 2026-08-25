@@ -34,19 +34,36 @@ import {
   Hand,
   Info,
   X,
+  Leaf,
+  Bug,
+  Trees,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { SpeechBubbleTooltip } from './common/SpeechBubbleTooltip';
 import { ECMWF_TEMP_COLOR_STOPS } from '../services/climateService';
-import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme } from '../types';
+import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from '../types';
 
-export type AppMainMode = 'aventura' | 'clima' | 'musicalidades' | 'globo3d';
+export type AppMainMode = 'aventura' | 'clima' | 'biodiversidade' | 'musicalidades' | 'globo3d';
 
 interface Props {
   // Active App Module
   mainMode: AppMainMode;
   onSelectMainMode: (mode: AppMainMode) => void;
+
+  // Biodiversity Module States
+  biodiversityKingdom?: BiodiversityKingdom | 'all';
+  onBiodiversityKingdomChange?: (kingdom: BiodiversityKingdom | 'all') => void;
+  biodiversityBiome?: BrazilBiome | 'all';
+  onBiodiversityBiomeChange?: (biome: BrazilBiome | 'all') => void;
+  isBiodiversityThreatenedOnly?: boolean;
+  onToggleBiodiversityThreatenedOnly?: () => void;
+  isBiodiversityEndemicOnly?: boolean;
+  onToggleBiodiversityEndemicOnly?: () => void;
+  isBiodiversityPanelOpen?: boolean;
+  onToggleBiodiversityPanel?: () => void;
 
   // Adventure Module States & Filters & Map Styles
   terrainProvider?: TerrainTileProvider;
@@ -128,6 +145,16 @@ interface MenuTooltipInfo {
 export const TopGlobalNavMenu: React.FC<Props> = ({
   mainMode,
   onSelectMainMode,
+  biodiversityKingdom = 'all',
+  onBiodiversityKingdomChange,
+  biodiversityBiome = 'all',
+  onBiodiversityBiomeChange,
+  isBiodiversityThreatenedOnly = false,
+  onToggleBiodiversityThreatenedOnly,
+  isBiodiversityEndemicOnly = false,
+  onToggleBiodiversityEndemicOnly,
+  isBiodiversityPanelOpen = false,
+  onToggleBiodiversityPanel,
   terrainProvider = 'shaded_relief',
   onTerrainProviderChange,
   visualStyle = 'tiles',
@@ -292,7 +319,33 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* MODO 3: MUSICALIDADES */}
+            {/* MODO 3: BIODIVERSIDADE */}
+            <div className="relative">
+              <button
+                id="btn-modo-biodiversidade"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onSelectMainMode('biodiversidade');
+                }}
+                {...bindTooltip({
+                  title: 'Biodiversidade Brasileira',
+                  badge: 'Fauna • Flora • SisCITES',
+                  badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                  description:
+                    'Exploração biológica dos 6 biomas: fauna nativa, flora, microrganismos, espécies ameaçadas e catálogo IBAMA SisCITES.',
+                })}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                  mainMode === 'biodiversidade'
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-green-500 text-slate-950 border-emerald-300 shadow-md font-black scale-105'
+                    : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/80 border-transparent'
+                }`}
+                aria-label="Biodiversidade Brasileira"
+              >
+                <Leaf className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* MODO 4: MUSICALIDADES */}
             <div className="relative">
               <button
                 id="btn-modo-musicalidades"
@@ -318,7 +371,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* MODO 4: GLOBO 3D */}
+            {/* MODO 5: GLOBO 3D */}
             <div className="relative">
               <button
                 id="btn-modo-globo3d"
@@ -670,6 +723,167 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     aria-label="Observatório Ambiental"
                   >
                     <Telescope className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2.C QUANDO EM BIODIVERSIDADE: [Todos] [Fauna] [Flora] [Fungos & Micro] + [Ameaçadas] + [Catálogo] */}
+          {mainMode === 'biodiversidade' && (
+            <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shrink-0">
+              {/* 1. Todos os Reinos */}
+              <div className="relative">
+                <button
+                  id="btn-bio-reino-todos"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onBiodiversityKingdomChange?.('all');
+                  }}
+                  {...bindTooltip({
+                    title: 'Todos os Reinos Biológicos',
+                    badge: 'Holístico',
+                    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                    description: 'Exibe fauna, flora e microrganismos de todos os biomas simultaneamente.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    biodiversityKingdom === 'all'
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                  aria-label="Todos os Reinos"
+                >
+                  <Leaf className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 2. Fauna */}
+              <div className="relative">
+                <button
+                  id="btn-bio-reino-fauna"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onBiodiversityKingdomChange?.('fauna');
+                  }}
+                  {...bindTooltip({
+                    title: 'Fauna Brasileira',
+                    badge: 'Animais Silvestres',
+                    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                    description: 'Mamíferos, aves, répteis, anfíbios, peixes e invertebrados nativos e endêmicos.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    biodiversityKingdom === 'fauna'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                  aria-label="Fauna Brasileira"
+                >
+                  <Bug className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 3. Flora */}
+              <div className="relative">
+                <button
+                  id="btn-bio-reino-flora"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onBiodiversityKingdomChange?.('flora');
+                  }}
+                  {...bindTooltip({
+                    title: 'Flora do Brasil',
+                    badge: 'Árvores & Plantas',
+                    badgeColor: 'bg-green-500/20 text-green-300 border-green-400/40',
+                    description: 'Árvores monumentais, epífitas, orquídeas, cactáceas e plantas medicinais nativas.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    biodiversityKingdom === 'flora'
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                  aria-label="Flora do Brasil"
+                >
+                  <Trees className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 4. Fungos & Microrganismos */}
+              <div className="relative">
+                <button
+                  id="btn-bio-reino-fungi"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onBiodiversityKingdomChange?.('fungi_micro');
+                  }}
+                  {...bindTooltip({
+                    title: 'Fungos & Microbioma',
+                    badge: 'Bioluminescência',
+                    badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+                    description: 'Fungos bioluminescentes da Mata Atlântica, bactérias fixadoras de nitrogênio e leveduras nativas.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    biodiversityKingdom === 'fungi_micro'
+                      ? 'bg-cyan-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                  aria-label="Fungos e Microrganismos"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 5. Livro Vermelho (Espécies Ameaçadas) */}
+              <div className="relative pl-0.5 border-l border-slate-800">
+                <button
+                  id="btn-bio-ameacadas"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onToggleBiodiversityThreatenedOnly?.();
+                  }}
+                  {...bindTooltip({
+                    title: 'Livro Vermelho (Espécies Ameaçadas)',
+                    badge: isBiodiversityThreatenedOnly ? 'Filtro Ativo' : 'Todas',
+                    badgeColor: isBiodiversityThreatenedOnly
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-400/40'
+                      : 'bg-slate-800 text-slate-300 border-slate-700',
+                    description: 'Filtro oficial de espécies da fauna e flora ameaçadas de extinção segundo o Livro Vermelho do MMA/ICMBio (Categorias CR, EN e VU).',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                    isBiodiversityThreatenedOnly
+                      ? 'bg-rose-500 text-slate-950 border-rose-300 font-bold shadow-md scale-105'
+                      : 'bg-slate-900 text-rose-400 border-slate-700 hover:bg-slate-800 hover:text-rose-300'
+                  }`}
+                  aria-label="Livro Vermelho de Espécies Ameaçadas"
+                >
+                  <BookOpen className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 6. Toggle Painel/Catálogo de Biodiversidade */}
+              {onToggleBiodiversityPanel && (
+                <div className="relative pl-0.5 border-l border-slate-800">
+                  <button
+                    id="btn-toggle-painel-biodiversidade"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleBiodiversityPanel();
+                    }}
+                    {...bindTooltip({
+                      title: 'Catálogo de Biodiversidade',
+                      badge: isBiodiversityPanelOpen ? 'Aberto' : 'Recolhido',
+                      badgeColor: isBiodiversityPanelOpen
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                        : 'bg-slate-800 text-slate-300 border-slate-700',
+                      description: 'Painel detalhado com 6 biomas, estatísticas por UF, filtros avançados e integração IBAMA SisCITES.',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                      isBiodiversityPanelOpen
+                        ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-md font-bold scale-105'
+                        : 'bg-slate-900 text-emerald-400 border-slate-700 hover:bg-slate-800 hover:text-emerald-300 hover:border-emerald-500/50'
+                    }`}
+                    aria-label="Catálogo de Biodiversidade"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               )}

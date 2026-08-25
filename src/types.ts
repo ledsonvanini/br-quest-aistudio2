@@ -90,3 +90,71 @@ export type TerrainTileProvider =
   | 'muted_gray'
   | 'natural_earth';
 
+export type BiodiversityKingdom = 'fauna' | 'flora' | 'fungi_micro';
+
+export type ConservationStatus = 'CR' | 'EN' | 'VU' | 'NT' | 'LC' | 'DD';
+
+export type BrazilBiome =
+  | 'Amazônia'
+  | 'Cerrado'
+  | 'Mata Atlântica'
+  | 'Caatinga'
+  | 'Pantanal'
+  | 'Pampa'
+  | 'Marinho Costeiro';
+
+export interface TaxonomicClassification {
+  reino: string;
+  filoOuDivisao: string;
+  classe: string;
+  ordem: string;
+  familia: string;
+  genero: string;
+  especie: string;
+}
+
+export interface BiodiversitySpecimen {
+  id: string;
+  namePt: string;
+  nameEn: string;
+  scientificName: string;
+  kingdom: BiodiversityKingdom;
+  subcategoryPt: string; // e.g. "Mamífero", "Ave", "Árvore Emblemática", "Fungo Bioluminescente", "Orquídea"
+  taxonomicRank: TaxonomicClassification;
+  iucnStatus: ConservationStatus;
+  icmbioStatus: ConservationStatus;
+  citesAppendix?: 'I' | 'II' | 'III' | 'Não listada';
+  isEndemicBrazil: boolean;
+  isEndemicState: boolean;
+  biomes: BrazilBiome[];
+  states: string[];
+  imageUrl: string;
+  thumbnailUrl?: string;
+  ecologicalRolePt: string;
+  habitatPt: string;
+  curiositiesPt: string[];
+  medicinalOrEconomicUsePt?: string;
+  threatsPt?: string[];
+  ibamaSisCitesInfo?: {
+    monitoringCategory: string;
+    legalFramework: string;
+    exportRegulation?: string;
+  };
+}
+
+export interface StateBiodiversityProfile {
+  stateId: string;
+  stateName: string;
+  region: string;
+  predominantBiomes: BrazilBiome[];
+  biodiversitySummaryPt: string;
+  totalKnownSpeciesEst: number;
+  threatenedSpeciesCount: number;
+  endemicSpeciesCount: number;
+  flagshipFauna: string; // Nome popular
+  flagshipFlora: string; // Nome popular
+  flagshipFungusOrMicro: string;
+  protectedAreasCount: number;
+  specimens: BiodiversitySpecimen[];
+}
+

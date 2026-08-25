@@ -12,6 +12,7 @@ import {
   getSouthAmericaMidpointPan,
   calculateStateCenterPan,
   getClimateFocusZoomAndPan,
+  getBiodiversityFocusZoomAndPan,
   calculateAnchoredZoomPan,
   DEFAULT_BRAZIL_ZOOM,
   BRAZIL_MAP_PIVOT_CENTER,
@@ -62,6 +63,10 @@ import { vintageRadioEngine } from '../lib/vintageRadioEngine';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
 import { StateClimateDialog } from './map/StateClimateDialog';
+import { BiodiversityMapLayer } from './map/BiodiversityMapLayer';
+import { BiodiversityControlPanel } from './map/BiodiversityControlPanel';
+import { StateBiodiversityDialog } from './map/StateBiodiversityDialog';
+import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio } from 'lucide-react';
 
 interface Props {
@@ -83,6 +88,16 @@ interface Props {
   onFocusStateHandled?: () => void;
   climateMode?: ClimateMode;
   onClimateModeChange?: (mode: ClimateMode) => void;
+  biodiversityKingdom?: BiodiversityKingdom | 'all';
+  onBiodiversityKingdomChange?: (kingdom: BiodiversityKingdom | 'all') => void;
+  biodiversityBiome?: BrazilBiome | 'all';
+  onBiodiversityBiomeChange?: (biome: BrazilBiome | 'all') => void;
+  isBiodiversityThreatenedOnly?: boolean;
+  onToggleBiodiversityThreatenedOnly?: () => void;
+  isBiodiversityEndemicOnly?: boolean;
+  onToggleBiodiversityEndemicOnly?: () => void;
+  isBiodiversityPanelOpen?: boolean;
+  onToggleBiodiversityPanel?: () => void;
   terrainProvider?: TerrainTileProvider;
   onTerrainProviderChange?: (provider: TerrainTileProvider) => void;
   visualStyle?: MapVisualStyle;
@@ -125,7 +140,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   onFocusStateHandled,
   climateMode = 'temperaturas_frentes',
   onClimateModeChange,
+  biodiversityKingdom: propBiodiversityKingdom = 'all',
+  onBiodiversityKingdomChange,
+  biodiversityBiome: propBiodiversityBiome = 'all',
+  onBiodiversityBiomeChange,
+  isBiodiversityThreatenedOnly: propIsBiodiversityThreatenedOnly = false,
+  onToggleBiodiversityThreatenedOnly,
+  isBiodiversityEndemicOnly: propIsBiodiversityEndemicOnly = false,
+  onToggleBiodiversityEndemicOnly,
+  isBiodiversityPanelOpen: propIsBiodiversityPanelOpen = false,
+  onToggleBiodiversityPanel,
   terrainProvider: propTerrainProvider,
+
   onTerrainProviderChange: propOnTerrainProviderChange,
   visualStyle: propVisualStyle,
   onVisualStyleChange: propOnVisualStyleChange,
@@ -185,6 +211,52 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [internalIsClimatePanelOpen, setInternalIsClimatePanelOpen] = useState<boolean>(false);
   const isClimatePanelOpen = propIsObservatorioOpen !== undefined ? propIsObservatorioOpen : internalIsClimatePanelOpen;
   const [selectedClimateStateId, setSelectedClimateStateId] = useState<string | null>(null);
+
+  // Biodiversity Module States & Handlers
+  const [internalBiodiversityKingdom, setInternalBiodiversityKingdom] = useState<BiodiversityKingdom | 'all'>('all');
+  const [internalBiodiversityBiome, setInternalBiodiversityBiome] = useState<BrazilBiome | 'all'>('all');
+  const [internalBiodiversityThreatenedOnly, setInternalBiodiversityThreatenedOnly] = useState<boolean>(false);
+  const [internalBiodiversityEndemicOnly, setInternalBiodiversityEndemicOnly] = useState<boolean>(false);
+  const [internalIsBiodiversityPanelOpen, setInternalIsBiodiversityPanelOpen] = useState<boolean>(false);
+  const [selectedBiodiversityStateId, setSelectedBiodiversityStateId] = useState<string | null>(null);
+
+  const biodiversityKingdom = propBiodiversityKingdom !== undefined ? propBiodiversityKingdom : internalBiodiversityKingdom;
+  const biodiversityBiome = propBiodiversityBiome !== undefined ? propBiodiversityBiome : internalBiodiversityBiome;
+  const isBiodiversityThreatenedOnly = propIsBiodiversityThreatenedOnly !== undefined ? propIsBiodiversityThreatenedOnly : internalBiodiversityThreatenedOnly;
+  const isBiodiversityEndemicOnly = propIsBiodiversityEndemicOnly !== undefined ? propIsBiodiversityEndemicOnly : internalBiodiversityEndemicOnly;
+  const isBiodiversityPanelOpen = propIsBiodiversityPanelOpen !== undefined ? propIsBiodiversityPanelOpen : internalIsBiodiversityPanelOpen;
+
+  const handleBiodiversityKingdomChange = (k: BiodiversityKingdom | 'all') => {
+    if (onBiodiversityKingdomChange) {
+      onBiodiversityKingdomChange(k);
+    } else {
+      setInternalBiodiversityKingdom(k);
+    }
+  };
+
+  const handleBiodiversityBiomeChange = (b: BrazilBiome | 'all') => {
+    if (onBiodiversityBiomeChange) {
+      onBiodiversityBiomeChange(b);
+    } else {
+      setInternalBiodiversityBiome(b);
+    }
+  };
+
+  const handleToggleThreatenedOnly = () => {
+    if (onToggleBiodiversityThreatenedOnly) {
+      onToggleBiodiversityThreatenedOnly();
+    } else {
+      setInternalBiodiversityThreatenedOnly((p) => !p);
+    }
+  };
+
+  const handleToggleEndemicOnly = () => {
+    if (onToggleBiodiversityEndemicOnly) {
+      onToggleBiodiversityEndemicOnly();
+    } else {
+      setInternalBiodiversityEndemicOnly((p) => !p);
+    }
+  };
 
   // Synchronize internal climate active state with global mainMode
   useEffect(() => {
@@ -511,8 +583,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
     if (isEnteringScene) return;
-    // No modo de análise de Clima com diálogo aberto, evita conflitos de arrasto no mapa
-    if (isClimateActive && selectedClimateStateId) return;
+    // No modo de análise de Clima ou Biodiversidade com diálogo aberto, bloqueia arrasto no mapa
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     stopInertia();
     if (stateHoverDwellTimeoutRef.current) {
@@ -540,7 +612,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     currentMousePosRef.current = { x: e.clientX, y: e.clientY };
 
     if (!isDragging) return;
-    if (isClimateActive && selectedClimateStateId) return;
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
     const now = performance.now();
 
     lastMousePosRef.current = { x: e.clientX, y: e.clientY, time: now };
@@ -614,8 +686,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
     e.preventDefault();
     if (isEnteringScene) return;
-    // No modo de análise de Clima com diálogo aberto, evita zoom acidental enquanto lê os dados
-    if (isClimateActive && selectedClimateStateId) return;
+    // No modo de análise de Clima ou Biodiversidade com diálogo aberto, evita zoom acidental enquanto lê os dados
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     stopInertia();
     if (stateHoverDwellTimeoutRef.current) {
@@ -661,7 +733,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserZoomRef.current = clamped.zoom;
       return clamped.zoom;
     });
-  }, [isEnteringScene, stopInertia, pan, mainMode, isClimateActive, selectedClimateStateId]);
+  }, [isEnteringScene, stopInertia, pan, mainMode, isClimateActive, selectedClimateStateId, selectedBiodiversityStateId]);
 
   // Native non-passive wheel event listener ensuring 100% reliable wheel zooming across all browser layouts
   useEffect(() => {
@@ -681,9 +753,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   // Background canvas click: When clicking ocean/background (not on states or UI), deselect all states and close radio
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (hasMovedRef.current || isDragging || isEnteringScene) return;
-    // No modo de análise de clima com foco/diálogo aberto, cliques fora do mapa NÃO fecham o modo!
-    // Apenas os botões de controle 'x' e a tecla 'Esc' fecham esse modo e centralizam o mapa.
-    if (isClimateActive && selectedClimateStateId) {
+    // No modo de análise de clima com foco/diálogo aberto ou biodiversidade com diálogo aberto, cliques fora do mapa NÃO fecham o modo!
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) {
       return;
     }
 
@@ -699,15 +770,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       target.closest('.gizmo-compass-hud') ||
       target.closest('.painel-legenda-coropletica') ||
       target.closest('.painel-observatorio-ambiental') ||
+      target.closest('.painel-controle-biodiversidade') ||
+      target.closest('.modal-dialog-biodiversidade-estado') ||
       target.closest('.card-guardiao-standee')
     ) {
       return;
     }
 
-    if (selectedStateId || selectedCountry) {
+    if (selectedStateId || selectedCountry || selectedBiodiversityStateId) {
       audioEngine.playSfx('click');
       setSelectedStateId(null);
       setSelectedCountry(null);
+      setSelectedBiodiversityStateId(null);
       setHoveredStateId(null);
       if (onHoverStateChange) {
         onHoverStateChange(null);
@@ -748,6 +822,28 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
+    // 1.5. MODO BIODIVERSIDADE: Abre o diálogo de biodiversidade do estado e foca na região considerando a largura do diálogo
+    if (mainMode === 'biodiversidade') {
+      if (centroid) {
+        const { targetZoom, targetPan } = getBiodiversityFocusZoomAndPan(
+          centroid,
+          stateId,
+          getContainerWidth(),
+          is3D
+        );
+
+        setTransitionMode('button');
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      }
+      setSelectedStateId(stateId);
+      setSelectedBiodiversityStateId(stateId);
+      audioEngine.playSfx('travel');
+      return;
+    }
+
     // 2. MODO MUSICALIDADES: Sintoniza a rádio do estado instantaneamente sem travar o mapa nem cores
     if (mainMode === 'musicalidades') {
       setSelectedStateId(stateId);
@@ -772,6 +868,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserZoomRef.current = targetZoom;
     }
   }, [centroids, getContainerWidth, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleRadio, stopInertia, zoom]);
+
 
   // Transição suave para a cena do Guardião RPG
   const handleEnterGuardianScene = useCallback((stateId: string) => {
@@ -798,6 +895,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   // Close focus & return camera smoothly to centered full Brazil map
   const handleCloseInspection = useCallback(() => {
     setSelectedClimateStateId(null);
+    setSelectedBiodiversityStateId(null);
     setSelectedStateId(null);
     audioEngine.playMenuHover();
     const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
@@ -812,11 +910,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (selectedClimateStateId) {
-          setSelectedClimateStateId(null);
-          handleCloseInspection();
-        } else if (selectedStateId) {
-          setSelectedStateId(null);
+        if (selectedClimateStateId || selectedBiodiversityStateId || selectedStateId) {
           handleCloseInspection();
         } else if (selectedCountry) {
           setSelectedCountry(null);
@@ -825,12 +919,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedStateId, selectedCountry, selectedClimateStateId, handleCloseInspection]);
+  }, [selectedStateId, selectedCountry, selectedClimateStateId, selectedBiodiversityStateId, handleCloseInspection]);
+
 
   // Custom onEnter handler for Brazilian States: Highlights state, updates HUD & plays sound
   const handleStateEnter = useCallback((stateId: string) => {
     if (isMouseDownRef.current || hasMovedRef.current || isEnteringScene) return;
-    if (isClimateActive && selectedClimateStateId) return;
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     if (stateLeaveTimeoutRef.current) {
       clearTimeout(stateLeaveTimeoutRef.current);
@@ -849,12 +944,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       lastSoundPlayedStateRef.current = stateId;
       audioEngine.playMenuHover();
     }
-  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId]);
+  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId, mainMode, selectedBiodiversityStateId]);
 
   // Graceful debounce on leaving state
   const handleStateLeave = useCallback((stateId: string) => {
     if (isEnteringScene) return;
-    if (isClimateActive && selectedClimateStateId) return;
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     if (stateLeaveTimeoutRef.current) {
       clearTimeout(stateLeaveTimeoutRef.current);
@@ -869,12 +964,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         lastSoundPlayedStateRef.current = null;
       }
     }, 120);
-  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId]);
+  }, [isEnteringScene, onHoverStateChange, isClimateActive, selectedClimateStateId, mainMode, selectedBiodiversityStateId]);
 
   // Custom onEnter handler for South America Neighbor Countries: Fires ONCE upon entering
   const handleCountryEnter = useCallback((countryId: string) => {
     if (isMouseDownRef.current || hasMovedRef.current || isEnteringScene) return;
-    if (isClimateActive && selectedClimateStateId) return;
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     if (countryLeaveTimeoutRef.current) {
       clearTimeout(countryLeaveTimeoutRef.current);
@@ -890,11 +985,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       lastSoundPlayedCountryRef.current = countryId;
       audioEngine.playMenuHover();
     }
-  }, [isEnteringScene, isClimateActive, selectedClimateStateId]);
+  }, [isEnteringScene, isClimateActive, selectedClimateStateId, mainMode, selectedBiodiversityStateId]);
 
   const handleCountryLeave = useCallback((countryId: string) => {
     if (isEnteringScene) return;
-    if (isClimateActive && selectedClimateStateId) return;
+    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId)) return;
 
     if (countryLeaveTimeoutRef.current) {
       clearTimeout(countryLeaveTimeoutRef.current);
@@ -906,7 +1001,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         lastSoundPlayedCountryRef.current = null;
       }
     }, 100);
-  }, [isEnteringScene]);
+  }, [isEnteringScene, isClimateActive, selectedClimateStateId, mainMode, selectedBiodiversityStateId]);
 
   // Centralizes viewport directly on Brazil (Acre to Paraíba / Roraima to RS) or South America if active
   const handleResetView = useCallback((playSound = true) => {
@@ -1334,6 +1429,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 climateMode={currentClimateMode}
                 stateWeather={stateWeather}
                 focusedClimateStateId={isClimateActive ? selectedClimateStateId : null}
+                focusedBiodiversityStateId={mainMode === 'biodiversidade' ? selectedBiodiversityStateId : null}
                 is3D={is3D}
                 onStateEnter={handleStateEnter}
                 onStateLeave={handleStateLeave}
@@ -1416,6 +1512,26 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
+            {/* Layer 3.2: Biodiversity Species Hotspots & Specimen Pins Layer */}
+            {mainMode === 'biodiversidade' && (
+              <div style={{ transform: 'translateZ(20px)', transformStyle: 'preserve-3d' }}>
+                <BiodiversityMapLayer
+                  activeKingdomFilter={biodiversityKingdom}
+                  activeBiomeFilter={biodiversityBiome}
+                  threatenedOnly={isBiodiversityThreatenedOnly}
+                  selectedStateId={selectedBiodiversityStateId || selectedStateId}
+                  onSelectState={(stateId) => {
+                    handleStateClick(stateId);
+                  }}
+                  geoProjectFn={projection}
+                  is3D={is3D}
+                  hoveredStateId={hoveredStateId}
+                  centroids={centroids}
+                />
+              </div>
+            )}
+
+
             {/* Layer 4: Procedural Atmosphere (Gaivotas, Névoa Mágica & Brilho Solar / Céu Noturno) */}
             <div style={{ transform: 'translateZ(120px)', transformStyle: 'preserve-3d' }}>
               <ProceduralAtmosphereLayer enabled={atmosphereEnabled} timeOverride={timeOverride} />
@@ -1453,15 +1569,21 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Floating Close 'X' Button on Map next to highlighted climate state */}
+            {/* Floating Close 'X' Button on Map next to highlighted climate or biodiversity state */}
             {(() => {
-              if (!isClimateActive || !selectedClimateStateId || !centroids[selectedClimateStateId]) return null;
+              const activeFocusStateId =
+                (isClimateActive && selectedClimateStateId) ||
+                (mainMode === 'biodiversidade' && selectedBiodiversityStateId) ||
+                null;
+              if (!activeFocusStateId || !centroids[activeFocusStateId]) return null;
+              const isBio = mainMode === 'biodiversidade';
+
               return (
                 <div
                   className="btn-fechar-foco-estado-flutuante absolute z-50 pointer-events-auto transition-transform hover:scale-110 active:scale-95 animate-in fade-in zoom-in-75 duration-200 touch-manipulation"
                   style={{
-                    left: centroids[selectedClimateStateId][0] + 42,
-                    top: centroids[selectedClimateStateId][1] - 42,
+                    left: centroids[activeFocusStateId][0] + 42,
+                    top: centroids[activeFocusStateId][1] - 42,
                     transform: 'translate(-50%, -50%) translateZ(40px)',
                     transformStyle: 'preserve-3d',
                   }}
@@ -1473,10 +1595,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                       e.stopPropagation();
                       handleCloseInspection();
                     }}
-                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/95 border-2 border-cyan-400 hover:border-cyan-300 text-cyan-300 hover:text-white shadow-[0_0_24px_rgba(6,182,212,0.75),0_8px_24px_rgba(0,0,0,0.9)] cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-black"
+                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/95 border-2 ${
+                      isBio
+                        ? 'border-emerald-400 hover:border-emerald-300 text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.75),0_8px_24px_rgba(0,0,0,0.9)]'
+                        : 'border-cyan-400 hover:border-cyan-300 text-cyan-300 shadow-[0_0_24px_rgba(6,182,212,0.75),0_8px_24px_rgba(0,0,0,0.9)]'
+                    } hover:text-white cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-black`}
                     title="Fechar foco no estado e centralizar o mapa do Brasil (Esc)"
                   >
-                    <X className="w-4 h-4 text-cyan-300 group-hover:rotate-90 transition-transform duration-200" />
+                    <X
+                      className={`w-4 h-4 ${
+                        isBio ? 'text-emerald-300' : 'text-cyan-300'
+                      } group-hover:rotate-90 transition-transform duration-200`}
+                    />
                     <span className="text-[11px] pr-0.5 font-bold">Fechar Foco</span>
                   </button>
                 </div>
@@ -1563,6 +1693,42 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           onClose={handleCloseInspection}
         />
       )}
+
+      {/* 13.7. Diálogo Completo de Biodiversidade do Estado (Fauna, Flora, Microorganismos, GBIF, IBAMA SisCITES & Wikipedia) */}
+      {mainMode === 'biodiversidade' && selectedBiodiversityStateId && (
+        <StateBiodiversityDialog
+          stateId={selectedBiodiversityStateId}
+          onClose={handleCloseInspection}
+          activeKingdomFilter={biodiversityKingdom}
+          isThreatenedOnly={isBiodiversityThreatenedOnly}
+        />
+      )}
+
+      {/* 13.8. Painel Flutuante de Controle e Filtros de Biodiversidade */}
+      <BiodiversityControlPanel
+        isOpen={isBiodiversityPanelOpen && mainMode === 'biodiversidade'}
+        onClose={() => {
+          if (onToggleBiodiversityPanel) {
+            onToggleBiodiversityPanel();
+          } else {
+            setInternalIsBiodiversityPanelOpen(false);
+          }
+        }}
+        activeKingdom={biodiversityKingdom}
+        onKingdomChange={handleBiodiversityKingdomChange}
+        activeBiome={biodiversityBiome}
+        onBiomeChange={handleBiodiversityBiomeChange}
+        threatenedOnly={isBiodiversityThreatenedOnly}
+        onToggleThreatenedOnly={handleToggleThreatenedOnly}
+        endemicOnly={isBiodiversityEndemicOnly}
+        onToggleEndemicOnly={handleToggleEndemicOnly}
+        onOpenStateDetails={(stateId) => {
+          setSelectedBiodiversityStateId(stateId);
+          handleStateClick(stateId);
+        }}
+        selectedStateId={selectedBiodiversityStateId || selectedStateId}
+      />
+
 
       {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave */}
       <CustomCanvasCursor

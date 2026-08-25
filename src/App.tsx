@@ -8,7 +8,7 @@ import { ApiStatusModal } from './components/ApiStatusModal';
 import { AboutInfoModal } from './components/AboutInfoModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
 import { FpsCounterWidget } from './components/FpsCounterWidget';
-import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme } from './types';
+import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from './types';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
@@ -31,7 +31,7 @@ export function App() {
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
 
-  // App Modes: 1º Aventura/Navegação (default on page load), 2º Clima, 3º Musicalidades
+  // App Modes: 1º Aventura/Navegação (default on page load), 2º Clima, 3º Biodiversidade, 4º Musicalidades, 5º Globo 3D
   const [mainMode, setMainMode] = useState<AppMainMode>('aventura');
   const [terrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
   const [visualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
@@ -41,6 +41,14 @@ export function App() {
   const [showNeighbors, setShowNeighbors] = useState<boolean>(false);
   const [isObservatorioOpen, setIsObservatorioOpen] = useState<boolean>(false);
   const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
+
+  // Biodiversity Mode State
+  const [biodiversityKingdom, setBiodiversityKingdom] = useState<BiodiversityKingdom | 'all'>('all');
+  const [biodiversityBiome, setBiodiversityBiome] = useState<BrazilBiome | 'all'>('all');
+  const [isBiodiversityThreatenedOnly, setIsBiodiversityThreatenedOnly] = useState<boolean>(false);
+  const [isBiodiversityEndemicOnly, setIsBiodiversityEndemicOnly] = useState<boolean>(false);
+  const [isBiodiversityPanelOpen, setIsBiodiversityPanelOpen] = useState<boolean>(false);
+
   const [climateTelemetry, setClimateTelemetry] = useState<{
     avgTempBrazil: number;
     maxTempState: { stateId: string; temp: number };
@@ -122,7 +130,21 @@ export function App() {
       setShowNeighbors(false);
       setSelectedRegionFilter('todos');
       setIsObservatorioOpen(false);
+    } else if (newMode === 'biodiversidade') {
+      // Modo Biodiversidade Padrão: Cores Naturais da Terra (Natural Earth Land Cover), relevo ecológico, nuvens, ondas costeiras, sem vizinhos
+      setTerrainProvider('natural_earth');
+      setVisualStyle('tiles');
+      setIsCloudsActive(true);
+      setIsAtmosphereActive(true);
+      setCelestialTimeOverride('auto');
+      setIsWavesActive(true);
+      setIsRainSimActive(false);
+      setShowNeighbors(false);
+      setSelectedRegionFilter('todos');
+      setIsObservatorioOpen(false);
+      setIsBiodiversityPanelOpen(false);
     } else if (newMode === 'musicalidades') {
+
       // Modo Musicalidades Padrão: Rádio aberto, sol e nuvens leves, ondas
       setTerrainProvider('shaded_relief');
       setVisualStyle('tiles');
@@ -354,6 +376,16 @@ export function App() {
           globePinMode={globePinMode}
           onGlobePinModeChange={setGlobePinMode}
           onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
+          biodiversityKingdom={biodiversityKingdom}
+          onBiodiversityKingdomChange={setBiodiversityKingdom}
+          biodiversityBiome={biodiversityBiome}
+          onBiodiversityBiomeChange={setBiodiversityBiome}
+          isBiodiversityThreatenedOnly={isBiodiversityThreatenedOnly}
+          onToggleBiodiversityThreatenedOnly={() => setIsBiodiversityThreatenedOnly((p) => !p)}
+          isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
+          onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
+          isBiodiversityPanelOpen={isBiodiversityPanelOpen}
+          onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onResetView={() => setCenterMapTrigger((prev) => prev + 1)}
           onResetViewIfNotCentered={() => setCenterMapTrigger((prev) => prev + 1)}
@@ -434,8 +466,19 @@ export function App() {
               focusedStateId={focusedStateId}
               onFocusStateHandled={() => setFocusedStateId(null)}
               onHoverStateChange={setHoveredStateId}
+              biodiversityKingdom={biodiversityKingdom}
+              onBiodiversityKingdomChange={setBiodiversityKingdom}
+              biodiversityBiome={biodiversityBiome}
+              onBiodiversityBiomeChange={setBiodiversityBiome}
+              isBiodiversityThreatenedOnly={isBiodiversityThreatenedOnly}
+              onToggleBiodiversityThreatenedOnly={() => setIsBiodiversityThreatenedOnly((p) => !p)}
+              isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
+              onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
+              isBiodiversityPanelOpen={isBiodiversityPanelOpen}
+              onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
             />
           </div>
+
         ) : (
           /* Insignias Sanctuary View (Codex Route) */
           <CodexInsignias

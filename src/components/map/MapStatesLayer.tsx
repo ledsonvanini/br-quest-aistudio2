@@ -36,6 +36,7 @@ interface MapStatesLayerProps {
   climateMode?: ClimateMode;
   stateWeather?: Record<string, StateWeatherData>;
   focusedClimateStateId?: string | null;
+  focusedBiodiversityStateId?: string | null;
   is3D?: boolean;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
@@ -101,6 +102,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   climateMode = 'temperaturas_frentes',
   stateWeather,
   focusedClimateStateId = null,
+  focusedBiodiversityStateId = null,
   is3D = false,
   onStateEnter,
   onStateLeave,
@@ -187,9 +189,9 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     const weather = stateWeather?.[stateId];
     const isParchment = !isClimateActive && terrainProvider === 'voyager_parchment';
 
-    // Quando um estado está focado especificamente no modo Clima (analítico),
-    // o estado focado é o ÚNICO a preservar a cor. Todos os outros 26 estados ficam cinza neutro sólido.
-    // Nos outros modos (Aventura, Rádio/Musicalidades), as cores completas dos biomas/relevo são sempre mantidas!
+    // Quando um estado está focado especificamente no modo Clima (analítico) ou Biodiversidade (isolamento),
+    // o estado focado é o ÚNICO a preservar o destaque e a cor. Todos os outros 26 estados ficam cinza neutro sólido,
+    // preservando nitidamente todos os contornos e fronteiras estaduais.
     if (isClimateActive && focusedClimateStateId) {
       if (stateId !== focusedClimateStateId) {
         return {
@@ -199,6 +201,29 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           strokeWidth: 1.2,
           underglowColor: 'transparent',
           wallGradId: 'url(#extrusionWallGradDefault)',
+        };
+      }
+    }
+
+    if (focusedBiodiversityStateId) {
+      if (stateId !== focusedBiodiversityStateId) {
+        return {
+          stateFill: '#27272a', // Cinza neutro escuro sólido fosco (Zinc 800)
+          stateFillOpacity: 1.0,
+          strokeColor: '#52525b', // Linha de fronteira cinza neutra nítida
+          strokeWidth: 1.2,
+          underglowColor: 'transparent',
+          wallGradId: 'url(#extrusionWallGradDefault)',
+        };
+      } else {
+        // Estado isolado em Biodiversidade: destaque esmeralda / ecológico nobre
+        return {
+          stateFill: '#065f46',
+          stateFillOpacity: 0.95,
+          strokeColor: '#34d399',
+          strokeWidth: 3.2,
+          underglowColor: '#10b981',
+          wallGradId: 'url(#extrusionWallGradEmerald)',
         };
       }
     }
@@ -309,8 +334,10 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   if (!pathGenerator || !geoData) return null;
 
   // Active state for dedicated 3D elevation block overlay
-  const activeElevatedStateId = isClimateActive && focusedClimateStateId
+  const activeElevatedStateId = (isClimateActive && focusedClimateStateId)
     ? focusedClimateStateId
+    : focusedBiodiversityStateId
+    ? focusedBiodiversityStateId
     : (hoveredStateId || selectedStateId);
   const activePathD = activeElevatedStateId ? statePathMap[activeElevatedStateId] : null;
   const activeVisuals = activeElevatedStateId ? getStateVisuals(activeElevatedStateId, hoveredStateId === activeElevatedStateId, selectedStateId === activeElevatedStateId) : null;
@@ -444,7 +471,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       {/* =========================================================================
           2. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite)
          ========================================================================= */}
-      {visualStyle === 'tiles' && !focusedClimateStateId && (
+      {visualStyle === 'tiles' && !focusedClimateStateId && !focusedBiodiversityStateId && (
         <ClippedMapTilesLayer
           geoData={geoData}
           projection={projection}
