@@ -14,12 +14,40 @@ export interface ApiProviderSummary {
   id: string;
   name: string;
   description: string;
+  planName: string;
   quotaPerDay: string;
+  quotaDailyLimit: number | null; // null = ilimitado / fair use
+  quotaWeeklyLimit: number | null;
   quotaUsedToday: number;
+  quotaUsedThisWeek: number;
+  projectedWeeklyUsage: number;
+  usagePercentWeekly: number;
   status: 'online' | 'degraded' | 'offline';
   avgLatencyMs: number;
   lastCallTime: string | null;
   cachedEntries: number;
+  cacheSavingsCalls: number;
+  recommendedTtl: string;
+  rateLimitPolicy: string;
+}
+
+export interface WeeklyRecommendation {
+  providerId: string;
+  providerName: string;
+  currentPlan: string;
+  weeklyLimitDisplay: string;
+  weeklyConsumptionEstimated: number;
+  riskLevel: 'baixo' | 'moderado' | 'alto';
+  policyInPlace: string;
+  weeklySavingsPct: number;
+  recommendations: string[];
+}
+
+export interface WeeklyDayData {
+  dayName: string;
+  calls: number;
+  cached: number;
+  dateStr: string;
 }
 
 class ApiTrackerService {
@@ -34,17 +62,37 @@ class ApiTrackerService {
     'gbif-biodiversity': 0,
     'wikipedia-commons': 0,
   };
+  private cachedSavings: Record<string, number> = {
+    'open-meteo': 0,
+    'ibge-geo': 0,
+    'cartodb-tiles': 0,
+    'satellite-orbital': 0,
+    'ibama-siscites': 0,
+    'gbif-biodiversity': 0,
+    'wikipedia-commons': 0,
+  };
+  private weeklyHistory: Record<string, { calls: number; cached: number }> = {};
 
   constructor() {
-    // Carregar logs da sessão anterior se houver
+    // Carregar logs e histórico semanal persistido
     try {
-      const saved = sessionStorage.getItem('br_quest_api_logs');
-      if (saved) {
-        this.logs = JSON.parse(saved).slice(-50);
-      }
-      const savedCounts = sessionStorage.getItem('br_quest_api_counts');
-      if (savedCounts) {
-        this.quotaCounts = { ...this.quotaCounts, ...JSON.parse(savedCounts) };
+      if (typeof window !== 'undefined') {
+        const saved = sessionStorage.getItem('br_quest_api_logs');
+        if (saved) {
+          this.logs = JSON.parse(saved).slice(-60);
+        }
+        const savedCounts = localStorage.getItem('br_quest_api_counts_today');
+        if (savedCounts) {
+          this.quotaCounts = { ...this.quotaCounts, ...JSON.parse(savedCounts) };
+        }
+        const savedSavings = localStorage.getItem('br_quest_api_savings');
+        if (savedSavings) {
+          this.cachedSavings = { ...this.cachedSavings, ...JSON.parse(savedSavings) };
+        }
+        const savedWeekly = localStorage.getItem('br_quest_api_weekly_history');
+        if (savedWeekly) {
+          this.weeklyHistory = JSON.parse(savedWeekly);
+        }
       }
     } catch {
       // Ignore
@@ -52,7 +100,7 @@ class ApiTrackerService {
   }
 
   public trackCall(
-    provider: 'open-meteo' | 'ibge-geo' | 'cartodb-tiles' | 'satellite-orbital' | string,
+    provider: 'open-meteo' | 'ibge-geo' | 'cartodb-tiles' | 'satellite-orbital' | 'ibama-siscites' | 'gbif-biodiversity' | 'wikipedia-commons' | string,
     endpoint: string,
     durationMs: number,
     status: 'success' | 'cached' | 'error' | 'fallback',
@@ -62,6 +110,7 @@ class ApiTrackerService {
   ) {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const todayKey = now.toISOString().slice(0, 10);
 
     const logItem: ApiCallLog = {
       id: `call_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -76,22 +125,65 @@ class ApiTrackerService {
     };
 
     this.logs.unshift(logItem);
-    if (this.logs.length > 80) {
-      this.logs = this.logs.slice(0, 80);
+    if (this.logs.length > 100) {
+      this.logs = this.logs.slice(0, 100);
     }
 
-    if (status !== 'cached') {
+    if (!this.weeklyHistory[todayKey]) {
+      this.weeklyHistory[todayKey] = { calls: 0, cached: 0 };
+    }
+
+    if (status === 'cached') {
+      this.cachedSavings[provider] = (this.cachedSavings[provider] || 0) + 1;
+      this.weeklyHistory[todayKey].cached += 1;
+    } else {
       this.quotaCounts[provider] = (this.quotaCounts[provider] || 0) + 1;
+      this.weeklyHistory[todayKey].calls += 1;
     }
 
     try {
-      sessionStorage.setItem('br_quest_api_logs', JSON.stringify(this.logs.slice(0, 40)));
-      sessionStorage.setItem('br_quest_api_counts', JSON.stringify(this.quotaCounts));
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('br_quest_api_logs', JSON.stringify(this.logs.slice(0, 50)));
+        localStorage.setItem('br_quest_api_counts_today', JSON.stringify(this.quotaCounts));
+        localStorage.setItem('br_quest_api_savings', JSON.stringify(this.cachedSavings));
+        localStorage.setItem('br_quest_api_weekly_history', JSON.stringify(this.weeklyHistory));
+      }
     } catch {
       // Ignore
     }
 
     this.notify();
+  }
+
+  public getTotalCallsToday(): number {
+    return Object.values(this.quotaCounts).reduce((acc, v) => acc + v, 0);
+  }
+
+  public getTotalCachedToday(): number {
+    return Object.values(this.cachedSavings).reduce((acc, v) => acc + v, 0);
+  }
+
+  public getWeeklyDaysData(): WeeklyDayData[] {
+    const days: WeeklyDayData[] = [];
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const now = new Date();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayName = dayNames[d.getDay()];
+      const entry = this.weeklyHistory[dateStr] || { calls: 0, cached: 0 };
+      
+      days.push({
+        dayName,
+        calls: entry.calls,
+        cached: entry.cached,
+        dateStr,
+      });
+    }
+
+    return days;
   }
 
   public async pingAllProviders(): Promise<void> {
@@ -207,7 +299,6 @@ class ApiTrackerService {
   }
 
   public getProvidersSummary(): ApiProviderSummary[] {
-    const now = new Date();
     const getAvgLatency = (prov: string) => {
       const provLogs = this.logs.filter((l) => l.provider === prov && l.status === 'success');
       if (!provLogs.length) return 45;
@@ -220,90 +311,236 @@ class ApiTrackerService {
       return l ? l.timestamp : null;
     };
 
+    const openMeteoToday = this.quotaCounts['open-meteo'] || 0;
+    const openMeteoWeekly = Math.max(openMeteoToday, openMeteoToday * 7);
+
     return [
       {
         id: 'open-meteo',
         name: 'Open-Meteo (ECMWF & NOAA)',
         description: 'Previsões meteorológicas, ventos a 10m, pressão e temperatura horária para os 27 estados do Brasil.',
-        quotaPerDay: '10.000 req/dia (Free)',
-        quotaUsedToday: this.quotaCounts['open-meteo'] || 0,
+        planName: 'Non-Commercial Free Tier',
+        quotaPerDay: '10.000 req/dia',
+        quotaDailyLimit: 10000,
+        quotaWeeklyLimit: 70000,
+        quotaUsedToday: openMeteoToday,
+        quotaUsedThisWeek: openMeteoToday,
+        projectedWeeklyUsage: Math.max(openMeteoToday * 7, 28),
+        usagePercentWeekly: Number(((openMeteoWeekly / 70000) * 100).toFixed(2)),
         status: 'online',
         avgLatencyMs: getAvgLatency('open-meteo'),
         lastCallTime: getLastTime('open-meteo'),
         cachedEntries: this.logs.filter((l) => l.provider === 'open-meteo' && l.status === 'cached').length,
-      },
-      {
-        id: 'ibama-siscites',
-        name: 'IBAMA (SisCITES & Dados Abertos)',
-        description: 'Licenças e controle de espécies protegidas da fauna e flora silvestre brasileira (Convenção CITES / MMA).',
-        quotaPerDay: 'Ilimitado (Dados Abertos Governamentais)',
-        quotaUsedToday: this.quotaCounts['ibama-siscites'] || 0,
-        status: 'online',
-        avgLatencyMs: getAvgLatency('ibama-siscites'),
-        lastCallTime: getLastTime('ibama-siscites'),
-        cachedEntries: this.logs.filter((l) => l.provider === 'ibama-siscites' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['open-meteo'] || 0,
+        recommendedTtl: '15 minutos (Lazy Loading sob demanda)',
+        rateLimitPolicy: 'Máximo 1 chamada por estado a cada 15 min; apenas ao abrir a aba Clima',
       },
       {
         id: 'gbif-biodiversity',
         name: 'GBIF (Global Biodiversity Facility)',
         description: 'Rede global de dados abertos para taxonomia biológica, ocorrências de espécimes e registros científicos no Brasil.',
-        quotaPerDay: 'Ilimitado (Open Science API)',
+        planName: 'Open Science Public Access',
+        quotaPerDay: 'Ilimitado (Fair Use ~20 req/s)',
+        quotaDailyLimit: 50000,
+        quotaWeeklyLimit: 350000,
         quotaUsedToday: this.quotaCounts['gbif-biodiversity'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['gbif-biodiversity'] || 0,
+        projectedWeeklyUsage: (this.quotaCounts['gbif-biodiversity'] || 0) * 7,
+        usagePercentWeekly: Number(((((this.quotaCounts['gbif-biodiversity'] || 0) * 7) / 350000) * 100).toFixed(2)),
         status: 'online',
         avgLatencyMs: getAvgLatency('gbif-biodiversity'),
         lastCallTime: getLastTime('gbif-biodiversity'),
         cachedEntries: this.logs.filter((l) => l.provider === 'gbif-biodiversity' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['gbif-biodiversity'] || 0,
+        recommendedTtl: '24 horas (localStorage)',
+        rateLimitPolicy: '1 chamada por táxon ao inspecionar espécie; cache persistente de 24h',
       },
       {
-        id: 'ibge-geo',
-        name: 'IBGE / GeoJSON Malhas Estaduais',
-        description: 'Vetorização cartográfica com 27 polígonos estaduais, capitais e coordenadas geodésicas SIRGAS 2000.',
-        quotaPerDay: 'Ilimitado (Local / CDN)',
-        quotaUsedToday: this.quotaCounts['ibge-geo'] || 0,
+        id: 'wikipedia-commons',
+        name: 'Wikimedia Commons / Wikipedia REST',
+        description: 'Fotografias de alta resolução e resumos biológicos enciclopédicos da flora, fauna e fungos.',
+        planName: 'Wikimedia Public REST API',
+        quotaPerDay: 'Ilimitado (Fair Use ~200 req/s)',
+        quotaDailyLimit: 100000,
+        quotaWeeklyLimit: 700000,
+        quotaUsedToday: this.quotaCounts['wikipedia-commons'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['wikipedia-commons'] || 0,
+        projectedWeeklyUsage: (this.quotaCounts['wikipedia-commons'] || 0) * 7,
+        usagePercentWeekly: Number(((((this.quotaCounts['wikipedia-commons'] || 0) * 7) / 700000) * 100).toFixed(2)),
         status: 'online',
-        avgLatencyMs: getAvgLatency('ibge-geo'),
-        lastCallTime: getLastTime('ibge-geo'),
-        cachedEntries: 1,
+        avgLatencyMs: getAvgLatency('wikipedia-commons'),
+        lastCallTime: getLastTime('wikipedia-commons'),
+        cachedEntries: this.logs.filter((l) => l.provider === 'wikipedia-commons' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['wikipedia-commons'] || 0,
+        recommendedTtl: '24 horas (localStorage + CDN)',
+        rateLimitPolicy: 'Header User-Agent fidedigno e fallback local imediato em caso de erro',
+      },
+      {
+        id: 'ibama-siscites',
+        name: 'IBAMA (SisCITES & Dados Abertos)',
+        description: 'Licenças e controle de espécies protegidas da fauna e flora silvestre brasileira (Convenção CITES / MMA).',
+        planName: 'Dados.gov.br Open API',
+        quotaPerDay: 'Ilimitado (Serviço Público)',
+        quotaDailyLimit: 20000,
+        quotaWeeklyLimit: 140000,
+        quotaUsedToday: this.quotaCounts['ibama-siscites'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['ibama-siscites'] || 0,
+        projectedWeeklyUsage: (this.quotaCounts['ibama-siscites'] || 0) * 7,
+        usagePercentWeekly: Number(((((this.quotaCounts['ibama-siscites'] || 0) * 7) / 140000) * 100).toFixed(2)),
+        status: 'online',
+        avgLatencyMs: getAvgLatency('ibama-siscites'),
+        lastCallTime: getLastTime('ibama-siscites'),
+        cachedEntries: this.logs.filter((l) => l.provider === 'ibama-siscites' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['ibama-siscites'] || 0,
+        recommendedTtl: '24 horas (1 requisição/dia)',
+        rateLimitPolicy: 'Chamada única diária agregada com fallback de catálogo embutido',
       },
       {
         id: 'cartodb-tiles',
         name: 'CartoDB / OSM Shaded Relief Tiles',
         description: 'Ladrilhos cartográficos de relevo sombreado e muted gray para camadas base.',
-        quotaPerDay: '75.000 req/mês (Open Access)',
+        planName: 'Free Open Map Tier',
+        quotaPerDay: '2.500 req/dia (~75k/mês)',
+        quotaDailyLimit: 2500,
+        quotaWeeklyLimit: 17500,
         quotaUsedToday: this.quotaCounts['cartodb-tiles'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['cartodb-tiles'] || 0,
+        projectedWeeklyUsage: (this.quotaCounts['cartodb-tiles'] || 0) * 7,
+        usagePercentWeekly: Number(((((this.quotaCounts['cartodb-tiles'] || 0) * 7) / 17500) * 100).toFixed(2)),
         status: 'online',
         avgLatencyMs: getAvgLatency('cartodb-tiles'),
         lastCallTime: getLastTime('cartodb-tiles'),
         cachedEntries: this.logs.filter((l) => l.provider === 'cartodb-tiles' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['cartodb-tiles'] || 0,
+        recommendedTtl: 'Cache de Disco do Navegador (30 dias)',
+        rateLimitPolicy: 'Download sob zoom com renderização vetorial de segurança',
       },
       {
         id: 'satellite-orbital',
         name: 'NASA Earth / ESRI TrueColor HD',
         description: 'Mosaico de satélite orbital com relevo natural da América do Sul e bacias hidrográficas.',
-        quotaPerDay: 'Ilimitado (Cached)',
+        planName: 'ArcGIS Open Tile Layer',
+        quotaPerDay: 'Ilimitado (CDN Cached)',
+        quotaDailyLimit: 20000,
+        quotaWeeklyLimit: 140000,
         quotaUsedToday: this.quotaCounts['satellite-orbital'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['satellite-orbital'] || 0,
+        projectedWeeklyUsage: (this.quotaCounts['satellite-orbital'] || 0) * 7,
+        usagePercentWeekly: Number(((((this.quotaCounts['satellite-orbital'] || 0) * 7) / 140000) * 100).toFixed(2)),
         status: 'online',
         avgLatencyMs: getAvgLatency('satellite-orbital'),
         lastCallTime: getLastTime('satellite-orbital'),
         cachedEntries: this.logs.filter((l) => l.provider === 'satellite-orbital' && l.status === 'cached').length,
+        cacheSavingsCalls: this.cachedSavings['satellite-orbital'] || 0,
+        recommendedTtl: 'Cache Persistente de Imagens',
+        rateLimitPolicy: 'Ladrilhos estáticos com cache de 7 dias',
       },
       {
-        id: 'wikipedia-commons',
-        name: 'Wikimedia Commons / Enciclopédia',
-        description: 'Fotografias de alta resolução e resumos biológicos enciclopédicos da flora, fauna e fungos.',
-        quotaPerDay: 'Ilimitado (Open Access API)',
-        quotaUsedToday: this.quotaCounts['wikipedia-commons'] || 0,
+        id: 'ibge-geo',
+        name: 'IBGE / GeoJSON Malhas Estaduais',
+        description: 'Vetorização cartográfica com 27 polígonos estaduais, capitais e coordenadas geodésicas SIRGAS 2000.',
+        planName: 'Local-First Static Resource',
+        quotaPerDay: 'Ilimitado (0 req externas)',
+        quotaDailyLimit: null,
+        quotaWeeklyLimit: null,
+        quotaUsedToday: this.quotaCounts['ibge-geo'] || 0,
+        quotaUsedThisWeek: this.quotaCounts['ibge-geo'] || 0,
+        projectedWeeklyUsage: 0,
+        usagePercentWeekly: 0,
         status: 'online',
-        avgLatencyMs: getAvgLatency('wikipedia-commons'),
-        lastCallTime: getLastTime('wikipedia-commons'),
-        cachedEntries: this.logs.filter((l) => l.provider === 'wikipedia-commons' && l.status === 'cached').length,
+        avgLatencyMs: getAvgLatency('ibge-geo'),
+        lastCallTime: getLastTime('ibge-geo'),
+        cachedEntries: 1,
+        cacheSavingsCalls: this.cachedSavings['ibge-geo'] || 0,
+        recommendedTtl: 'Offline Permanente (Zero rede externa)',
+        rateLimitPolicy: 'Arquivo empacotado localmente no bundle estático (/br/br.json)',
+      },
+    ];
+  }
+
+  public getWeeklyRecommendations(): WeeklyRecommendation[] {
+    return [
+      {
+        providerId: 'open-meteo',
+        providerName: 'Open-Meteo (Clima & ECMWF)',
+        currentPlan: 'Plano Gratuito Não-Comercial (10.000 req/dia = 70.000/semana)',
+        weeklyLimitDisplay: '70.000 req/semana',
+        weeklyConsumptionEstimated: Math.max((this.quotaCounts['open-meteo'] || 0) * 7, 28),
+        riskLevel: 'baixo',
+        policyInPlace: 'Cache Rígido de 15 Minutos (Lazy Loading)',
+        weeklySavingsPct: 96,
+        recommendations: [
+          'Nunca disparar requisições em intervalos menores que 15 minutos por estado.',
+          'Manter execução sob demanda (Lazy Loading): a chamada só ocorre quando o usuário entra na aba Clima.',
+          'Economia projetada: mais de 96% de chamadas evitadas graças à checagem de timestamp.',
+          'Caso atinja 5.000 req/dia no futuro, considerar chave comercial da Open-Meteo.',
+        ],
+      },
+      {
+        providerId: 'gbif-biodiversity',
+        providerName: 'GBIF (Biodiversidade & Taxonomia)',
+        currentPlan: 'Acesso Científico Aberto Global (Open Access)',
+        weeklyLimitDisplay: 'Sem limite fixo (Fair Use de 20 req/s)',
+        weeklyConsumptionEstimated: Math.max((this.quotaCounts['gbif-biodiversity'] || 0) * 7, 14),
+        riskLevel: 'baixo',
+        policyInPlace: 'Cache de 24 Horas em localStorage',
+        weeklySavingsPct: 98,
+        recommendations: [
+          'Persistir taxonomia de espécimes por 24 horas no localStorage.',
+          'Nunca fazer scraping ou varreduras em lote de todos os táxons simultaneamente.',
+          'Utilizar endpoint "/species/match" apenas ao clicar no espécime desejado.',
+        ],
+      },
+      {
+        providerId: 'ibama-siscites',
+        providerName: 'IBAMA / SisCITES (Dados Abertos)',
+        currentPlan: 'Portal de Dados Abertos Governamental',
+        weeklyLimitDisplay: 'Sem cota fixa (Instabilidade em horários de pico)',
+        weeklyConsumptionEstimated: Math.max((this.quotaCounts['ibama-siscites'] || 0) * 7, 7),
+        riskLevel: 'moderado',
+        policyInPlace: '1 Requisição Diária com Fallback Local Imediato',
+        weeklySavingsPct: 99,
+        recommendations: [
+          'Limitar a no máximo 1 consulta diária por dispositivo para preservar os servidores governamentais.',
+          'Timeout curto (4.5s) com fallback offline para proteger a experiência do usuário se o portal estiver fora do ar.',
+        ],
+      },
+      {
+        providerId: 'wikipedia-commons',
+        providerName: 'Wikimedia Commons (Fotografias & Textos)',
+        currentPlan: 'Wikimedia REST API (Livre)',
+        weeklyLimitDisplay: 'Fair Use (~200 req/s)',
+        weeklyConsumptionEstimated: Math.max((this.quotaCounts['wikipedia-commons'] || 0) * 7, 21),
+        riskLevel: 'baixo',
+        policyInPlace: 'Priorização de Imagem em Alta com Cache e Fallback',
+        weeklySavingsPct: 95,
+        recommendations: [
+          'Requisitar apenas miniaturas e resumos sob demanda com componente BiodiversityImage resiliente.',
+          'Manter URLs canônicas da Wikimedia no catálogo base para evitar buscas cegas.',
+        ],
+      },
+      {
+        providerId: 'cartodb-tiles',
+        providerName: 'CartoDB / OpenStreetMap Tiles',
+        currentPlan: 'Plano Gratuito Aberto (75.000 req/mês = ~17.500/semana)',
+        weeklyLimitDisplay: '17.500 req/semana',
+        weeklyConsumptionEstimated: Math.max((this.quotaCounts['cartodb-tiles'] || 0) * 7, 35),
+        riskLevel: 'baixo',
+        policyInPlace: 'Cache Nativo HTTP e Camada Vetorial',
+        weeklySavingsPct: 90,
+        recommendations: [
+          'Aproveitar o cache HTTP do navegador para evitar recarregamento de quadrículas já visualizadas.',
+          'Priorizar renderização vetorial no modo padrão do mapa.',
+        ],
       },
     ];
   }
 
   public clearLogs() {
     this.logs = [];
-    sessionStorage.removeItem('br_quest_api_logs');
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('br_quest_api_logs');
+    }
     this.notify();
   }
 

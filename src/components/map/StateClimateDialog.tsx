@@ -21,7 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { STATE_CLIMATOLOGY_DATABASE, StateClimatologyDetail } from '../../data/stateClimatologyData';
-import { StateWeatherData } from '../../services/climateService';
+import { StateWeatherData, formatFullDayTime } from '../../services/climateService';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
 
 interface StateClimateDialogProps {
@@ -541,17 +541,23 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
       </div>
 
       {/* 5. Footer do Diálogo com Ações e Botão Fechar Foco */}
-      <div className="p-2 sm:p-2.5 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-xs text-slate-400 shrink-0">
-        <span className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400">
-          <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="hidden xs:inline">INMET • CPRM • Open-Meteo • ECMWF</span>
-          <span className="xs:hidden">INMET • ECMWF</span>
-        </span>
+      <div className="p-2 sm:p-2.5 border-t border-slate-800 bg-slate-950 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <span className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400">
+            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="hidden xs:inline">INMET • CPRM • Open-Meteo • ECMWF</span>
+            <span className="xs:hidden">INMET • ECMWF</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-700/60 font-mono">
+            <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+            <span>Atualizado em: <strong className="text-cyan-200">{formatFullDayTime()}</strong></span>
+          </span>
+        </div>
         <button
           id="btn-fechar-dialog-clima-footer"
           type="button"
           onClick={onClose}
-          className="px-3 sm:px-4 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 hover:text-white font-bold transition-all cursor-pointer border border-cyan-500/50 shadow-md active:scale-95 text-xs flex items-center gap-1.5"
+          className="px-3 sm:px-4 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 hover:text-white font-bold transition-all cursor-pointer border border-cyan-500/50 shadow-md active:scale-95 text-xs flex items-center gap-1.5 ml-auto"
           title="Fechar foco no estado e centralizar o mapa do Brasil (Esc)"
         >
           <X className="w-3.5 h-3.5 text-cyan-300" />

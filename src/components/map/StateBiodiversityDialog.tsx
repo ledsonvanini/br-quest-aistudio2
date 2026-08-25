@@ -20,6 +20,7 @@ import {
   Globe,
   Dna,
   Share2,
+  Clock,
 } from 'lucide-react';
 import { StateBiodiversityProfile, BiodiversitySpecimen, BiodiversityKingdom, BrazilBiome } from '../../types';
 import { STATE_BIODIVERSITY_PROFILES, IUCN_STATUS_LABELS, BIOME_COLORS, getSpecimensByState } from '../../data/brazilBiodiversityData';
@@ -337,10 +338,10 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
             {/* Imagem em alta definição */}
             <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video sm:aspect-[21/9] max-h-56">
               <BiodiversityImage
-                src={selectedSpecimen.imageUrl}
+                src={wikiSummary?.originalimage?.source || wikiSummary?.thumbnail?.source || selectedSpecimen.imageUrl}
                 alt={selectedSpecimen.namePt}
                 kingdom={selectedSpecimen.kingdom}
-                fallbackSrc={selectedSpecimen.thumbnailUrl}
+                fallbackSrc={selectedSpecimen.thumbnailUrl || selectedSpecimen.imageUrl}
                 containerClassName="w-full h-full"
                 className="w-full h-full object-cover"
               />
@@ -699,14 +700,20 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
       </div>
 
       {/* 4. Footer com Ações */}
-      <div className="p-2.5 sm:p-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-        <span className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Fontes: ICMBio • JBRJ • IBAMA SisCITES • GBIF</span>
-        </span>
+      <div className="p-2.5 sm:p-3 border-t border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Fontes: ICMBio • JBRJ • IBAMA • GBIF</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-700/60 font-mono">
+            <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span>Atualizado em: <strong className="text-emerald-200">{biodiversityService.getFormattedLastUpdate()}</strong></span>
+          </span>
+        </div>
         <button
           onClick={onClose}
-          className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold transition"
+          className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold transition ml-auto"
         >
           Fechar
         </button>

@@ -196,22 +196,39 @@ export function getRainRadarColor(rainMm: number): string {
 }
 
 /**
- * Formata data e hora no estilo do banner Meteored:
+ * Formata data e hora no estilo do banner Meteored (fuso horário de Brasília UTC-3):
  * Ex: "Terça 18, 15:00 (-03)"
  */
-export function formatMeteoredDateTime(): string {
-  const now = new Date();
-  const dayName = now.toLocaleDateString('pt-BR', { weekday: 'short' });
+export function formatMeteoredDateTime(date = new Date()): string {
+  const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'America/Sao_Paulo' });
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).replace('.', '');
-  const dayNum = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${capitalizedDay} ${dayNum}, ${hours}:${minutes} (-03)`;
+  const dayNum = date.toLocaleDateString('pt-BR', { day: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  return `${capitalizedDay} ${dayNum}, ${timeStr} (-03)`;
 }
 
-// Cache em memória e localStorage com TTL de 60 minutos (3600000 ms)
+/**
+ * Formata data e hora completa em português com fuso horário de Brasília (America/Sao_Paulo):
+ * Ex: "Terça-feira, 15:30"
+ */
+export function formatFullDayTime(date = new Date()): string {
+  const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  return `${capitalizedDay}, ${timeStr}`;
+}
+
+/**
+ * Formata apenas hora e minuto em Brasília (UTC-3):
+ * Ex: "15:30"
+ */
+export function formatBrasiliaTimeOnly(date = new Date()): string {
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+}
+
+// Cache em memória e localStorage com TTL rígido de 15 minutos (900000 ms)
 const CLIMATE_CACHE_KEY = 'br_quest_climate_cache_v2';
-const CLIMATE_CACHE_TTL_MS = 60 * 60 * 1000; // 60 minutos
+const CLIMATE_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutos rígidos de proteção anti-rate-limit
 
 interface ClimateCacheEntry {
   timestamp: number;
@@ -260,7 +277,7 @@ function saveClimateDataToCache(data: ClimateTelemetryResponse) {
 }
 
 export async function fetchLiveClimateTelemetry(forceRefresh = false): Promise<ClimateTelemetryResponse> {
-  // 0. Verificar se os dados já estão em cache de 60min
+  // 0. Verificar se os dados já estão em cache local do cliente (caso não seja forceRefresh)
   if (!forceRefresh) {
     const cached = getCachedClimateData();
     if (cached) {
@@ -268,22 +285,57 @@ export async function fetchLiveClimateTelemetry(forceRefresh = false): Promise<C
     }
   }
 
-  const stateWeather: Record<string, StateWeatherData> = {};
-  const stations: ClimateStationData[] = [];
   const startTime = performance.now();
 
+  // 1. Tentar primeiro via Proxy Centralizado do Servidor (/api/climate)
+  // O backend responde em ~1ms a partir do cache central de 15min para todos os visitantes,
+  // ou busca em tempo real na Open-Meteo se for a primeira vez ou se forceRefresh=true.
   try {
-    // 1. Requisição multi-coordenada em batch para todos os 27 estados na Open-Meteo
+    const serverProxyUrl = `/api/climate${forceRefresh ? '?force=true' : ''}`;
+    const proxyRes = await fetch(serverProxyUrl, { signal: AbortSignal.timeout(6000) });
+    const duration = performance.now() - startTime;
+
+    if (proxyRes.ok) {
+      const proxyData: ClimateTelemetryResponse & { isServerCache?: boolean; forced?: boolean } = await proxyRes.json();
+      const payloadSizeKb = JSON.stringify(proxyData).length / 1024;
+      const isHit = proxyRes.headers.get('X-Proxy-Cache') === 'HIT';
+
+      apiTracker.trackCall(
+        'open-meteo',
+        isHit ? '/api/climate (Server Proxy Cache 15m)' : '/api/climate (Server Live Batch)',
+        duration,
+        isHit ? 'cached' : 'success',
+        200,
+        isHit
+          ? 'Telemetria obtida via Cache Central do Servidor (~1ms)'
+          : forceRefresh
+          ? 'Re-teste manual direto via Proxy Backend (Conexão Ativa)'
+          : '27 estados sincronizados via Proxy Centralizado',
+        payloadSizeKb
+      );
+
+      saveClimateDataToCache(proxyData);
+      return proxyData;
+    }
+  } catch (proxyErr) {
+    console.info('[ClimateService] Proxy do servidor não disponível, usando conexão direta:', proxyErr);
+  }
+
+  // 2. Fallback direto Client-Side para Open-Meteo caso o proxy não responda
+  const stateWeather: Record<string, StateWeatherData> = {};
+  const stations: ClimateStationData[] = [];
+
+  try {
     const lats = BRAZIL_STATES_COORDINATES.map((s) => s.lat).join(',');
     const lngs = BRAZIL_STATES_COORDINATES.map((s) => s.lng).join(',');
 
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,uv_index&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(7000) });
     const duration = performance.now() - startTime;
 
     if (!res.ok) {
-      apiTracker.trackCall('open-meteo', '/v1/forecast (27 UFs Batch)', duration, 'error', res.status, `HTTP error ${res.status}`);
+      apiTracker.trackCall('open-meteo', '/v1/forecast (Direct Client)', duration, 'error', res.status, `HTTP error ${res.status}`);
       throw new Error(`HTTP error ${res.status}`);
     }
 
@@ -293,11 +345,11 @@ export async function fetchLiveClimateTelemetry(forceRefresh = false): Promise<C
 
     apiTracker.trackCall(
       'open-meteo',
-      '/v1/forecast (27 UFs ECMWF Batch - Cache 60min)',
+      '/v1/forecast (Direct Client ECMWF)',
       duration,
       'success',
       200,
-      '27 estados sincronizados com telemetria horária real (Cache 60m)',
+      '27 estados sincronizados diretamente via cliente',
       payloadSizeKb
     );
 

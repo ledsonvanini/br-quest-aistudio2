@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { audioEngine } from '../lib/audioSynth';
 import {
   X,
@@ -12,8 +12,12 @@ import {
   Radio,
   Check,
   Activity,
-  Gauge
+  Gauge,
+  BarChart3,
+  TrendingUp,
+  ShieldCheck,
 } from 'lucide-react';
+import { apiTracker } from '../services/apiTracker';
 
 interface Props {
   isOpen: boolean;
@@ -35,6 +39,19 @@ export const SettingsModal: React.FC<Props> = ({
   const [bgmOn, setBgmOn] = useState<boolean>(audioEngine.isBgmOn());
   const [bgmVol, setBgmVol] = useState<number>(Math.round(audioEngine.getBgmVolume() * 100));
   const [sfxOn, setSfxOn] = useState<boolean>(audioEngine.isEnabled());
+  const [apiCallsToday, setApiCallsToday] = useState<number>(() => apiTracker.getTotalCallsToday());
+  const [apiSavingsToday, setApiSavingsToday] = useState<number>(() => apiTracker.getTotalCachedToday());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const update = () => {
+      setApiCallsToday(apiTracker.getTotalCallsToday());
+      setApiSavingsToday(apiTracker.getTotalCachedToday());
+    };
+    update();
+    const unsubscribe = apiTracker.subscribe(update);
+    return () => unsubscribe();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -200,8 +217,9 @@ export const SettingsModal: React.FC<Props> = ({
 
           {/* Performance & Diagnostic Section: FPS Counter & API Status */}
           <div className="pt-2 border-t border-slate-800/90 space-y-2.5">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold px-1">
-              Performance & Diagnóstico
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold px-1 flex items-center justify-between">
+              <span>Performance, APIs & Diagnóstico</span>
+              <span className="text-[10px] text-emerald-400 font-mono">100% OPERACIONAL</span>
             </div>
 
             {/* FPS Toggle */}
@@ -213,7 +231,7 @@ export const SettingsModal: React.FC<Props> = ({
                   </div>
                   <div>
                     <div className="text-xs font-serif font-bold text-slate-200">
-                      Medidor de Taxa de Quadros (FPS)
+                       Medidor de Taxa de Quadros (FPS)
                     </div>
                     <div className="text-[10px] text-slate-400">Exibir telemetria de FPS em tempo real no canto da tela</div>
                   </div>
@@ -237,32 +255,52 @@ export const SettingsModal: React.FC<Props> = ({
               </div>
             )}
 
-            {/* API Status & Telemetry Button */}
+            {/* API Status, Cotas e Estatísticas Semanais */}
             {onOpenApiStatus && (
-              <div className="bg-slate-900/90 rounded-2xl p-3.5 border border-cyan-500/30 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-400/40">
-                    <Activity className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-serif font-bold text-slate-200">
-                      Status de APIs & Tráfego
+              <div className="card-config-apis-resumo bg-slate-900/90 rounded-2xl p-3.5 border border-amber-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-400/40 shrink-0">
+                      <Activity className="w-4 h-4" />
                     </div>
-                    <div className="text-[10px] text-slate-400">Ver requisições, latência e provedores (ECMWF, IBGE)</div>
+                    <div>
+                      <div className="text-xs font-serif font-bold text-slate-200 flex items-center gap-1.5">
+                        <span>APIs & Cotas Semanais</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      </div>
+                      <div className="text-[10px] text-slate-400">Open-Meteo, IBGE, CartoDB & GBIF</div>
+                    </div>
                   </div>
+
+                  <button
+                    id="btn-status-api-config"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onOpenApiStatus();
+                      onClose();
+                    }}
+                    className="btn-abrir-painel-apis px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/40 text-xs font-bold font-serif transition cursor-pointer flex items-center gap-1"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>Estatísticas</span>
+                  </button>
                 </div>
 
-                <button
-                  id="btn-status-api-config"
-                  onClick={() => {
-                    audioEngine.playSfx('click');
-                    onOpenApiStatus();
-                    onClose();
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500 hover:text-slate-950 border border-cyan-500/40 text-xs font-bold font-serif transition cursor-pointer"
-                >
-                  Abrir Painel
-                </button>
+                {/* Resumo de Feitas / Disponíveis */}
+                <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800 text-[11px] font-mono">
+                  <div className="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 block">Feitas Hoje</span>
+                    <span className="text-amber-300 font-bold">{apiCallsToday}</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 block">Cota Diária</span>
+                    <span className="text-slate-300 font-bold">10.000 req</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 block">Salvas no Cache</span>
+                    <span className="text-cyan-300 font-bold">{apiSavingsToday}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

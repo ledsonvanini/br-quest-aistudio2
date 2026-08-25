@@ -15,6 +15,9 @@ import {
   Bug,
   Trees,
   ShieldAlert,
+  BarChart3,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { GuardianData } from '../types';
@@ -23,8 +26,10 @@ import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
 import { getStateMusicalHeritage } from '../data/musicalHeritageData';
-import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor } from '../services/climateService';
+import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor, formatFullDayTime, formatBrasiliaTimeOnly } from '../services/climateService';
 import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityData';
+import { biodiversityService } from '../services/biodiversityService';
+import { apiTracker } from '../services/apiTracker';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -51,6 +56,7 @@ interface DynamicAppFooterProps {
   avgTempBrazil?: number;
   maxTempState?: { stateId: string; temp: number };
   minTempState?: { stateId: string; temp: number };
+  climateLastUpdated?: string;
 
   // Music context
   onToggleRadio?: () => void;
@@ -77,18 +83,37 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   avgTempBrazil = 27.4,
   maxTempState = { stateId: 'MT', temp: 35.1 },
   minTempState = { stateId: 'RS', temp: 17.5 },
+  climateLastUpdated,
   onToggleRadio,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
+  const formattedTimeOnly = useMemo(() => {
+    if (climateLastUpdated) {
+      // Se veio no formato "15:30" ou "Terça 25, 15:30 (-03)", pega a hora
+      const match = climateLastUpdated.match(/(\d{2}:\d{2})/);
+      if (match) return match[1];
+    }
+    return formatBrasiliaTimeOnly();
+  }, [climateLastUpdated]);
+  const biodivTimeOnly = useMemo(() => biodiversityService.getBrasiliaTimeOnly(), []);
 
   // Real-time synchronization with Vintage Radio Player Engine
   const [radioState, setRadioState] = useState<RadioPlaybackState>(() => vintageRadioEngine.getState());
+  const [apiCallsCount, setApiCallsCount] = useState<number>(() => apiTracker.getTotalCallsToday());
 
   useEffect(() => {
-    const unsubscribe = vintageRadioEngine.subscribe((state) => {
+    const unsubscribeRadio = vintageRadioEngine.subscribe((state) => {
       setRadioState(state);
     });
-    return () => unsubscribe();
+    const updateApiCount = () => {
+      setApiCallsCount(apiTracker.getTotalCallsToday());
+    };
+    const unsubscribeApi = apiTracker.subscribe(updateApiCount);
+
+    return () => {
+      unsubscribeRadio();
+      unsubscribeApi();
+    };
   }, []);
 
   const activeMusicStateData = useMemo(() => {
@@ -165,7 +190,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </div>
           )}
 
-          {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real com Destaque Máx/Mín) */}
+          {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real com Destaque Máx/Mín + Timestamp Atualizado) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (() => {
             const maxColor = getEcmwfTempColor(maxTempState.temp);
             const minColor = getEcmwfTempColor(minTempState.temp);
@@ -175,7 +200,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             return (
               <div
                 id="painel-telemetria-clima-rodape"
-                className="painel-telemetria-clima-rodape flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 rounded-xl bg-slate-950/95 border border-cyan-500/50 text-xs shadow-lg animate-in fade-in duration-200 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
+                className="painel-telemetria-clima-rodape flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-xl bg-slate-950/95 border border-cyan-500/50 text-xs shadow-lg animate-in fade-in duration-200 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
               >
                 {/* Badge ECMWF */}
                 <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-950/90 border border-cyan-400/60 text-[10px] font-mono text-cyan-300 font-bold shrink-0">
@@ -187,7 +212,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                 <div className="secao-cartela-cores-clima flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">-4°</span>
                   <div
-                    className="relative w-20 xs:w-28 sm:w-36 md:w-40 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
+                    className="relative w-16 xs:w-24 sm:w-32 md:w-36 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
                     title={`Cartela Térmica ECMWF (-4°C a 40°C) | Mín: ${minTempState.stateId} ${minTempState.temp}°C | Máx: ${maxTempState.stateId} ${maxTempState.temp}°C`}
                   >
                     <div className="absolute inset-0 rounded-full overflow-hidden flex">
@@ -264,24 +289,16 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                   <span>{minTempState.temp.toFixed(1)}°</span>
                 </div>
 
-                {/* Botão do Observatório Ambiental */}
-                {onOpenObservatorio && (
-                  <button
-                    id="btn-toggle-observatorio-rodape"
-                    onClick={() => {
-                      audioEngine.playSfx('click');
-                      onOpenObservatorio();
-                    }}
-                    className={`btn-abrir-observatorio ml-0.5 px-2 py-0.5 rounded-md border text-[10px] font-mono font-bold transition-all cursor-pointer shrink-0 ${
-                      isObservatorioOpen
-                        ? 'bg-cyan-400 text-slate-950 border-cyan-300 shadow-sm shadow-cyan-500/40'
-                        : 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-200 hover:text-white'
-                    }`}
-                    title="Abrir / Fechar Observatório Ambiental"
-                  >
-                    Observatório
-                  </button>
-                )}
+                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
+
+                {/* Ícone e Hora Discreta (Brasília UTC-3) */}
+                <div
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-cyan-500/30 text-cyan-200 font-mono text-[10px] shrink-0"
+                  title="Horário da última telemetria climática (Horário de Brasília UTC-3)"
+                >
+                  <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <span className="font-semibold">{formattedTimeOnly}</span>
+                </div>
               </div>
             );
           })()}
@@ -290,14 +307,14 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           {!activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
             <div
               id="painel-biodiversidade-ticker-rodape"
-              className="painel-biodiversidade-ticker-rodape flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/80 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200"
+              className="painel-biodiversidade-ticker-rodape flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0"
             >
-              <div className="flex items-center gap-1.5 text-emerald-300 font-serif font-bold">
+              <div className="flex items-center gap-1.5 text-emerald-300 font-serif font-bold shrink-0">
                 <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Biodiversidade do Brasil</span>
               </div>
-              <div className="h-3.5 w-px bg-emerald-500/30 hidden sm:block" />
-              <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-300">
+              <div className="h-3.5 w-px bg-emerald-500/30 hidden sm:block shrink-0" />
+              <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-300 shrink-0">
                 <span className="flex items-center gap-1 text-amber-300">
                   <Bug className="w-3 h-3 text-amber-400" /> Fauna
                 </span>
@@ -307,6 +324,17 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                 <span className="flex items-center gap-1 text-rose-300">
                   <ShieldAlert className="w-3 h-3 text-rose-400" /> SisCITES / IBAMA
                 </span>
+              </div>
+
+              <div className="h-3.5 w-px bg-emerald-500/30 shrink-0" />
+
+              {/* Ícone e Hora Discreta (Brasília UTC-3) */}
+              <div
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-emerald-500/30 text-emerald-200 font-mono text-[10px] shrink-0"
+                title="Horário do catálogo de biodiversidade (Horário de Brasília UTC-3)"
+              >
+                <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="font-semibold">{biodivTimeOnly}</span>
               </div>
             </div>
           )}
@@ -460,7 +488,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </button>
           )}
 
-          {/* Botão 3: APIs e Telemetria */}
+          {/* Botão 3: APIs, Cotas e Telemetria */}
           {onOpenApiStatus && (
             <button
               id="btn-apis-rodape"
@@ -468,12 +496,23 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                 audioEngine.playSfx('click');
                 onOpenApiStatus();
               }}
-              className="btn-apis-rodape flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-cyan-300 text-xs font-mono font-bold transition shadow-sm cursor-pointer"
-              title="Status e Telemetria das APIs de Dados"
-              aria-label="Status APIs"
+              className="btn-apis-rodape flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-850 border border-slate-700/90 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 text-xs font-mono font-bold transition shadow-sm cursor-pointer group"
+              title={`APIs & Cotas: ${apiCallsCount} requisições feitas hoje de 10.000 disponíveis (Open-Meteo). Clique para ver detalhes e estatísticas semanais.`}
+              aria-label="Status e Cotas de APIs"
             >
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden md:inline">APIs</span>
+              <div className="relative flex items-center justify-center">
+                <Activity className="w-3.5 h-3.5 text-emerald-400 group-hover:text-amber-400 transition-colors" />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </div>
+              <span className="hidden sm:inline text-slate-200 group-hover:text-amber-300 font-sans">
+                APIs:
+              </span>
+              <span className="text-amber-300 font-mono font-bold">
+                {apiCallsCount}
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
+                / 10k
+              </span>
             </button>
           )}
         </div>

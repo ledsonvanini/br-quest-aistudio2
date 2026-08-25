@@ -49,20 +49,22 @@ export interface WikipediaSummaryResponse {
 
 class BiodiversityService {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
-  private readonly DEFAULT_TTL_MS = 1000 * 60 * 30; // 30 minutes cache
+  private readonly DEFAULT_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours (1 dia)
 
   constructor() {
-    // Try to restore non-expired cache from sessionStorage
+    // Restaurar cache válido de 24h persistido no localStorage
     try {
-      const saved = sessionStorage.getItem('br_quest_biodiv_cache');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const now = Date.now();
-        Object.entries(parsed).forEach(([key, entry]: [string, any]) => {
-          if (entry.expiresAt > now) {
-            this.memoryCache.set(key, entry);
-          }
-        });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem('br_quest_biodiv_cache_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const now = Date.now();
+          Object.entries(parsed).forEach(([key, entry]: [string, any]) => {
+            if (entry && entry.expiresAt && entry.expiresAt > now) {
+              this.memoryCache.set(key, entry);
+            }
+          });
+        }
       }
     } catch {
       // Ignore
@@ -79,11 +81,13 @@ class BiodiversityService {
     this.memoryCache.set(key, entry);
 
     try {
-      const cacheObj: Record<string, any> = {};
-      this.memoryCache.forEach((v, k) => {
-        cacheObj[k] = v;
-      });
-      sessionStorage.setItem('br_quest_biodiv_cache', JSON.stringify(cacheObj));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const cacheObj: Record<string, any> = {};
+        this.memoryCache.forEach((v, k) => {
+          cacheObj[k] = v;
+        });
+        localStorage.setItem('br_quest_biodiv_cache_v2', JSON.stringify(cacheObj));
+      }
     } catch {
       // Ignore quota errors
     }
@@ -199,6 +203,30 @@ class BiodiversityService {
 
     const t0 = performance.now();
     try {
+      // 1. Tentar primeiro via Proxy Backend (/api/species/...)
+      try {
+        const proxyUrl = `/api/species/${encodeURIComponent(scientificName)}`;
+        const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(3000) });
+        if (proxyRes.ok) {
+          const proxyJson = await proxyRes.json();
+          const isHit = proxyRes.headers.get('X-Proxy-Cache') === 'HIT';
+          this.setCache(cacheKey, proxyJson);
+          apiTracker.trackCall(
+            'gbif-biodiversity',
+            isHit ? `/api/species/${scientificName} (Server Cache 24h)` : `/api/species/${scientificName} (Server Proxy)`,
+            performance.now() - t0,
+            isHit ? 'cached' : 'success',
+            200,
+            `Taxonomia GBIF via Proxy: ${proxyJson.scientificName || scientificName}`,
+            JSON.stringify(proxyJson).length / 1024
+          );
+          return proxyJson;
+        }
+      } catch {
+        // Fallback para chamada direta
+      }
+
+      // 2. Chamada direta ao GBIF caso o proxy backend não responda
       const endpoint = `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(scientificName)}&country=BR`;
       const res = await fetch(endpoint, { signal: AbortSignal.timeout(4000) });
       const dur = performance.now() - t0;
@@ -299,6 +327,19 @@ class BiodiversityService {
     }
 
     return result;
+  }
+
+  public getFormattedLastUpdate(): string {
+    const now = new Date();
+    const dayName = now.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+    const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    return `${capitalizedDay}, ${timeStr}`;
+  }
+
+  public getBrasiliaTimeOnly(): string {
+    const now = new Date();
+    return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
   }
 }
 

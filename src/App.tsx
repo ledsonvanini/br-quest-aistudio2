@@ -53,6 +53,7 @@ export function App() {
     avgTempBrazil: number;
     maxTempState: { stateId: string; temp: number };
     minTempState: { stateId: string; temp: number };
+    lastUpdated?: string;
   }>({
     avgTempBrazil: 27.4,
     maxTempState: { stateId: 'MT', temp: 35.1 },
@@ -68,6 +69,7 @@ export function App() {
             avgTempBrazil: res.avgTempBrazil,
             maxTempState: res.maxTempState,
             minTempState: res.minTempState,
+            lastUpdated: res.dateTimeFormatted || res.updatedAt,
           });
         }
       })
@@ -553,6 +555,7 @@ export function App() {
         avgTempBrazil={climateTelemetry.avgTempBrazil}
         maxTempState={climateTelemetry.maxTempState}
         minTempState={climateTelemetry.minTempState}
+        climateLastUpdated={climateTelemetry.lastUpdated}
         onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
       />
     </div>
