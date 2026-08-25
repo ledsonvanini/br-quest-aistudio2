@@ -185,9 +185,12 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).replace('.', '');
   const dayNum = now.toLocaleDateString('pt-BR', { day: '2-digit', timeZone: 'America/Sao_Paulo' });
   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const timeHStr = timeStr.replace(':', 'h');
 
   return {
+    fetchedAt: Date.now(),
     updatedAt: timeStr,
+    updatedAtH: timeHStr,
     dateTimeFormatted: `${capitalizedDay} ${dayNum}, ${timeStr} (-03)`,
     stateWeather,
     stations,

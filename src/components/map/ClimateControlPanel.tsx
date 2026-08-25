@@ -3,6 +3,7 @@ import { ClimateMode } from './ClimatePhenomenaLayer';
 import {
   ClimateStationData,
   ElNinoIndexData,
+  formatBrasiliaTimeDynamic,
 } from '../../services/climateService';
 import {
   getBrasiliaCelestialEphemeris,
@@ -22,6 +23,7 @@ import {
   ShieldAlert,
   Activity,
   Orbit,
+  Clock,
 } from 'lucide-react';
 
 interface ClimateControlPanelProps {
@@ -65,6 +67,7 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
   onSpeedMultiplierChange,
   onRefreshTelemetry,
   isLoading = false,
+  updatedAt,
   dateTimeFormatted = 'Hoje, 15:00 (-03)',
   avgTempBrazil = 27.4,
   maxTempState = { stateId: 'MT', temp: 35.1 },
@@ -481,9 +484,13 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="px-3.5 py-2 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[9px] text-slate-500 font-mono">
-            <span>ATUALIZADO: {dateTimeFormatted}</span>
-            <span>INMET / ECMWF / NOAA</span>
+          <div className="px-3.5 py-2 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+            <div className="flex items-center gap-1 text-slate-300">
+              <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
+              <span className="text-slate-400 font-sans">atualizado</span>
+              <strong className="text-cyan-200 font-mono">{formatBrasiliaTimeDynamic(updatedAt || dateTimeFormatted)}</strong>
+            </div>
+            <span className="text-[9px] text-slate-500">INMET • ECMWF • NOAA</span>
           </div>
         </div>
       )}

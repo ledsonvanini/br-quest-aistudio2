@@ -36,6 +36,7 @@ import { ClimateControlPanel } from './map/ClimateControlPanel';
 import { ClimateStationTelemetryCard } from './map/ClimateStationTelemetryCard';
 import {
   fetchLiveClimateTelemetry,
+  onClimateTelemetryUpdate,
   ClimateStationData,
   ElNinoIndexData,
   StateWeatherData,
@@ -319,14 +320,16 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     setIsClimateLoading(true);
     try {
       const res = await fetchLiveClimateTelemetry();
-      setClimateStations(res.stations);
-      setStateWeather(res.stateWeather);
-      setElNinoData(res.elNino);
-      setClimateUpdatedAt(res.updatedAt);
-      setClimateDateTimeFormatted(res.dateTimeFormatted);
-      setAvgTempBrazil(res.avgTempBrazil);
-      setMaxTempState(res.maxTempState);
-      setMinTempState(res.minTempState);
+      if (res) {
+        setClimateStations(res.stations);
+        setStateWeather(res.stateWeather);
+        setElNinoData(res.elNino);
+        setClimateUpdatedAt(res.fetchedAt ? String(res.fetchedAt) : (res.updatedAtH || res.updatedAt));
+        setClimateDateTimeFormatted(res.dateTimeFormatted);
+        setAvgTempBrazil(res.avgTempBrazil);
+        setMaxTempState(res.maxTempState);
+        setMinTempState(res.minTempState);
+      }
     } catch (e) {
       console.error('Failed to load climate telemetry:', e);
     } finally {
@@ -335,7 +338,24 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
+    const unsubscribe = onClimateTelemetryUpdate((res) => {
+      if (res) {
+        setClimateStations(res.stations);
+        setStateWeather(res.stateWeather);
+        setElNinoData(res.elNino);
+        setClimateUpdatedAt(res.fetchedAt ? String(res.fetchedAt) : (res.updatedAtH || res.updatedAt));
+        setClimateDateTimeFormatted(res.dateTimeFormatted);
+        setAvgTempBrazil(res.avgTempBrazil);
+        setMaxTempState(res.maxTempState);
+        setMinTempState(res.minTempState);
+      }
+    });
+
     loadClimateData();
+
+    return () => {
+      unsubscribe();
+    };
   }, [loadClimateData]);
 
   const handleToggleClimate = () => {
@@ -1690,6 +1710,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           stateId={selectedClimateStateId}
           weatherData={stateWeather[selectedClimateStateId]}
           allStatesWeather={stateWeather}
+          lastUpdated={climateUpdatedAt || climateDateTimeFormatted}
           onClose={handleCloseInspection}
         />
       )}

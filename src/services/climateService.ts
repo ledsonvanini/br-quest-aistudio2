@@ -57,7 +57,9 @@ export interface ElNinoIndexData {
 }
 
 export interface ClimateTelemetryResponse {
+  fetchedAt?: number;
   updatedAt: string;
+  updatedAtH?: string;
   dateTimeFormatted: string; // Ex: "Quarta 18, 15:00 (-03)"
   stateWeather: Record<string, StateWeatherData>;
   stations: ClimateStationData[];
@@ -207,14 +209,86 @@ export function formatMeteoredDateTime(date = new Date()): string {
   return `${capitalizedDay} ${dayNum}, ${timeStr} (-03)`;
 }
 
+// Timestamp persistente da última requisição real à API de clima (não varia com cliques no mapa)
+const CLIMATE_LAST_FETCH_KEY = 'br_quest_climate_last_fetch_ts';
+let lastClimateApiFetchTimestamp: number = (() => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = localStorage.getItem(CLIMATE_LAST_FETCH_KEY);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return Date.now();
+})();
+
+export function setLatestClimateFetchTimestamp(ts: number) {
+  lastClimateApiFetchTimestamp = ts;
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(CLIMATE_LAST_FETCH_KEY, String(ts));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export function getLatestClimateFetchTimestamp(): number {
+  return lastClimateApiFetchTimestamp;
+}
+
+/**
+ * Formata a hora de Brasília de forma limpa e dinâmica baseada estritamente na última requisição às APIs:
+ * Ex: "15h15" ou "15h39"
+ */
+export function formatBrasiliaTimeDynamic(timestampOrDate?: number | Date | string): string {
+  let date: Date;
+  if (!timestampOrDate) {
+    date = new Date(lastClimateApiFetchTimestamp);
+  } else if (typeof timestampOrDate === 'number') {
+    date = new Date(timestampOrDate);
+  } else if (typeof timestampOrDate === 'string') {
+    if (timestampOrDate.includes('T') || timestampOrDate.includes('-') || !isNaN(Date.parse(timestampOrDate))) {
+      date = new Date(timestampOrDate);
+    } else {
+      const match = timestampOrDate.match(/(\d{2})[:h](\d{2})/);
+      if (match) {
+        return `${match[1]}h${match[2]}`;
+      }
+      return timestampOrDate;
+    }
+  } else {
+    date = timestampOrDate;
+  }
+  const hours = date.toLocaleTimeString('pt-BR', { hour: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const minutes = date.toLocaleTimeString('pt-BR', { minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  return `${hours}h${minutes}`;
+}
+
 /**
  * Formata data e hora completa em português com fuso horário de Brasília (America/Sao_Paulo):
- * Ex: "Terça-feira, 15:30"
+ * Ex: "Terça-feira, 15h39"
  */
-export function formatFullDayTime(date = new Date()): string {
+export function formatFullDayTime(dateOrTimestamp?: Date | number | string): string {
+  let date: Date;
+  if (!dateOrTimestamp) {
+    date = new Date(lastClimateApiFetchTimestamp);
+  } else if (typeof dateOrTimestamp === 'number') {
+    date = new Date(dateOrTimestamp);
+  } else if (typeof dateOrTimestamp === 'string' && (dateOrTimestamp.includes('T') || !isNaN(Date.parse(dateOrTimestamp)))) {
+    date = new Date(dateOrTimestamp);
+  } else if (dateOrTimestamp instanceof Date) {
+    date = dateOrTimestamp;
+  } else {
+    date = new Date(lastClimateApiFetchTimestamp);
+  }
   const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const timeStr = formatBrasiliaTimeDynamic(date);
   return `${capitalizedDay}, ${timeStr}`;
 }
 
@@ -224,6 +298,35 @@ export function formatFullDayTime(date = new Date()): string {
  */
 export function formatBrasiliaTimeOnly(date = new Date()): string {
   return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+}
+
+// Subscriber/Event bus para sincronização dinâmica e em tempo real em todos os componentes da aplicação
+type ClimateTelemetryListener = (data: ClimateTelemetryResponse) => void;
+const climateTelemetryListeners: Set<ClimateTelemetryListener> = new Set();
+
+export function onClimateTelemetryUpdate(listener: ClimateTelemetryListener): () => void {
+  climateTelemetryListeners.add(listener);
+  const current = getCachedClimateData();
+  if (current) {
+    listener(current);
+  }
+  return () => {
+    climateTelemetryListeners.delete(listener);
+  };
+}
+
+export function getLatestClimateTelemetry(): ClimateTelemetryResponse | null {
+  return inMemoryClimateCache?.data || getCachedClimateData();
+}
+
+function notifyClimateTelemetryListeners(data: ClimateTelemetryResponse) {
+  climateTelemetryListeners.forEach((fn) => {
+    try {
+      fn(data);
+    } catch (e) {
+      console.error('Erro no listener de telemetria climática:', e);
+    }
+  });
 }
 
 // Cache em memória e localStorage com TTL rígido de 15 minutos (900000 ms)
@@ -240,6 +343,7 @@ let inMemoryClimateCache: ClimateCacheEntry | null = null;
 function getCachedClimateData(): ClimateTelemetryResponse | null {
   const now = Date.now();
   if (inMemoryClimateCache && now - inMemoryClimateCache.timestamp < CLIMATE_CACHE_TTL_MS) {
+    setLatestClimateFetchTimestamp(inMemoryClimateCache.timestamp);
     return inMemoryClimateCache.data;
   }
 
@@ -250,6 +354,7 @@ function getCachedClimateData(): ClimateTelemetryResponse | null {
         const parsed: ClimateCacheEntry = JSON.parse(raw);
         if (parsed && parsed.timestamp && now - parsed.timestamp < CLIMATE_CACHE_TTL_MS) {
           inMemoryClimateCache = parsed;
+          setLatestClimateFetchTimestamp(parsed.timestamp);
           return parsed.data;
         }
       }
@@ -262,8 +367,14 @@ function getCachedClimateData(): ClimateTelemetryResponse | null {
 }
 
 function saveClimateDataToCache(data: ClimateTelemetryResponse) {
+  const timestamp = data.fetchedAt || Date.now();
+  data.fetchedAt = timestamp;
+  setLatestClimateFetchTimestamp(timestamp);
+  if (!data.updatedAtH) {
+    data.updatedAtH = formatBrasiliaTimeDynamic(timestamp);
+  }
   const entry: ClimateCacheEntry = {
-    timestamp: Date.now(),
+    timestamp,
     data,
   };
   inMemoryClimateCache = entry;
@@ -274,6 +385,7 @@ function saveClimateDataToCache(data: ClimateTelemetryResponse) {
       // Ignorar erro de armazenamento local
     }
   }
+  notifyClimateTelemetryListeners(data);
 }
 
 export async function fetchLiveClimateTelemetry(forceRefresh = false): Promise<ClimateTelemetryResponse> {

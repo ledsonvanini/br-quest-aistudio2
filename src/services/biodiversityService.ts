@@ -329,17 +329,47 @@ class BiodiversityService {
     return result;
   }
 
+  private initializedAt: number = (() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const saved = localStorage.getItem('br_quest_biodiv_last_fetch_ts');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed > 0) return parsed;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const now = Date.now();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.setItem('br_quest_biodiv_last_fetch_ts', String(now));
+      } catch {
+        // ignore
+      }
+    }
+    return now;
+  })();
+
+  public getInitializedTimestamp(): number {
+    return this.initializedAt;
+  }
+
   public getFormattedLastUpdate(): string {
-    const now = new Date();
-    const dayName = now.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+    const date = new Date(this.initializedAt);
+    const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
     const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-    return `${capitalizedDay}, ${timeStr}`;
+    const hours = date.toLocaleTimeString('pt-BR', { hour: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const minutes = date.toLocaleTimeString('pt-BR', { minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    return `${capitalizedDay}, ${hours}h${minutes}`;
   }
 
   public getBrasiliaTimeOnly(): string {
-    const now = new Date();
-    return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const date = new Date(this.initializedAt);
+    const hours = date.toLocaleTimeString('pt-BR', { hour: '2-digit', timeZone: 'America/Sao_Paulo' });
+    const minutes = date.toLocaleTimeString('pt-BR', { minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+    return `${hours}h${minutes}`;
   }
 }
 

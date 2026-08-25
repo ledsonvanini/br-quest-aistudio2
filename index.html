@@ -17,8 +17,33 @@
               currentFetch = val;
             }
           });
+
+          // Previne que erros benignos de WebSocket de HMR desativado no container gerem unhandled rejection ou dialogs no overlay
+          window.addEventListener('unhandledrejection', function(event) {
+            var str = '';
+            if (event && event.reason) {
+              str = String(event.reason.message || event.reason.stack || event.reason);
+            }
+            if (str.includes('WebSocket') || str.includes('websocket') || str.includes('vite') || str.includes('closed without opened')) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return true;
+            }
+          }, true);
+
+          window.addEventListener('error', function(event) {
+            var str = '';
+            if (event) {
+              str = String(event.message || (event.error && event.error.message) || '');
+            }
+            if (str.includes('WebSocket') || str.includes('websocket') || str.includes('vite') || str.includes('closed without opened')) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              return true;
+            }
+          }, true);
         } catch (e) {
-          // fetch property guard fallback
+          // fallback
         }
       })();
     </script>

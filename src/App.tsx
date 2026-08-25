@@ -15,7 +15,7 @@ import { GUARDIANS_DATA } from './data/guardiansData';
 import { Sparkles, Activity, Gauge } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
-import { fetchLiveClimateTelemetry } from './services/climateService';
+import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFetchTimestamp } from './services/climateService';
 import { apiTracker } from './services/apiTracker';
 
 export function App() {
@@ -53,27 +53,32 @@ export function App() {
     avgTempBrazil: number;
     maxTempState: { stateId: string; temp: number };
     minTempState: { stateId: string; temp: number };
-    lastUpdated?: string;
+    lastUpdated: string | number;
   }>({
     avgTempBrazil: 27.4,
     maxTempState: { stateId: 'MT', temp: 35.1 },
     minTempState: { stateId: 'RS', temp: 17.5 },
+    lastUpdated: getLatestClimateFetchTimestamp(),
   });
 
-  // Preload live climate telemetry for dynamic footer
+  // Preload and live subscribe to climate telemetry updates
   useEffect(() => {
-    fetchLiveClimateTelemetry()
-      .then((res) => {
-        if (res) {
-          setClimateTelemetry({
-            avgTempBrazil: res.avgTempBrazil,
-            maxTempState: res.maxTempState,
-            minTempState: res.minTempState,
-            lastUpdated: res.dateTimeFormatted || res.updatedAt,
-          });
-        }
-      })
-      .catch(() => {});
+    const unsubscribe = onClimateTelemetryUpdate((res) => {
+      if (res) {
+        setClimateTelemetry({
+          avgTempBrazil: res.avgTempBrazil,
+          maxTempState: res.maxTempState,
+          minTempState: res.minTempState,
+          lastUpdated: res.fetchedAt || res.updatedAtH || res.updatedAt,
+        });
+      }
+    });
+
+    fetchLiveClimateTelemetry().catch(() => {});
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const [isRainSimActive, setIsRainSimActive] = useState<boolean>(false);

@@ -26,7 +26,7 @@ import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
 import { getStateMusicalHeritage } from '../data/musicalHeritageData';
-import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor, formatFullDayTime, formatBrasiliaTimeOnly } from '../services/climateService';
+import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor, formatFullDayTime, formatBrasiliaTimeDynamic } from '../services/climateService';
 import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityData';
 import { biodiversityService } from '../services/biodiversityService';
 import { apiTracker } from '../services/apiTracker';
@@ -56,7 +56,7 @@ interface DynamicAppFooterProps {
   avgTempBrazil?: number;
   maxTempState?: { stateId: string; temp: number };
   minTempState?: { stateId: string; temp: number };
-  climateLastUpdated?: string;
+  climateLastUpdated?: string | number;
 
   // Music context
   onToggleRadio?: () => void;
@@ -88,12 +88,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
   const formattedTimeOnly = useMemo(() => {
-    if (climateLastUpdated) {
-      // Se veio no formato "15:30" ou "Terça 25, 15:30 (-03)", pega a hora
-      const match = climateLastUpdated.match(/(\d{2}:\d{2})/);
-      if (match) return match[1];
-    }
-    return formatBrasiliaTimeOnly();
+    return formatBrasiliaTimeDynamic(climateLastUpdated);
   }, [climateLastUpdated]);
   const biodivTimeOnly = useMemo(() => biodiversityService.getBrasiliaTimeOnly(), []);
 
@@ -293,11 +288,12 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
 
                 {/* Ícone e Hora Discreta (Brasília UTC-3) */}
                 <div
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-cyan-500/30 text-cyan-200 font-mono text-[10px] shrink-0"
-                  title="Horário da última telemetria climática (Horário de Brasília UTC-3)"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-cyan-500/30 text-cyan-200 font-mono text-[10px] shrink-0"
+                  title="Horário da telemetria climática consolidada (Horário de Brasília UTC-3)"
                 >
                   <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
-                  <span className="font-semibold">{formattedTimeOnly}</span>
+                  <span className="text-slate-400 font-sans text-[10px]">atualizado</span>
+                  <span className="font-semibold text-cyan-100">{formattedTimeOnly}</span>
                 </div>
               </div>
             );
@@ -330,11 +326,12 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
 
               {/* Ícone e Hora Discreta (Brasília UTC-3) */}
               <div
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-900/90 border border-emerald-500/30 text-emerald-200 font-mono text-[10px] shrink-0"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-emerald-500/30 text-emerald-200 font-mono text-[10px] shrink-0"
                 title="Horário do catálogo de biodiversidade (Horário de Brasília UTC-3)"
               >
                 <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="font-semibold">{biodivTimeOnly}</span>
+                <span className="text-slate-400 font-sans text-[10px]">atualizado</span>
+                <span className="font-semibold text-emerald-100">{biodivTimeOnly}</span>
               </div>
             </div>
           )}

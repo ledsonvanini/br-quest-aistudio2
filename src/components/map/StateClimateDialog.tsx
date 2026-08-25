@@ -28,6 +28,7 @@ interface StateClimateDialogProps {
   stateId: string | null;
   weatherData?: StateWeatherData;
   allStatesWeather?: Record<string, StateWeatherData>;
+  lastUpdated?: string | number;
   onClose: () => void;
 }
 
@@ -35,6 +36,7 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
   stateId,
   weatherData,
   allStatesWeather,
+  lastUpdated,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'geral' | 'enchentes' | 'extremos' | 'relevo' | 'estatisticas'>('geral');
@@ -550,7 +552,7 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-700/60 font-mono">
             <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
-            <span>Atualizado em: <strong className="text-cyan-200">{formatFullDayTime()}</strong></span>
+            <span>Atualizado em: <strong className="text-cyan-200">{formatFullDayTime(lastUpdated)}</strong></span>
           </span>
         </div>
         <button

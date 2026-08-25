@@ -1,178 +1,267 @@
-# Plano Arquitetural: Motor Cartográfico Procedural D3-Geo, Efeitos Atmosféricos e Alta Performance
+# Arquitetura Cartográfica, Multimodal e de Dados do BR Quest
 
-Este documento estabelece o plano detalhado de engenharia, cartografia digital e renderização procedural para a reestruturação completa do mapa tático do projeto **Símbolos BR**, descartando texturas raster pesadas em prol de um **motor 100% vetorial, procedural e de alta fidelidade para Web (60 FPS)**.
+Este documento consolida a especificação técnica detalhada, escolhas arquiteturais, pipeline de renderização, fontes de dados e estratégias de performance do **BR Quest (Símbolos BR)**.
 
 ---
 
-## 1. Diretrizes Estratégicas e Filosofia de Performance
+## 1. Visão Geral da Arquitetura & Filosofia de Engenharia
 
-### 1.1. Eliminação de Texturas Raster Pesadas
-- **Arquivos Descartados do Pipeline**:
-  - `bg-mapa-br.png` (~5.8MB) ❌
-  - `mapa-br-estados.png` (~2.2MB) ❌
-  - `stroke-mapa-br-estados.png` (~0.9MB) ❌
-  - `papel-mapa-br.jpg` ❌
-- **Impacto**: Economia de **mais de 9 MB de transferência de rede**, eliminando tempo de carregamento e consumo excessivo de memória GPU/DOM.
+O motor cartográfico do BR Quest foi concebido a partir de quatro princípios intransigíveis:
+1. **Renderização 100% Procedural e Vetorial**: Rejeição de mapas em imagens bitmap/raster pesadas (economia de >9 MB de tráfego inicial). O relevo, pergaminhos, ondas oceânicas e efeitos de iluminação são sintetizados matematicamente em tempo de execução.
+2. **Arquitetura Multimodal Sem Recarga**: Alternância fluida e instantânea entre 5 modos de visualização e exploração operando sobre o mesmo estado de verdade.
+3. **Consistência e Fidedignidade de Dados**: Integração com APIs científicas oficiais (IBGE, Open-Meteo, INMET, NOAA, ECMWF, GBIF e ICMBio), com telemetria padronizada no **Horário de Brasília (UTC-3)** e rastreamento transparente de latência e consumo de rede.
+4. **Padrão Semântico "classe-para-humanos"**: Estruturação de componentes e containers com identificadores descritivos (`container-mapa-br`, `painel-toolbar-relevo`, `pin-brasao-estado`), garantindo manutenibilidade e clareza taxonômica no DOM.
 
-### 1.2. Renderização Procedural e Vetorial Pura
-- **Terra e Estados**: `GeoJSON` renderizado via `d3-geo` com SVG dinâmico e filtros de relevo procedural (`<feTurbulence>`, `<feDisplacementMap>`, `<feSpecularLighting>`).
-- **Oceano Procedural e Batimetria**: Canvas 2D acelerado por hardware desenhando ondas senoidais multicamadas, malha de grade náutica (`d3.geoGraticule10()`) e gradientes de profundidade oceânica calculados matematicamente.
+---
+
+## 2. Especificação Arquitetural por Modo Disponível
+
+```
++-------------------------------------------------------------------------------------------------------+
+|                                    BR QUEST - NÚCLEO ORQUESTRADOR                                     |
+|                              (App.tsx / IsometricMapCanvas.tsx / DynamicFooter)                       |
++-------------------------------------------------------------------------------------------------------+
+        |                        |                       |                     |                  |
+        v                        v                       v                     v                  v
++---------------+       +------------------+    +-----------------+   +----------------+  +-----------------+
+|    MODO 1     |       |      MODO 2      |    |     MODO 3      |   |     MODO 4     |  |     MODO 5      |
+| Atlas 2D Flat |       | Isométrico 2.5D  |    |  Globo 3D R3F   |   | Observatório   |  | Guardiões / RPG |
+| Cartográfico  |       | Tático RPG + FX  |    | Esférico Orbital|   | Clima em Tempo |  | Biodiversidade  |
+|               |       |                  |    |                 |   | Real & Jatos   |  | & Quizzes       |
++---------------+       +------------------+    +-----------------+   +----------------+  +-----------------+
+```
+
+---
+
+### 2.1. Modo 1: Atlas 2D Cartográfico Clássico (Flat Cartography)
+
+#### A. Objetivo
+Oferecer uma visualização bidimensional precisa, sóbria e de altíssima legibilidade cartográfica para análise espacial, regionalização, biomas e comparação temática coroplética.
+
+#### B. Principais Features
+- Projeção cônica e Mercator ajustada para a malha continental do Brasil ($[-53^\circ, -14.2^\circ]$).
+- Filtro e isolamento automático de territórios remotos ultramarinos para evitar distorções na bounding box.
+- Camada Coroplética Temática com 4 chaves de visualização:
+  1. **Atlas Topográfico/Clipped Tiles** com textura de pergaminho procedural;
+  2. **Macrorregiões do IBGE** (Norte, Nordeste, Centro-Oeste, Sudeste, Sul);
+  3. **Biomas Continentais** (Amazônia, Cerrado, Caatinga, Mata Atlântica, Pantanal, Pampa);
+  4. **Nível de Progresso / Conquistas RPG** (cores baseadas em XP e missões concluídas).
+- Inspeção por clique com zoom dinâmico e destaque perimetral do estado selecionado.
+
+#### C. Tech Stack & APIs
+- **Bibliotecas**: `d3-geo`, `d3-scale`, `d3-selection`, `d3-array`, SVG nativo com filtros declarativos.
+- **Fontes de Dados**:
+  - Malhas vetoriais TopoJSON/GeoJSON simplificadas do IBGE;
+  - Registro de limites estaduais e centróides calibrados (`brazilStatesRegistry.ts`, `brazilGeoCoordinates.ts`);
+  - Massa continental contextual da América do Sul (`southAmericaGeo.ts`).
+
+#### D. Performance
+- **FPS**: 60 FPS estáveis com zero jank em operações de pan/zoom.
+- **Tamanho do Payload**: ~180 KB (GeoJSON comprimido dos 27 estados e América do Sul).
+- **Consumo de Memória**: < 25 MB de heap no navegador.
+
+#### E. Escolhas Arquiteturais
+- **SVG vs. Canvas no 2D**: Adoção de SVG com polígonos nativos para viabilizar eventos de ponteiro nativos (`onMouseEnter`, `onClick`), escalabilidade infinita sem pixelização e aplicação direta de filtros de sombra e relevo (`<feTurbulence>`, `<feDisplacementMap>`).
+
+---
+
+### 2.2. Modo 2: Mapa Isométrico 2.5D Tático & RPG Atmosférico
+
+#### A. Objetivo
+Criar uma experiência imersiva de mesa tática de RPG e atlas histórico vivo, onde o mapa ganha profundidade angular, relevo tridimensional e vida através de simulações atmosféricas e marítimas em tempo real.
+
+#### B. Principais Features
+- Projeção isométrica por matriz CSS (`transform: perspective(1200px) rotateX(32deg) rotateZ(0deg)`).
+- **Oceano Procedural Dinâmico**: Canvas 2D em background sintetizando ondas senoidais multicamadas, gradientes de profundidade batimétrica e malha de coordenadas náuticas (`d3.geoGraticule10()`).
 - **Camada Atmosférica Viva (Procedural FX)**:
-  - *Bandos de Aves/Gaivotas (Boids)*: Simulação de voo com trajetórias suaves em curvas Bézier e batimento de asas procedural.
-  - *Névoa e Nuvens Volumétricas*: Bancos de neblina translúcida gerados proceduralmente e deslocando-se com vento marítimo.
-  - *Lens Flare & Reflexo Solar*: Efeito de brilho solar e reflexo especular na superfície do oceano e sobre as serras.
+  - *Bandos de Aves (Boids)*: Simulação de voo de gaivotas costeiras com curvas de Bézier e batimento de asas;
+  - *Bancos de Névoa Volumétrica*: Nuvens translúcidas em deriva impulsionadas por ventos alísios marítimos;
+  - *Lens Flare & Reflexo Solar*: Brilho solar dinâmico e refração especular na linha d'água.
+- **Pins 3D dos Guardiões**: Marcadores com brasões oficiais em relevo, partículas de aura e elevação dinâmica em hover.
+- **Navegação com Clamping Anti-Vazio**: Algoritmo que restringe os limites de translação do usuário, impedindo telas pretas ou vazios fora do continente.
 
-### 1.3. Prevenção de Bloat e "Flood Dependencies"
-- **Stack Enxuta e Focada**:
-  - `d3-geo`: Motor matemático de projeções, cálculo de centróides e caminhos vetoriais.
-  - `Canvas 2D / SVG nativo`: Animações procedurais e física com zero overhead de bibliotecas extras.
-  - `lucide-react` e `motion`: Ícones e transições de interface.
-  - **Zero bibliotecas desnecessárias**: Sem pacotes pesados de física ou shaders externos desnecessários — matemática pura em TypeScript/Canvas.
+#### C. Tech Stack & APIs
+- **Bibliotecas**: `Canvas 2D API` acelerada por hardware, `d3-geo`, `motion/react`, `lucide-react`.
+- **Fontes de Dados**:
+  - Catálogo de Guardiões e Brasões Históricos (`guardians.ts`, `brazilStatesRegistry.ts`);
+  - Algoritmos matemáticos procedurais internos sem dependências externas.
 
-### 1.4. Interação Cartográfica Suave, Escala Local e Centralização Calibrada
-- **Centroide D3 como Âncora Focada**: Projeção centrada no ponto médio continental $[-54.39^\circ, -15.18^\circ]$ (Acre à Paraíba / Roraima ao Chuí).
-- **Filtragem de Ilhas Oceânicas Remotas**: Polígonos de ilhas ultra-oceânicas do Pacífico (ex: Ilha de Páscoa a $-109^\circ$ e Galápagos a $-91^\circ$) filtrados para evitar deslocamentos indesejados da bounding box.
-- **Hover Estável com Escala Local (`scale(1.05)`)**: Ao pairar o mouse sobre um estado, o mapa global permanece perfeitamente fixo, e o estado realiza uma elevação suave de camada e escala tendo o seu centróide vetorial exato (`transformOrigin: cx cy`) como pivô.
-- **Mergulho Cinematográfico no Clique (`zoom 2.5x`)**: Ao selecionar o estado, a câmera executa um mergulho focado de 1500ms direto para o coração do estado, iniciando a transição de diálogo do Guardião.
-- **Globo Terrestre 3D Opcional (`BrazilGlobeR3F.tsx`)**: Modo de visualização esférica 3D interativa com relevo, atmosfera e órbita livre.
-- **Padrão Semântico "classe-para-humanos"**: Identificadores semânticos descritivos em todos os elementos (`container-mapa-br`, `painel-toolbar-relevo`, `pin-brasao-estado`, etc.).
+#### D. Performance
+- **Consumo de CPU em repouso**: < 3.5% em GPUs integradas.
+- **Otimização de Render Loop**: Efeitos de ondas e partículas utilizam `requestAnimationFrame` desacoplado do estado do React para evitar re-renderizações desnecessárias da árvore de componentes.
 
----
-
-## 2. Diagrama da Arquitetura do Componente
-
-```
-+--------------------------------------------------------------------------------------------------+
-|                             ISOMETRIC MAP CANVAS (D3-GEO + PROCEDURAL FX)                        |
-+--------------------------------------------------------------------------------------------------+
-|  [HUD / Control Bar]: Estilos (Tiles vs Coroplético), Sub-temas, 3D/2D, Atmosfera FX, Som       |
-+--------------------------------------------------------------------------------------------------+
-|  [Viewport Container]: Clamped Pan & Zoom (Zero-Void Bounding Box)                               |
-|                                                                                                  |
-|   +-- [PERSPECTIVE STAGE (3D Isometric Tilt: 32°, Yaw: 0°~15°)] -------------------------------+ |
-|   |                                                                                            | |
-|   |   +-- CAMADA 0: Oceano Procedural Dinâmico (Canvas 2D @ 60 FPS)                            | |
-|   |   |   - Ondulações marítimas procedurais (Multi-octave sine/perlin waves)                  | |
-|   |   |   - Linhas náuticas D3 Graticule (Lat/Long) com iluminação sutil                       | |
-|   |   |   - Batimetria oceânica com profundidade em gradiente dinâmico                         | |
-|   |   +----------------------------------------------------------------------------------------+ |
-|   |                                                                                            | |
-|   |   +-- CAMADA 1: América do Sul e Territórios Contextuais (Vector Landmass)                 | |
-|   |   |   - GeoJSON contextual continental com tonalidade cartográfica sóbria                  | |
-|   |   +----------------------------------------------------------------------------------------+ |
-|   |                                                                                            | |
-|   |   +-- CAMADA 2: Brasil e 27 Estados (br.json + Shaders Procedurais)                        | |
-|   |   |   * ESTILO A: Clipped Map Tiles (Padrão)                                               | |
-|   |   |     - SVG <clipPath> + Textura de relevo e pergaminho gerada via feTurbulence          | |
-|   |   |   * ESTILO B: Thematic Choropleth (Opcional)                                           | |
-|   |   |     - Escalas cromáticas temáticas: Conquistas/XP, Regiões IBGE e Biomas               | |
-|   |   |   * Relevo e Destaques:                                                                | |
-|   |   |     - Sombra interna (50%) + Sombra de contorno (50%) + Borda Dourada Imperial         | |
-|   |   +----------------------------------------------------------------------------------------+ |
-|   |                                                                                            | |
-|   |   +-- CAMADA 3: Centróides, Pins dos Guardiões & Partículas RPG                            | |
-|   |   |   - Centróides D3 com micro-offsets matemáticos                                        | |
-|   |   |   - Brasões de Armas Oficiais (SVG/PNG isolados), Avatares e Efeito de Partículas      | |
-|   |   +----------------------------------------------------------------------------------------+ |
-|   |                                                                                            | |
-|   |   +-- CAMADA 4: Efeitos Atmosféricos Procedurais (Overlays)                                | |
-|   |   |   - Bancos de névoa marítima e nuvens suaves em deslocamento lento                     | |
-|   |   |   - Bandos de aves marinhas (Gaivotas / Boids procedurais) sobrevoando a costa         | |
-|   |   |   - Lens Flare solar e brilho especular dinâmico                                       | |
-|   |   +----------------------------------------------------------------------------------------+ |
-|   |                                                                                            | |
-|   +--------------------------------------------------------------------------------------------+ |
-+--------------------------------------------------------------------------------------------------+
-|  [Toolbar Inferior]: Carrossel de Estados com Sincronização Bidirecional e Busca Ágil            |
-+--------------------------------------------------------------------------------------------------+
-```
+#### E. Escolhas Arquiteturais
+- **Isometria CSS + Canvas Composto**: Ao invés de carregar um motor pesado de jogos como Babylon.js ou Unity WebGL, a combinação de transformações 3D no DOM do SVG do mapa com um Canvas 2D nativo para fluidos alcança estética de alta qualidade com consumo mínimo de recursos.
 
 ---
 
-## 3. Especificação dos Módulos Procedurais
+### 2.3. Modo 3: Globo Terrestre 3D Esférico Orbital (WebGL / Three.js)
 
-### 3.1. Projeção Cartográfica D3 & Clamping Anti-Vazio (`src/lib/mapProjections.ts`)
-- Projeção de alta performance `geoMercator()` ou `geoConicConformal()` calibrada para o Brasil ($[-53^\circ, -14.2^\circ]$).
-- Algoritmo de restrição (*clamping*) em tempo real que calcula a extensão do continente e do oceano, impedindo translações fora da caixa delimitadora e travando o zoom mínimo no preenchimento total da tela.
+#### A. Objetivo
+Apresentar o Brasil em seu contexto planetário esférico com geolocalização precisa, rotação orbital livre e simulação física da incidência da luz solar de acordo com o horário real.
 
-### 3.2. Oceano Procedural em Canvas (`src/components/map/ProceduralOceanCanvas.tsx`)
-- Renderização via `requestAnimationFrame` com baixo consumo de CPU (< 3% em repouso).
-- Ondas sintetizadas por superposição de frequências harmônicas $\sin(x \cdot k_1 + t \cdot \omega_1) + \sin(y \cdot k_2 + t \cdot \omega_2)$.
-- Efeito de espuma/rebentação sutil ao longo da linha de costa brasileira.
+#### B. Principais Features
+- Esfera 3D tridimensional com projeção UV de relevo continental e oceanos.
+- **Iluminação Solar Astronômica em Tempo Real**: Cálculo da posição do Sol (azimute e declinação solar) baseado nas efemérides astronômicas de Brasília para iluminar a face diurna e escurecer a face noturna do globo.
+- Atmosfera volumétrica com shader de brilho de Rayleigh (halo azul da Terra no espaço).
+- Órbita livre com amortecimento suave (`OrbitControls`), rotação automática opcional e botão de recentralização no Brasil.
+- Pins esféricos georreferenciados calculados via conversão de coordenadas esféricas:
+  $$x = R \cos(\text{lat}) \sin(\text{long}), \quad y = R \sin(\text{lat}), \quad z = R \cos(\text{lat}) \cos(\text{long})$$
 
-### 3.3. Textura de Relevo Procedural em SVG (`src/components/map/ProceduralTerrainFilter.tsx`)
-- Filtro SVG puro sem dependência de imagem externa:
-  ```xml
-  <filter id="proceduralPaperTerrain" x="0%" y="0%" width="100%" height="100%">
-    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
-    <feDiffuseLighting in="noise" lighting-color="#fff8e7" surfaceScale="1.5" result="light">
-      <feDistantLight azimuth="45" elevation="60" />
-    </feDiffuseLighting>
-    <feBlend mode="multiply" in="SourceGraphic" in2="light" />
-  </filter>
-  ```
+#### C. Tech Stack & APIs
+- **Bibliotecas**: `three`, `@react-three/fiber`, `@react-three/drei`.
+- **Fontes de Dados**:
+  - Coordenadas geográficas oficiais das 27 capitais (`brazilGeoCoordinates.ts`);
+  - Calculador de efemérides astronômicas (`getBrasiliaCelestialEphemeris`).
 
-### 3.4. Atmosfera Procedural: Aves, Névoa e Lens Flare (`src/components/map/ProceduralAtmosphereLayer.tsx`)
-- **Flock de Aves (Boids 2D/2.5D)**: 6 a 12 gaivotas desenhadas com traçado vetorial minimalista, sobrevoando a costa do Atlântico e a bacia Amazônica.
-- **Névoa Marítima**: 3 a 5 partículas volumétricas de gradiente radial com movimento lento e interpolação de opacidade.
-- **Lens Flare Tático**: Brilho solar no canto superior direito com anéis de refração e brilho dourado sobre a projeção isométrica.
+#### D. Performance
+- **Consumo WebGL**: Renderização a 60 FPS com alocação inteligente de geometrias (SphereGeometry de resolução intermediária e shaders GLSL otimizados).
+- **Descarte de Memória (Cleanup)**: Ao sair do modo 3D, todos os recursos WebGL, texturas e geometrias são limpos do contexto do navegador para evitar memory leaks.
 
-### 3.5. Estilos Cartográficos e Escalas Cromáticas (`src/lib/mapColorScales.ts`)
-1. **Modo Clipped Tiles (Padrão)**: Cores topográficas de atlas antigo com relevo procedural.
-2. **Modo Coroplético Gamificado (XP/Progresso)**: Gradientes dinâmicos calculados a partir do `storage.ts` (concluídos em esmeralda/ouro, pendentes em safira/ardósia).
-3. **Modo Coroplético IBGE**: Cores oficiais e harmonizadas para as 5 macrorregiões.
-4. **Modo Coroplético Biomas**: Cores botânicas para Amazônia, Cerrado, Caatinga, Mata Atlântica, Pantanal e Pampa.
+#### E. Escolhas Arquiteturais
+- **React Three Fiber com Lazy Loading**: O módulo 3D é carregado de forma assíncrona apenas quando o usuário clica no modo Globo, reduzindo o bundle inicial da aplicação.
 
 ---
 
-## 4. Estrutura Modular e Enxuta de Arquivos
+### 2.4. Modo 4: Observatório Climático & Fenômenos em Tempo Real
 
-```
-src/
-├── components/
-│   ├── map/
-│   │   ├── IsometricMapCanvas.tsx          # Orquestrador central e controle de câmera 2.5D / 2D
-│   │   ├── BrazilGlobeR3F.tsx              # Modo Globo 3D Interativo (Three.js / React Three Fiber)
-│   │   ├── ProceduralOceanCanvas.tsx       # Canvas de ondas, batimetria e malha náutica
-│   │   ├── ProceduralAtmosphereLayer.tsx   # Aves, neblina volumétrica e lens flare
-│   │   ├── ProceduralTerrainFilter.tsx     # Filtros SVG de relevo/pergaminho puro
-│   │   ├── ParchmentTextureFilter.tsx      # Textura procedural de mapa antigo
-│   │   ├── AgedParchmentOverlay.tsx        # Efeito de envelhecimento cartográfico
-│   │   ├── AntiqueCartographyDecor.tsx     # Rosa dos ventos e ornamentos táticos
-│   │   ├── CompassLoadingScreen.tsx        # Tela de carregamento temático
-│   │   ├── StateDetailsSidebar.tsx         # Painel retrátil de detalhes do estado em foco
-│   │   ├── IsolatedLeftGuardianStandee.tsx # Standee visual do Guardião do estado
-│   │   ├── MapStatesLayer.tsx              # Renderização vetorial dos 27 estados (Tiles / Coroplético)
-│   │   ├── MapPinsLayer.tsx                # Pins de Guardiões, Brasões e Partículas de XP
-│   │   ├── MapControlsHUD.tsx              # HUD tático: Estilos, 3D/2D, Atmosfera On/Off
-│   │   ├── MapChoroplethLegend.tsx         # Legenda temática com escalas cromáticas
-│   │   └── MapStateCarousel.tsx            # Carrossel inferior sincronizado
-│   └── ...
-├── data/
-│   ├── brazilStatesRegistry.ts             # Registro completo dos 27 estados e brasões
-│   ├── brazilGeoCoordinates.ts             # Coordenadas e limites de referência
-│   └── southAmericaGeo.ts                  # Massa continental contextual da América do Sul
-├── lib/
-│   ├── mapProjections.ts                   # Matemática D3, centróides e clamping anti-vazio
-│   ├── mapColorScales.ts                   # Escalas de cores coropléticas e biomas
-│   └── audioSynth.ts                       # Efeitos sonoros procedurais Web Audio
-└── test/
-    ├── mapProjections.test.ts              # Testes da projeção D3 e limites anti-vazio
-    ├── mapColorScales.test.ts              # Testes das paletas e funções de cor
-    ├── proceduralFX.test.ts                # Testes de limites matemáticos dos efeitos
-    └── guardiansData.test.ts               # Testes de integridade dos 27 estados
-```
+#### A. Objetivo
+Monitorar, simular e ensinar a dinâmica meteorológica e climática do território brasileiro com dados científicos em tempo real, abrangendo fenômenos de macroescala e telemetria de todas as unidades federativas.
+
+#### B. Principais Features
+- **Camadas Dinâmicas de Fenômenos Atmosféricos**:
+  1. *Frentes Polares / Frentes Frias*: Deslocamento do ar polar vindo da Antártica e bacia do Prata;
+  2. *ZCAS (Zona de Convergência do Atlântico Sul)*: Faixa contínua de nebulosidade e umidade da Amazônia ao Sudeste;
+  3. *Correntes de Jato Subtropical e Polar*: Vetores de ventos de alta altitude (> 200 km/h) guiando sistemas meteorológicos;
+  4. *Rios Voadores Amazônicos*: Fluxos de vapor d'água transportados pelos ventos alísios da floresta em direção ao Centro-Oeste e Sul;
+  5. *Vórtices Ciclônicos de Altos Níveis (VCAN)* e Bloqueios Atmosféricos / Domos de Calor.
+- **Telemetria Climática das 27 Capitais**: Temperatura atual, sensações térmicas, índice UV, velocidade do vento, pressão barométrica, umidade e índice pluviométrico.
+- **Monitor de El Niño / La Niña (Índice ONI)**: Monitoramento da temperatura da superfície do mar no Pacífico Equatorial e seus reflexos no regime de chuvas do Brasil.
+- **Simulador de Precipitação Interativo**: Slider de simulação de chuvas e monitoramento de risco de enchentes/estiagem por estado.
+- **Painel de Controle e HUD do Observatório**: Filtros de camadas, controle de velocidade da animação e alternância de modos.
+
+#### C. Tech Stack & APIs
+- **APIs Meteorológicas**:
+  - `Open-Meteo API` (Dados em tempo real de estações e reanálise ECMWF/NOAA);
+  - `INMET (Instituto Nacional de Meteorologia)` (Estações meteorológicas automáticas);
+  - `NOAA Climate Prediction Center` (Índices oceânicos e atmosféricos do Pacífico).
+- **Bibliotecas**: `Canvas 2D` para vetores de vento em partículas, `lucide-react`, `motion/react`.
+
+#### D. Performance & Estratégia de Cache
+- **Cache Local e Memória (TTL de 15 Minutos)**: Requisições meteorológicas são cacheadas em `localStorage` e memória RAM para garantir carregamento instantâneo e respeitar limites de requisição (*rate limiting*).
+- **Horário de Brasília Estável**: A indicação de atualização exibe a hora exata da **última requisição às APIs**, sem sofrer mutações espúrias por cliques ou interações de UI do usuário.
 
 ---
 
-## 5. Roteiro de Execução e Metas de Performance
+### 2.5. Modo 5: RPG de Guardiões, Biodiversidade & Quiz Educacional
 
-| Etapa | Foco | Métrica de Aceitação |
-| :--- | :--- | :--- |
-| **Fase 1** | Projeção D3 & Clamping Anti-Vazio (`mapProjections.ts`) | Centróides sem NaN, 0% de tela preta/vazia em qualquer pan/zoom. |
-| **Fase 2** | Oceano e Relevo Procedural Puro | 0 KB de imagens transferidas para o mapa, 60 FPS estáveis. |
-| **Fase 3** | Modos Visuais: Clipped Tiles + Coroplético Temático | Alternância instantânea de temas com transição suave. |
-| **Fase 4** | Efeitos Atmosféricos (Aves, Névoa, Lens Flare) | Animações procedurais com < 4% de uso de CPU e botão de toggle. |
-| **Fase 5** | Camada de Pins e Guardiões RPG | Interações de hover com escala local sobre centróide, diálogo e hinos. |
-| **Fase 6** | Globo 3D & Decorações Cartográficas | Modo 3D R3F interativo, rosa dos ventos vetorial e pergaminho. |
-| **Fase 7** | Bateria de Testes, Linter e Commit Final | 100% dos testes passando no Vitest + Build Verde. |
+#### A. Objetivo
+Fixar o aprendizado sobre a história, identidade, símbolos, biodiversidade e ecologia de cada estado através de narrativa de Guardiões, áudio patrimonial e desafios de gamificação.
+
+#### B. Principais Features
+- **27 Guardiões Estaduais Culturais**: Personificações antropológicas e históricas de cada estado (ex: Guardião dos Pampas, Guardião do Pantanal, Guardiã das Vertentes, etc.).
+- **Diálogo e Cartão de Identidade do Estado**:
+  - Brasão de Armas Oficial vetorizado;
+  - Bandeira estadual e significado heráldico;
+  - Hino oficial do estado com player de áudio integrado;
+  - Dados demográficos, relevo, altitude e curiosidades históricas.
+- **Catálogo de Biodiversidade & Espécies Ameaçadas**:
+  - Espécies emblemáticas da fauna e flora de cada estado;
+  - Status de conservação IUCN / Livro Vermelho do ICMBio (Pouco Preocupante, Vulnerável, Em Perigo, Criticamente Ameaçado);
+  - Integração com dados taxonômicos do GBIF (*Global Biodiversity Information Facility*).
+- **Sistema de Quizzes, XP e Medalhas**:
+  - Perguntas desafiadoras sobre geografia, história, clima e biomas;
+  - Acúmulo de Pontos de Experiência (XP) e níveis de patente;
+  - **Árvore de Habilidades Ecológicas (Skill Tree)** para desbloquear competências de preservação ambiental.
+
+#### C. Tech Stack & APIs
+- **Bibliotecas**: `Web Audio API` (para sintetizador e efeitos sonoros procedurais), `HTML5 Audio` (para hinos orquestrados), `LocalStorage` para persistência de progresso e medalhas.
+- **Fontes de Dados**:
+  - Base de dados de biodiversidade brasileira compilada a partir do GBIF, ICMBio e IBAMA (`biodiversityService.ts`);
+  - Base de dados de Guardiões e hinos históricos (`guardians.ts`, `audioRegistry.ts`).
+
+---
+
+## 3. Matriz Comparativa dos Modos
+
+| Característica | 1. Atlas 2D Flat | 2. Isométrico 2.5D | 3. Globo 3D R3F | 4. Observatório Clima | 5. Guardiões / RPG |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Tecnologia Principal** | SVG + D3-Geo | SVG + Canvas 2D | Three.js + WebGL | Canvas 2D + APIs | React + Web Audio |
+| **Perspectiva** | Top-down (0°) | Angular (32°) | Esférica (3D) | Top-down / 2.5D | Modais & HUDs |
+| **Foco Pedagógico** | Geografia & Biomas | Imersão & Relevo | Astronomia & Escala | Climatologia & Chuvas | História & Cultura |
+| **Uso de Rede** | Baixo (~180 KB) | Mínimo (Procedural) | Médio (Assets 3D) | Médio (APIs Clima) | Baixo (Cache Local) |
+| **Taxa de Quadros** | 60 FPS | 60 FPS | 60 FPS | 60 FPS | 60 FPS |
+| **Interatividade** | Hover, Zoom, Filtros | Câmera, Drag, Pins | Órbita Livre 360° | Simuladores, Sliders | Quizzes, Áudio, XP |
+
+---
+
+## 4. Pipeline de Dados, Rastreamento & Fusos Horários
+
+```
+                                  [APIs Externas]
+               (Open-Meteo / INMET / NOAA / GBIF / ICMBio / IBGE)
+                                         |
+                                         v
+                         +-------------------------------+
+                         |     apiTracker.ts             |
+                         |  - Contagem de Requisições    |
+                         |  - Monitor de Latência (ms)   |
+                         |  - Resiliência a Falhas       |
+                         +-------------------------------+
+                                         |
+                                         v
+                         +-------------------------------+
+                         |   climateService / biodiv     |
+                         |  - Cache com TTL de 15 min    |
+                         |  - Timestamp Persistente      |
+                         |  - Sincronização Brasília     |
+                         +-------------------------------+
+                                         |
+                                         v
+                         +-------------------------------+
+                         |   Barramento Reativo          |
+                         |  (onClimateTelemetryUpdate)   |
+                         +-------------------------------+
+                                         |
+                 +-----------------------+-----------------------+
+                 |                                               |
+                 v                                               v
+     [DynamicAppFooter.tsx]                          [StateClimateDialog.tsx]
+     - Badge de Clima                                - Estatísticas Detalhadas
+     - Badge de Biodiversidade                       - Previsão & Enchentes
+```
+
+- **Fuso Horário Padrão**: Todas as datas e horas da aplicação são convertidas estritamente para o fuso `America/Sao_Paulo` (Horário de Brasília UTC-3), exibindo formato compacto amigável `[ícone_relógio | atualizado 15h15]`.
+- **Rastreador de APIs Integrado**: O `apiTracker` monitora o tráfego gerado pela aplicação, permitindo auditoria em tempo real das chamadas a serviços terceiros e consumo de dados.
+
+---
+
+## 5. Dívidas Técnicas Identificadas (Technical Debts)
+
+1. **Topologia de Fronteiras Interestaduais**: Embora os polígonos dos estados estejam perfeitamente alinhados, a simplificação geométrica de algumas divisas do Centro-Oeste/Norte possui micro-arestas que poderiam se beneficiar de uma malha unificada em formato `TopoJSON` com topologia compartilhada (*mesh topology*).
+2. **Suporte a Modo Offline Completo (Service Worker / PWA)**: As malhas GeoJSON e a maior parte das informações culturais já estão embutidas no bundle, mas a instalação de um Service Worker dedicado para navegação 100% offline em escolas sem internet ainda precisa ser formalizada.
+3. **Internacionalização de Metadados (i18n)**: A plataforma está integralmente em Português do Brasil (pt-BR). Para uso diplomático, turístico internacional (Embratur) ou acadêmico global, a extração de strings para suporte a Inglês e Espanhol é uma dívida arquitetural mapeada.
+4. **Resolução de Shaders no Globo 3D para Dispositivos Legados**: Em smartphones de entrada com suporte limitado a WebGL 2.0, o shader de iluminação do globo 3D requer um fallback simplificado em Canvas 2D.
+
+---
+
+## 6. Opções para o Futuro & Roadmap Evolutivo
+
+```
+[FASE 1: CONCLUÍDA]               [FASE 2: EM ANDAMENTO]             [FASE 3: FUTURO PRÓXIMO]
+- Motor D3 Vetorial               - Observatório de Clima Vivo       - Modo Multiplayer / Duelos
+- 27 Guardiões & Brasões          - Catálogo de Biodiversidade       - Editor de Mapas & Missões
+- Modos 2D, 2.5D e Globo 3D       - Telemetria de 27 Capitais        - Painel de Gestão Escolar
+- Áudio & Hinos Históricos        - Rastreador de APIs               - Realidade Aumentada (AR)
+```
+
+### 6.1. Funcionalidades Planejadas para Próximas Versões
+1. **Modo Multiplayer: "Duelo dos Guardiões"**: Desafios de conhecimento em tempo real entre salas de aula ou usuários online utilizando WebSockets com salas temáticas por região.
+2. **Camada de Bacias Hidrográficas e Aquíferos Subterrâneos**: Visualização dinâmica do Rio Amazonas, Rio São Francisco, Bacia do Paraná e os Aquíferos Guarani e Alter do Chão com fluxo volumétrico animado.
+3. **Painel do Professor (EdTech B2G)**: Dashboard administrativo para educadores criarem listas de exercícios personalizadas, monitorarem o engajamento dos alunos e gerarem relatórios de competências da BNCC.
+4. **Realidade Aumentada (WebXR / AR)**: Capacidade de projetar o mapa 3D do Brasil ou os Guardiões em tamanho real sobre a mesa da sala de aula usando a câmera do smartphone.
+5. **Histórico Paleogeográfico e Evolução Territorial**: Linha do tempo interativa permitindo ver a evolução das capitanias hereditárias (1534), Tratado de Tordesilhas, Tratado de Madri (1750), expansão dos bandeirantes e criação de novos estados (Acre, Tocantins, Mato Grosso do Sul, etc.).
+
+---
+
+*Documentação mantida pela equipe de engenharia e cartografia do BR Quest.*
