@@ -35,23 +35,38 @@ import {
   Info,
   X,
   Leaf,
-  Bug,
+  Bird,
   Trees,
   Sparkles,
   ShieldAlert,
+  Users,
+  Building2,
+  GraduationCap,
+  HeartPulse,
+  Baby,
+  Vote,
+  Percent,
+  Landmark,
 } from 'lucide-react';
 import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { SpeechBubbleTooltip } from './common/SpeechBubbleTooltip';
 import { ECMWF_TEMP_COLOR_STOPS } from '../services/climateService';
 import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from '../types';
+import { GeopoliticaMetricKey } from '../types/geopolitica';
 
-export type AppMainMode = 'aventura' | 'clima' | 'biodiversidade' | 'musicalidades' | 'globo3d';
+export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
 
 interface Props {
   // Active App Module
   mainMode: AppMainMode;
   onSelectMainMode: (mode: AppMainMode) => void;
+
+  // Geopolítica Module States
+  geopoliticaMetric?: GeopoliticaMetricKey;
+  onGeopoliticaMetricChange?: (metric: GeopoliticaMetricKey) => void;
+  isGeopoliticaPanelOpen?: boolean;
+  onToggleGeopoliticaPanel?: () => void;
 
   // Biodiversity Module States
   biodiversityKingdom?: BiodiversityKingdom | 'all';
@@ -145,6 +160,10 @@ interface MenuTooltipInfo {
 export const TopGlobalNavMenu: React.FC<Props> = ({
   mainMode,
   onSelectMainMode,
+  geopoliticaMetric = 'miscigenacao',
+  onGeopoliticaMetricChange,
+  isGeopoliticaPanelOpen = false,
+  onToggleGeopoliticaPanel,
   biodiversityKingdom = 'all',
   onBiodiversityKingdomChange,
   biodiversityBiome = 'all',
@@ -263,37 +282,11 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         <div className="bg-[#020d24]/40 backdrop-blur-md border border-amber-500/35 rounded-2xl px-2.5 sm:px-3 py-1 shadow-2xl shadow-black/80 flex items-center gap-2 text-white flex-nowrap whitespace-nowrap overflow-visible">
           
           {/* ========================================================================= */}
-          {/* SEÇÃO 1: ÍCONES PARA CADA MODO (1º Aventura | 2º Clima | 3º Musicalidades) */}
+          {/* SEÇÃO 1: ÍCONES PARA CADA MODO: [Clima, Biodiversidade, Geopolítica, Globo3D, Navegação] */}
           {/* ========================================================================= */}
           <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shrink-0">
             
-            {/* MODO 1: AVENTURA / NAVEGAÇÃO (Padrão ao carregar) */}
-            <div className="relative">
-              <button
-                id="btn-modo-aventura"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  onSelectMainMode('aventura');
-                }}
-                {...bindTooltip({
-                  title: 'Aventura & Navegação',
-                  badge: 'Exploração Cívica',
-                  badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
-                  description:
-                    'Navegue pelo relevo sombreado do Brasil, explore os 27 estados e conquiste as Insígnias dos Guardiões.',
-                })}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
-                  mainMode === 'aventura'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 border-emerald-300 shadow-md font-black scale-105'
-                    : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/80 border-transparent'
-                }`}
-                aria-label="Modo Aventura e Navegação"
-              >
-                <Compass className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* MODO 2: CLIMA & AMBIENTE */}
+            {/* 1. CLIMA & TELEMETRIA */}
             <div className="relative">
               <button
                 id="btn-modo-clima"
@@ -319,7 +312,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* MODO 3: BIODIVERSIDADE */}
+            {/* 2. BIODIVERSIDADE BRASILEIRA */}
             <div className="relative">
               <button
                 id="btn-modo-biodiversidade"
@@ -345,33 +338,33 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* MODO 4: MUSICALIDADES */}
+            {/* 3. GEOPOLÍTICA & DEMOGRAFIA */}
             <div className="relative">
               <button
-                id="btn-modo-musicalidades"
+                id="btn-modo-geopolitica"
                 onClick={() => {
                   audioEngine.playSfx('click');
-                  onSelectMainMode('musicalidades');
+                  onSelectMainMode('geopolitica');
                 }}
                 {...bindTooltip({
-                  title: 'Musicalidades do Brasil',
-                  badge: 'Acervo Sonoro',
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                  title: 'Geopolítica & Demografia',
+                  badge: 'Censo 2022 • IBGE • TSE',
+                  badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
                   description:
-                    'Acervo histórico com Hinos Oficiais, Top 5 Regionais, Hinos Nacionais e Rádios Vintage de 1920 a 1990.',
+                    'Raio-X do Brasil: Miscigenação, Homens e Mulheres, Partidos Políticos, Densidade, Natalidade, Mortalidade e Alfabetização.',
                 })}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
-                  mainMode === 'musicalidades'
-                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-slate-950 border-yellow-300 shadow-md font-black scale-105'
-                    : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 border-transparent'
+                  mainMode === 'geopolitica'
+                    ? 'bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-500 text-slate-950 border-cyan-300 shadow-md font-black scale-105'
+                    : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 border-transparent'
                 }`}
-                aria-label="Musicalidades do Brasil"
+                aria-label="Geopolítica e Demografia"
               >
-                <Radio className="w-4 h-4" />
+                <Users className="w-4 h-4" />
               </button>
             </div>
 
-            {/* MODO 5: GLOBO 3D */}
+            {/* 4. GLOBO TERRESTRE 3D */}
             <div className="relative">
               <button
                 id="btn-modo-globo3d"
@@ -394,6 +387,58 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 aria-label="Globo Terrestre 3D"
               >
                 <Globe className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 5. AVENTURA & NAVEGAÇÃO */}
+            <div className="relative">
+              <button
+                id="btn-modo-aventura"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onSelectMainMode('aventura');
+                }}
+                {...bindTooltip({
+                  title: 'Aventura & Navegação',
+                  badge: 'Exploração Cívica',
+                  badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                  description:
+                    'Navegue pelo relevo sombreado do Brasil, explore os 27 estados e conquiste as Insígnias dos Guardiões.',
+                })}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                  mainMode === 'aventura'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 border-emerald-300 shadow-md font-black scale-105'
+                    : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/80 border-transparent'
+                }`}
+                aria-label="Modo Aventura e Navegação"
+              >
+                <Compass className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 6. MUSICALIDADES DO BRASIL */}
+            <div className="relative">
+              <button
+                id="btn-modo-musicalidades"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onSelectMainMode('musicalidades');
+                }}
+                {...bindTooltip({
+                  title: 'Musicalidades do Brasil',
+                  badge: 'Acervo Sonoro',
+                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                  description:
+                    'Acervo histórico com Hinos Oficiais, Top 5 Regionais, Hinos Nacionais e Rádios Vintage de 1920 a 1990.',
+                })}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                  mainMode === 'musicalidades'
+                    ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-slate-950 border-yellow-300 shadow-md font-black scale-105'
+                    : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 border-transparent'
+                }`}
+                aria-label="Musicalidades do Brasil"
+              >
+                <Radio className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -729,35 +774,10 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
             </div>
           )}
 
-          {/* 2.C QUANDO EM BIODIVERSIDADE: [Todos] [Fauna] [Flora] [Fungos & Micro] + [Ameaçadas] + [Catálogo] */}
+          {/* 2.C QUANDO EM BIODIVERSIDADE: Sequência [Fauna, Flora, Fungos, Todos os Reinos, Livros] + [Painel Filtro] */}
           {mainMode === 'biodiversidade' && (
             <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shrink-0">
-              {/* 1. Todos os Reinos */}
-              <div className="relative">
-                <button
-                  id="btn-bio-reino-todos"
-                  onClick={() => {
-                    audioEngine.playSfx('click');
-                    onBiodiversityKingdomChange?.('all');
-                  }}
-                  {...bindTooltip({
-                    title: 'Todos os Reinos Biológicos',
-                    badge: 'Holístico',
-                    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
-                    description: 'Exibe fauna, flora e microrganismos de todos os biomas simultaneamente.',
-                  })}
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
-                    biodiversityKingdom === 'all'
-                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md scale-105'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  }`}
-                  aria-label="Todos os Reinos"
-                >
-                  <Leaf className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* 2. Fauna */}
+              {/* 1. Fauna Brasileira */}
               <div className="relative">
                 <button
                   id="btn-bio-reino-fauna"
@@ -767,7 +787,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   }}
                   {...bindTooltip({
                     title: 'Fauna Brasileira',
-                    badge: 'Animais Silvestres',
+                    badge: 'Mamíferos, Aves & Répteis',
                     badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
                     description: 'Mamíferos, aves, répteis, anfíbios, peixes e invertebrados nativos e endêmicos.',
                   })}
@@ -778,11 +798,11 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   }`}
                   aria-label="Fauna Brasileira"
                 >
-                  <Bug className="w-4 h-4" />
+                  <Bird className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* 3. Flora */}
+              {/* 2. Flora do Brasil */}
               <div className="relative">
                 <button
                   id="btn-bio-reino-flora"
@@ -792,9 +812,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   }}
                   {...bindTooltip({
                     title: 'Flora do Brasil',
-                    badge: 'Árvores & Plantas',
-                    badgeColor: 'bg-green-500/20 text-green-300 border-green-400/40',
-                    description: 'Árvores monumentais, epífitas, orquídeas, cactáceas e plantas medicinais nativas.',
+                    badge: 'Árvores, Flores & Plantas',
+                    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                    description: 'Árvores monumentais, epífitas, orquídeas, cactáceas e plantas nativas dos biomas.',
                   })}
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
                     biodiversityKingdom === 'flora'
@@ -807,7 +827,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 </button>
               </div>
 
-              {/* 4. Fungos & Microrganismos */}
+              {/* 3. Fungos & Microbioma (Ícone de Cogumelo) */}
               <div className="relative">
                 <button
                   id="btn-bio-reino-fungi"
@@ -817,9 +837,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   }}
                   {...bindTooltip({
                     title: 'Fungos & Microbioma',
-                    badge: 'Bioluminescência',
+                    badge: 'Orelha-de-Pau & Bioluminescentes',
                     badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
-                    description: 'Fungos bioluminescentes da Mata Atlântica, bactérias fixadoras de nitrogênio e leveduras nativas.',
+                    description: 'Fungos nativos da floresta tropical, decompositores de matéria orgânica e micélios bioluminescentes.',
                   })}
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
                     biodiversityKingdom === 'fungi_micro'
@@ -828,7 +848,46 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   }`}
                   aria-label="Fungos e Microrganismos"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                  >
+                    <path d="M3 13c0-4.97 4.03-9 9-9s9 4.03 9 9H3z" />
+                    <path d="M10 13v6a2 2 0 0 0 4 0v-6" />
+                    <circle cx="8" cy="8.5" r="1" fill="currentColor" />
+                    <circle cx="15.5" cy="9" r="0.8" fill="currentColor" />
+                    <circle cx="12" cy="6.5" r="0.8" fill="currentColor" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 4. Todos os Reinos Biológicos */}
+              <div className="relative">
+                <button
+                  id="btn-bio-reino-todos"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onBiodiversityKingdomChange?.('all');
+                  }}
+                  {...bindTooltip({
+                    title: 'Todos os Reinos Biológicos',
+                    badge: 'Holístico',
+                    badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-400/40',
+                    description: 'Exibe múltiplos espécimes reais de fauna, flora e fungos simultaneamente no mapa.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    biodiversityKingdom === 'all'
+                      ? 'bg-teal-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                  aria-label="Todos os Reinos"
+                >
+                  <Leaf className="w-4 h-4" />
                 </button>
               </div>
 
@@ -884,6 +943,215 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     aria-label="Catálogo de Biodiversidade"
                   >
                     <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 2.D QUANDO EM GEOPOLÍTICA: [Miscigenação] [Gênero] [Densidade] [Natalidade] [Mortalidade] [Analfabetismo] [Partidos] + [Painel] */}
+          {mainMode === 'geopolitica' && (
+            <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800 shrink-0">
+              {/* 1. Miscigenação & Etnias */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-miscigenacao"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('miscigenacao');
+                  }}
+                  {...bindTooltip({
+                    title: 'Miscigenação & Composição Étnica',
+                    badge: 'Censo 2022',
+                    badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                    description: 'Composição de Pardos (45,3%), Brancos (43,5%), Pretos (10,2%), Indígenas e Amarelos por estado.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'miscigenacao'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Miscigenação e Etnias"
+                >
+                  <Users className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 2. Homens & Mulheres (Gênero) */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-genero"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('genero');
+                  }}
+                  {...bindTooltip({
+                    title: 'Distribuição por Sexo & Gênero',
+                    badge: '51,5% Mulheres',
+                    badgeColor: 'bg-pink-500/20 text-pink-300 border-pink-400/40',
+                    description: 'Proporção de mulheres e homens, razão de sexo por UF e pirâmide demográfica.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'genero'
+                      ? 'bg-pink-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-pink-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Gênero e Sexo"
+                >
+                  <Percent className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 3. Densidade Demográfica */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-densidade"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('densidade');
+                  }}
+                  {...bindTooltip({
+                    title: 'Densidade Demográfica & Urbanização',
+                    badge: 'hab/km²',
+                    badgeColor: 'bg-sky-500/20 text-sky-300 border-sky-400/40',
+                    description: 'Concentração de habitantes por quilômetro quadrado e índice de urbanização por estado.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'densidade'
+                      ? 'bg-sky-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-sky-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Densidade Demográfica"
+                >
+                  <Building2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 4. Natalidade */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-natalidade"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('natalidade');
+                  }}
+                  {...bindTooltip({
+                    title: 'Natalidade & Taxa de Fecundidade',
+                    badge: 'Nascimentos ‰',
+                    badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+                    description: 'Taxa de natalidade por mil habitantes e número médio de filhos por mulher.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'natalidade'
+                      ? 'bg-cyan-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Natalidade e Fecundidade"
+                >
+                  <Baby className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 5. Saúde, Longevidade & Mortalidade */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-mortalidade"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('mortalidade');
+                  }}
+                  {...bindTooltip({
+                    title: 'Saúde, Longevidade & Mortalidade',
+                    badge: 'DataSUS',
+                    badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
+                    description: 'Expectativa de vida ao nascer (76,2 anos) e taxas de mortalidade infantil por estado.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'mortalidade'
+                      ? 'bg-rose-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-rose-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Saúde, Longevidade e Mortalidade"
+                >
+                  <HeartPulse className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 6. Educação & Alfabetização */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-analfabetismo"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('analfabetismo');
+                  }}
+                  {...bindTooltip({
+                    title: 'Educação & Alfabetização',
+                    badge: 'PNAD / Censo',
+                    badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                    description: 'Taxa de alfabetização (94,4% nacional), anos médios de estudo e taxas estaduais.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'analfabetismo'
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Educação e Alfabetização"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 7. Governo & Partidos Políticos */}
+              <div className="relative">
+                <button
+                  id="btn-geopol-partidos"
+                  onClick={() => {
+                    audioEngine.playSfx('click');
+                    onGeopoliticaMetricChange?.('partidos');
+                  }}
+                  {...bindTooltip({
+                    title: 'Governo & Partidos Políticos',
+                    badge: 'TSE Eleições',
+                    badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-400/40',
+                    description: 'Governadores eleitos, distribuição partidária dos 27 estados e representação.',
+                  })}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                    geopoliticaMetric === 'partidos'
+                      ? 'bg-purple-500 text-slate-950 font-black shadow-md scale-105'
+                      : 'text-slate-400 hover:text-purple-300 hover:bg-slate-800'
+                  }`}
+                  aria-label="Governo e Partidos Políticos"
+                >
+                  <Vote className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 8. Toggle Painel Geopolítico */}
+              {onToggleGeopoliticaPanel && (
+                <div className="relative pl-0.5 border-l border-slate-800">
+                  <button
+                    id="btn-toggle-painel-geopolitica"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleGeopoliticaPanel();
+                    }}
+                    {...bindTooltip({
+                      title: 'Observatório Geopolítico',
+                      badge: isGeopoliticaPanelOpen ? 'Aberto' : 'Recolhido',
+                      badgeColor: isGeopoliticaPanelOpen
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40'
+                        : 'bg-slate-800 text-slate-300 border-slate-700',
+                      description: 'Painel com visões Nacional, Regional e Estadual com todos os dados socioeconômicos e demográficos.',
+                    })}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                      isGeopoliticaPanelOpen
+                        ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-md font-bold scale-105'
+                        : 'bg-slate-900 text-cyan-400 border-slate-700 hover:bg-slate-800 hover:text-cyan-300 hover:border-cyan-500/50'
+                    }`}
+                    aria-label="Observatório Geopolítico"
+                  >
+                    <Landmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               )}

@@ -467,3 +467,34 @@ h1, h2, h3, .font-outfit {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
+
+/* --- Biodiversity Pin Image Border Fade Animation (Em Loop) --- */
+@keyframes bio-border-fade-threatened {
+  0%, 100% {
+    border-color: rgba(244, 63, 94, 0.95);
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.55);
+  }
+  50% {
+    border-color: rgba(244, 63, 94, 0.35);
+    box-shadow: 0 0 2px rgba(244, 63, 94, 0.15);
+  }
+}
+
+@keyframes bio-border-fade-standard {
+  0%, 100% {
+    border-color: rgba(52, 211, 153, 0.95);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.45);
+  }
+  50% {
+    border-color: rgba(52, 211, 153, 0.4);
+    box-shadow: 0 0 2px rgba(16, 185, 129, 0.15);
+  }
+}
+
+.anim-border-fade-threatened {
+  animation: bio-border-fade-threatened 3s ease-in-out infinite;
+}
+
+.anim-border-fade-standard {
+  animation: bio-border-fade-standard 3.5s ease-in-out infinite;
+}

@@ -841,7 +841,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                 );
               })}
 
-            {/* 3.1.3 Badges de Temperatura Centróides com Contraste Marcante (Mantém labels correntes de todos os estados) */}
+            {/* 3.1.3 Badges de Temperatura Centróides com Alto Contraste e Tipografia Grande para Idosos */}
             <g className="badges-temperatura-estados pointer-events-none">
               {statePathList.map((item) => {
                 if (!item.centroidX || !item.centroidY) return null;
@@ -857,26 +857,45 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                     key={`temp-badge-${item.stateId}`}
                     transform={`translate(${item.centroidX}, ${item.centroidY})`}
                     className={`transition-all duration-200 ${
-                      isFocused ? 'scale-125 z-40' : isMuted ? 'opacity-70 scale-95' : 'opacity-90'
+                      isFocused ? 'scale-135 z-50' : isHovered ? 'scale-120 z-40' : isMuted ? 'opacity-70 scale-95' : 'opacity-95'
                     }`}
                   >
-                    {/* Badge Container */}
+                    {/* Glow Shadow Backdrop */}
                     <rect
-                      x="-26"
-                      y="-13"
-                      width="52"
-                      height="26"
-                      rx="13"
+                      x="-40"
+                      y="-19"
+                      width="80"
+                      height="38"
+                      rx="19"
+                      fill="none"
+                      stroke={
+                        isFocused
+                          ? '#38bdf8'
+                          : isMax
+                          ? '#ef4444'
+                          : isMin
+                          ? '#38bdf8'
+                          : item.colorHex
+                      }
+                      strokeWidth={isFocused ? '6' : isHovered ? '4' : '2'}
+                      strokeOpacity={isFocused ? '0.6' : isHovered ? '0.4' : '0.25'}
+                    />
+
+                    {/* Main High-Contrast Solid Badge Container */}
+                    <rect
+                      x="-38"
+                      y="-17"
+                      width="76"
+                      height="34"
+                      rx="17"
                       fill={
                         isFocused
-                          ? 'rgba(8, 47, 73, 0.98)'
-                          : isMuted
-                          ? 'rgba(24, 24, 27, 0.92)'
+                          ? 'rgba(3, 7, 18, 0.98)'
                           : isMax
-                          ? 'rgba(69, 10, 10, 0.96)'
+                          ? 'rgba(69, 10, 10, 0.98)'
                           : isMin
-                          ? 'rgba(8, 47, 73, 0.96)'
-                          : 'rgba(15, 23, 42, 0.94)'
+                          ? 'rgba(8, 47, 73, 0.98)'
+                          : 'rgba(3, 7, 18, 0.95)'
                       }
                       stroke={
                         isFocused
@@ -891,32 +910,39 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                           ? '#38bdf8'
                           : item.colorHex
                       }
-                      strokeWidth={isFocused ? '3.2' : isMuted ? '1.2' : isHovered ? '2.8' : isMax || isMin ? '2.2' : '1.6'}
-                      className={`shadow-xl ${isFocused ? 'shadow-cyan-500/50' : ''}`}
+                      strokeWidth={isFocused ? '3.5' : isMuted ? '1.5' : isHovered ? '3.0' : isMax || isMin ? '2.5' : '2.0'}
                     />
 
-                    {/* UF Tag */}
+                    {/* UF Tag (Bold, Crisp, Large) */}
                     <text
-                      x="-10"
-                      y="4"
+                      x="-17"
+                      y="5"
                       textAnchor="middle"
-                      fill={isFocused ? '#38bdf8' : isMuted ? '#a1a1aa' : '#e2e8f0'}
-                      fontSize={isFocused ? '10.5' : '10'}
-                      fontWeight="bold"
-                      fontFamily="sans-serif"
+                      fill={isFocused ? '#38bdf8' : isMuted ? '#a1a1aa' : '#ffffff'}
+                      fontSize={isFocused ? '13.5' : '13'}
+                      fontWeight="900"
+                      fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                     >
                       {item.stateId}
                     </text>
 
-                    {/* Temperature Value */}
+                    {/* Divider Dot */}
+                    <circle
+                      cx="-1"
+                      cy="0"
+                      r="1.5"
+                      fill={isFocused ? '#38bdf8' : isMuted ? '#71717a' : '#94a3b8'}
+                    />
+
+                    {/* Temperature Value (Large, High Contrast) */}
                     <text
-                      x="12"
-                      y="4"
+                      x="17"
+                      y="5"
                       textAnchor="middle"
-                      fill={isFocused ? '#ffffff' : isMuted ? '#d4d4d8' : item.colorHex}
-                      fontSize={isFocused ? '13.5' : '13'}
+                      fill={isFocused ? '#ffffff' : isMuted ? '#e4e4e7' : item.colorHex}
+                      fontSize={isFocused ? '16.5' : '16'}
                       fontWeight="900"
-                      fontFamily="sans-serif"
+                      fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                     >
                       {Math.round(item.temp)}°
                     </text>
@@ -1065,11 +1091,11 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         </div>
       )}
 
-      {/* 6. Floating Meteorological Tooltip Card on Hover (Edge & Viewport Aware Dynamic Positioning) */}
+      {/* 6. Floating Meteorological Tooltip Card on Hover (+50% Scale, 100% Solid Ultra-Sharp High-DPI Rendering) */}
       {hoveredStateInfo && hoverPos && !disableHoverTooltip && (
         <div
           id="balao-telemetria-estado-hover"
-          className="balao-telemetria-estado-hover absolute pointer-events-none transition-all duration-150 z-50 select-none"
+          className="balao-telemetria-estado-hover absolute pointer-events-none transition-all duration-150 select-none"
           style={{
             left: `${
               hoverPos.x > 1680
@@ -1087,74 +1113,83 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
             }px`,
             transform: `translate(${hoverPos.x > 1680 ? '-100%' : '0%'}, ${
               hoverPos.y < 400 ? '0%' : hoverPos.y > 1020 ? '-100%' : '-50%'
-            })`,
-            zIndex: 9999,
+            }) translateZ(0)`,
+            zIndex: 99999,
             isolation: 'isolate',
+            WebkitFontSmoothing: 'antialiased',
+            textRendering: 'geometricPrecision',
+            backfaceVisibility: 'hidden',
           }}
         >
-          <div className="card-balao-conteudo bg-slate-950/95 backdrop-blur-md border border-slate-700/90 rounded-2xl p-3 sm:p-4 shadow-[0_16px_48px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] w-[min(90vw,290px)] max-w-[calc(100vw-24px)] text-white">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
-              <div className="min-w-0">
-                <h4 className="font-black text-sm text-slate-100 flex items-center gap-1.5 truncate">
-                  <span className="text-amber-400 font-mono font-bold shrink-0">{hoveredStateInfo.stateId}</span>
-                  <span className="truncate">{hoveredStateInfo.stateName}</span>
+          <div className="card-balao-conteudo bg-slate-950 border-2 border-cyan-400/90 rounded-2xl p-4 sm:p-5 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_25px_rgba(6,182,212,0.35)] w-[min(94vw,430px)] max-w-[calc(100vw-24px)] text-white space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="min-w-0 pr-2">
+                <h4 className="font-black text-base sm:text-lg text-slate-100 flex items-center gap-2 truncate">
+                  <span className="text-amber-300 font-mono font-black text-sm px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-400/60 shrink-0">
+                    {hoveredStateInfo.stateId}
+                  </span>
+                  <span className="truncate font-serif font-bold text-white tracking-wide">
+                    {hoveredStateInfo.stateName}
+                  </span>
                 </h4>
-                <p className="text-[11px] text-slate-400 font-medium truncate">Cap: {hoveredStateInfo.capital}</p>
+                <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
+                  Capital: <strong className="text-slate-200">{hoveredStateInfo.capital}</strong>
+                </p>
               </div>
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 shadow-inner shrink-0 ml-2">
-                <Thermometer className="w-4 h-4 text-amber-400" />
-                <span className="font-black text-sm sm:text-base text-amber-300 font-mono">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-cyan-500/50 shadow-inner shrink-0">
+                <Thermometer className="w-5 h-5 text-amber-400" />
+                <span className="font-black text-lg sm:text-xl text-amber-300 font-mono">
                   {hoveredStateInfo.temperature}°C
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <Droplets className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                <span>Umid: <strong className="text-white">{hoveredStateInfo.humidity}%</strong></span>
+            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm font-sans">
+              <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
+                <Droplets className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Umid: <strong className="text-white font-bold">{hoveredStateInfo.humidity}%</strong></span>
               </div>
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <CloudRain className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <span>Chuva: <strong className="text-white">{hoveredStateInfo.precipitation} mm</strong></span>
+              <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
+                <CloudRain className="w-4 h-4 text-sky-400 shrink-0" />
+                <span>Chuva: <strong className="text-white font-bold">{hoveredStateInfo.precipitation} mm</strong></span>
               </div>
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <Wind className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Vento: <strong className="text-white">{hoveredStateInfo.windSpeed} km/h</strong></span>
+              <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
+                <Wind className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Vento: <strong className="text-white font-bold">{hoveredStateInfo.windSpeed} km/h</strong></span>
               </div>
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <Gauge className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span>Pressão: <strong className="text-white">{hoveredStateInfo.surfacePressure} hPa</strong></span>
+              <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
+                <Gauge className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Pressão: <strong className="text-white font-bold">{hoveredStateInfo.surfacePressure} hPa</strong></span>
               </div>
             </div>
 
             {/* Destaque das Temperaturas Mínima e Máxima do Estado com truncamento a 2 casas decimais */}
-            <div className="mt-2.5 pt-2 border-t border-slate-800/90 grid grid-cols-2 gap-2 bg-slate-900/80 p-2 rounded-lg border border-slate-800">
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono">
-                <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_#38bdf8] shrink-0" />
+            <div className="pt-2.5 border-t border-slate-800/90 grid grid-cols-2 gap-2.5 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-mono">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#38bdf8] shrink-0" />
                 <span className="text-blue-300 font-semibold">Mín:</span>
-                <strong className="text-white font-bold tracking-tight">
+                <strong className="text-white font-black tracking-tight text-sm sm:text-base">
                   {Number(hoveredStateInfo.minTemperature ?? (hoveredStateInfo.temperature - 4.45)).toFixed(2)}°C
                 </strong>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono">
-                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e] shrink-0" />
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-mono">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-[0_0_8px_#f43f5e] shrink-0" />
                 <span className="text-rose-300 font-semibold">Máx:</span>
-                <strong className="text-white font-bold tracking-tight">
+                <strong className="text-white font-black tracking-tight text-sm sm:text-base">
                   {Number(hoveredStateInfo.maxTemperature ?? (hoveredStateInfo.temperature + 3.25)).toFixed(2)}°C
                 </strong>
               </div>
             </div>
 
-            <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-              <div className="flex items-center gap-2">
-                <span>Sensação: <strong className="text-amber-200">{Number(hoveredStateInfo.apparentTemperature).toFixed(1)}°C</strong></span>
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center gap-2.5">
+                <span>Sensação: <strong className="text-amber-200 font-bold">{Number(hoveredStateInfo.apparentTemperature).toFixed(1)}°C</strong></span>
                 <span className="text-slate-600">•</span>
-                <span>UV: <strong className="text-amber-300">{Number(hoveredStateInfo.uvIndex ?? 7.0).toFixed(1)}</strong></span>
+                <span>UV: <strong className="text-amber-300 font-bold">{Number(hoveredStateInfo.uvIndex ?? 7.0).toFixed(1)}</strong></span>
               </div>
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                ECMWF
+              <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                ECMWF / INMET
               </span>
             </div>
           </div>

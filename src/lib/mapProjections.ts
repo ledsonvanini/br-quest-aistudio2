@@ -238,6 +238,32 @@ export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = tr
 }
 
 /**
+ * Calculates the exact pan & zoom to center Brazil in the remaining 50% right half
+ * of the screen when a 50% lateral application (like Biodiversity Catalog) is open on the left.
+ */
+export function getBrazilOverviewFocusZoomAndPan(
+  containerWidth: number,
+  is3D = true,
+  isExpanded = true
+): { targetZoom: number; targetPan: { x: number; y: number } } {
+  let baseZoom = DEFAULT_BRAZIL_ZOOM;
+  let screenOffsetX = 0;
+
+  if (containerWidth >= 640) {
+    if (isExpanded) {
+      screenOffsetX = Math.round(containerWidth * 0.25);
+      baseZoom *= Math.max(0.78, Math.min(0.95, (containerWidth * 0.5) / 580));
+    } else {
+      screenOffsetX = Math.round(Math.min(300, 250));
+      baseZoom *= Math.max(0.80, Math.min(0.95, (containerWidth - 500) / 600));
+    }
+  }
+
+  const targetPan = calculateStateCenterPan(BRAZIL_MAP_PIVOT_CENTER, baseZoom, is3D, screenOffsetX);
+  return { targetZoom: baseZoom, targetPan };
+}
+
+/**
  * Backward compatibility alias for Brazil midpoint centering
  */
 export function getCenteredGoPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
@@ -279,33 +305,31 @@ export function calculateStateCenterPan(
 
 /**
  * Calculates the exact zoom & pan to focus on a state while taking into account
- * the width occupied by the Climate Detail Dialog on the left side of the viewport.
+ * the 50% width (or compact width) occupied by the Detail Dialog/App on the left side.
+ * Centers the selected state precisely in the remaining 50% right half of the screen.
  */
 export function getClimateFocusZoomAndPan(
   centroid: [number, number],
   stateId: string,
   containerWidth: number,
-  is3D = true
+  is3D = true,
+  isExpanded = true
 ): { targetZoom: number; targetPan: { x: number; y: number } } {
   const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
   const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
 
-  let baseZoom = isSmallState ? 2.1 : isLargeState ? 1.4 : 1.75;
+  let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.35 : 1.68;
 
   let screenOffsetX = 0;
-  if (containerWidth >= 768) {
-    // Left climate dialog is 560px + 24px margin = 584px
-    screenOffsetX = 292;
-    if (containerWidth < 1200) {
-      const avail = containerWidth - 584;
-      baseZoom *= Math.max(0.70, Math.min(1.0, avail / 600));
-    }
-  } else if (containerWidth >= 640) {
-    // Left climate dialog is 520px + 16px margin = 536px
-    screenOffsetX = 268;
-    if (containerWidth < 900) {
-      const avail = containerWidth - 536;
-      baseZoom *= Math.max(0.60, Math.min(1.0, avail / 400));
+  if (containerWidth >= 640) {
+    if (isExpanded) {
+      // 50% width taken by left panel -> center of right 50% is at +25% screen width offset
+      screenOffsetX = Math.round(containerWidth * 0.25);
+      baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.5) / 600));
+    } else {
+      // Compact width (~520px)
+      screenOffsetX = Math.round(Math.min(320, 260 + (containerWidth >= 1024 ? 20 : 0)));
+      baseZoom *= Math.max(0.70, Math.min(1.0, (containerWidth - 520) / 600));
     }
   } else {
     // Mobile screen: modal takes full screen
@@ -318,45 +342,62 @@ export function getClimateFocusZoomAndPan(
 
 /**
  * Calculates the exact zoom & pan to focus on a state while taking into account
- * the width occupied by the Biodiversity Detail Dialog on the left side of the viewport.
- * Uses the remaining screen area as the active visible viewport.
+ * the 50% width (or compact width) occupied by the Biodiversity Detail Dialog on the left.
+ * Centers the selected state precisely in the remaining 50% right half of the screen.
  */
 export function getBiodiversityFocusZoomAndPan(
   centroid: [number, number],
   stateId: string,
   containerWidth: number,
-  is3D = true
+  is3D = true,
+  isExpanded = true
 ): { targetZoom: number; targetPan: { x: number; y: number } } {
   const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
   const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
 
-  let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.38 : 1.72;
+  let baseZoom = isSmallState ? 2.0 : isLargeState ? 1.32 : 1.65;
 
   let screenOffsetX = 0;
-  if (containerWidth >= 1024) {
-    // Left biodiversity dialog is 600px + 24px margin = 624px
-    screenOffsetX = 312;
-    if (containerWidth < 1300) {
-      const avail = containerWidth - 624;
-      baseZoom *= Math.max(0.70, Math.min(1.0, avail / 650));
-    }
-  } else if (containerWidth >= 768) {
-    // Left biodiversity dialog is 540px + 16px margin = 556px
-    screenOffsetX = 278;
-    if (containerWidth < 1100) {
-      const avail = containerWidth - 556;
-      baseZoom *= Math.max(0.65, Math.min(1.0, avail / 500));
-    }
-  } else if (containerWidth >= 640) {
-    // Left biodiversity dialog is 520px + 16px margin = 536px
-    screenOffsetX = 268;
-    if (containerWidth < 900) {
-      const avail = containerWidth - 536;
-      baseZoom *= Math.max(0.60, Math.min(1.0, avail / 400));
+  if (containerWidth >= 640) {
+    if (isExpanded) {
+      // 50% width taken by left panel -> center of right 50% is at +25% screen width offset
+      screenOffsetX = Math.round(containerWidth * 0.25);
+      baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.5) / 600));
+    } else {
+      // Compact width (~540px)
+      screenOffsetX = Math.round(Math.min(330, 270 + (containerWidth >= 1024 ? 20 : 0)));
+      baseZoom *= Math.max(0.70, Math.min(1.0, (containerWidth - 540) / 600));
     }
   } else {
     // Mobile screen: modal takes full screen
     screenOffsetX = 0;
+  }
+
+  const targetPan = calculateStateCenterPan(centroid, baseZoom, is3D, screenOffsetX);
+  return { targetZoom: baseZoom, targetPan };
+}
+
+/**
+ * Calculates the exact zoom & pan to focus on a state or Brazil in Musicalities Mode
+ * with the Vintage Radio Player occupying 50% width on the left.
+ */
+export function getMusicalFocusZoomAndPan(
+  centroid: [number, number],
+  containerWidth: number,
+  is3D = true,
+  isExpanded = true
+): { targetZoom: number; targetPan: { x: number; y: number } } {
+  let baseZoom = 1.6;
+  let screenOffsetX = 0;
+
+  if (containerWidth >= 640) {
+    if (isExpanded) {
+      screenOffsetX = Math.round(containerWidth * 0.25);
+      baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.5) / 600));
+    } else {
+      screenOffsetX = Math.round(Math.min(300, 240));
+      baseZoom *= Math.max(0.70, Math.min(1.0, (containerWidth - 480) / 600));
+    }
   }
 
   const targetPan = calculateStateCenterPan(centroid, baseZoom, is3D, screenOffsetX);

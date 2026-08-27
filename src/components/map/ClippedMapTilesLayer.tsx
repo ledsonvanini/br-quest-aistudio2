@@ -50,9 +50,9 @@ const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: 
   voyager_parchment: (x, y, z) =>
     `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
 
-  // 5. Clean Muted Light Grey (Meteored / ECMWF Weather Broadcast Style)
+  // 5. Clean Muted Light Grey (High-definition Gray Carto Canvas for Demography & Geopolitics)
   muted_gray: (x, y, z) =>
-    `https://basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png`,
+    `https://basemaps.cartocdn.com/rastertiles/light_nolabels/${z}/${x}/${y}.png`,
 
   // 6. Natural Earth Land Cover
   natural_earth: (x, y, z) =>
@@ -65,7 +65,7 @@ const PROVIDER_FILTER_STYLES: Record<TerrainTileProvider, string> = {
   physical_atlas: 'contrast(1.22) saturate(1.3) brightness(1.02)',
   satellite_earth: 'contrast(1.24) saturate(1.28) brightness(0.96)',
   voyager_parchment: 'sepia(0.65) contrast(1.25) saturate(1.1) brightness(0.92) hue-rotate(-5deg)',
-  muted_gray: 'grayscale(0.9) contrast(1.05) brightness(1.02)',
+  muted_gray: 'grayscale(0.65) contrast(1.15) brightness(0.95)',
   natural_earth: 'contrast(1.22) saturate(1.35) brightness(1.04) hue-rotate(-3deg)',
 };
 

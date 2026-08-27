@@ -17,6 +17,8 @@ import { AntiqueCartographyDecor } from './AntiqueCartographyDecor';
 import { CartographicGraticuleLayer } from './CartographicGraticuleLayer';
 import { StateWeatherData, getEcmwfTempColor } from '../../services/climateService';
 import { ClimateMode } from './ClimatePhenomenaLayer';
+import { GeopoliticaMetricKey } from '../../types/geopolitica';
+import { BRAZIL_STATES_GEOPOLITICS } from '../../data/geopoliticaData';
 
 interface MapStatesLayerProps {
   geoData: any;
@@ -35,8 +37,11 @@ interface MapStatesLayerProps {
   isClimateActive?: boolean;
   climateMode?: ClimateMode;
   stateWeather?: Record<string, StateWeatherData>;
+  isGeopoliticaActive?: boolean;
+  geopoliticaMetric?: GeopoliticaMetricKey;
   focusedClimateStateId?: string | null;
   focusedBiodiversityStateId?: string | null;
+  focusedGeopoliticsStateId?: string | null;
   is3D?: boolean;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
@@ -101,8 +106,11 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   isClimateActive = false,
   climateMode = 'temperaturas_frentes',
   stateWeather,
+  isGeopoliticaActive = false,
+  geopoliticaMetric = 'densidade',
   focusedClimateStateId = null,
   focusedBiodiversityStateId = null,
+  focusedGeopoliticsStateId = null,
   is3D = false,
   onStateEnter,
   onStateLeave,
@@ -189,41 +197,60 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     const weather = stateWeather?.[stateId];
     const isParchment = !isClimateActive && terrainProvider === 'voyager_parchment';
 
-    // Quando um estado está focado especificamente no modo Clima (analítico) ou Biodiversidade (isolamento),
-    // o estado focado é o ÚNICO a preservar o destaque e a cor. Todos os outros 26 estados ficam cinza neutro sólido,
-    // preservando nitidamente todos os contornos e fronteiras estaduais.
-    if (isClimateActive && focusedClimateStateId) {
-      if (stateId !== focusedClimateStateId) {
+    // Quando um estado está focado/isolado especificamente em qualquer um dos modos
+    // (Clima, Biodiversidade, Geopolítica, Aventura ou Musicalidades),
+    // o estado isolado é o ÚNICO a preservar o destaque e a cor vívida.
+    // Todos os outros 26 estados recebem a cor neutra sólida (#27272a), preservando com nitidez as fronteiras (#52525b).
+    const activeIsolatedId =
+      (isClimateActive ? focusedClimateStateId : null) ||
+      focusedBiodiversityStateId ||
+      focusedGeopoliticsStateId;
+
+    if (activeIsolatedId) {
+      if (stateId !== activeIsolatedId) {
         return {
-          stateFill: '#27272a', // Cinza neutro escuro sólido fosco (Zinc 800)
+          stateFill: '#27272a', // Cinza neutro escuro sólido fosco 100% opaco (Zinc 800)
           stateFillOpacity: 1.0,
-          strokeColor: '#52525b', // Linha de fronteira cinza neutra suave
+          strokeColor: '#52525b', // Linha de fronteira cinza neutra nítida (Zinc 600)
           strokeWidth: 1.2,
           underglowColor: 'transparent',
           wallGradId: 'url(#extrusionWallGradDefault)',
         };
       }
-    }
 
-    if (focusedBiodiversityStateId) {
-      if (stateId !== focusedBiodiversityStateId) {
+      // Se for o estado isolado em Geopolítica
+      if (focusedGeopoliticsStateId && stateId === focusedGeopoliticsStateId) {
         return {
-          stateFill: '#27272a', // Cinza neutro escuro sólido fosco (Zinc 800)
-          stateFillOpacity: 1.0,
-          strokeColor: '#52525b', // Linha de fronteira cinza neutra nítida
-          strokeWidth: 1.2,
-          underglowColor: 'transparent',
-          wallGradId: 'url(#extrusionWallGradDefault)',
+          stateFill: '#0891b2', // Ciano vibrante
+          stateFillOpacity: 0.98,
+          strokeColor: '#22d3ee', // Borda ciano brilhante
+          strokeWidth: 3.6,
+          underglowColor: '#06b6d4',
+          wallGradId: 'url(#extrusionWallGradCyan)',
         };
-      } else {
-        // Estado isolado em Biodiversidade: destaque esmeralda / ecológico nobre
+      }
+
+      // Se for o estado isolado em Biodiversidade
+      if (focusedBiodiversityStateId && stateId === focusedBiodiversityStateId) {
         return {
-          stateFill: '#065f46',
-          stateFillOpacity: 0.95,
-          strokeColor: '#34d399',
-          strokeWidth: 3.2,
+          stateFill: '#065f46', // Verde esmeralda florestal nobre
+          stateFillOpacity: 0.98,
+          strokeColor: '#34d399', // Borda esmeralda brilhante
+          strokeWidth: 3.6,
           underglowColor: '#10b981',
           wallGradId: 'url(#extrusionWallGradEmerald)',
+        };
+      }
+
+      // Se for o estado isolado em Clima
+      if (focusedClimateStateId && stateId === focusedClimateStateId) {
+        return {
+          stateFill: '#0284c7', // Azul ciano meteorológico
+          stateFillOpacity: 0.98,
+          strokeColor: '#38bdf8', // Borda azul brilhante
+          strokeWidth: 3.6,
+          underglowColor: '#0ea5e9',
+          wallGradId: 'url(#extrusionWallGradCyan)',
         };
       }
     }
@@ -279,6 +306,173 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
         underglowColor = isDroughtZone ? '#ef4444' : isFloodZone ? '#06b6d4' : '#64748b';
         wallGradId = isDroughtZone ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
       }
+    } else if (isGeopoliticaActive) {
+      // 2. MODO GEOPOLÍTICA & DEMOGRAFIA: Escala coroplética contínua e rica para as 7 métricas temáticas (IBGE Censo 2022)
+      const profile = BRAZIL_STATES_GEOPOLITICS[stateId];
+      if (profile) {
+        switch (geopoliticaMetric) {
+          case 'densidade': {
+            const dens = profile.demografia.densidadeHabKm2;
+            if (dens > 150) {
+              stateFill = '#9f1239'; // Carmesim imperial intenso (DF: 489, RJ: 367, SP: 179)
+              underglowColor = '#f43f5e';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else if (dens > 70) {
+              stateFill = '#e11d48'; // Rosa escarlate / Coral intenso (AL: 112, SE: 101, PE: 92, ES: 83, SC: 79)
+              underglowColor = '#fb7185';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else if (dens > 30) {
+              stateFill = '#ea580c'; // Laranja térmico (PB: 70, RN: 63, CE: 59, PR: 57, RS: 39, MG: 35)
+              underglowColor = '#f97316';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else if (dens > 15) {
+              stateFill = '#d97706'; // Âmbar dourado (BA: 25, GO: 21, MA: 21, PI: 13)
+              underglowColor = '#fbbf24';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else if (dens > 5) {
+              stateFill = '#0d9488'; // Turquesa / Teal (MS: 7.7, RO: 6.7, PA: 6.5, TO: 5.5, AP: 5.2, AC: 5.1)
+              underglowColor = '#2dd4bf';
+              wallGradId = 'url(#extrusionWallGradEmerald)';
+            } else {
+              stateFill = '#0284c7'; // Azul safira / ciano profundo (MT: 4.0, RR: 2.9, AM: 2.5)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            }
+            break;
+          }
+
+          case 'partidos': {
+            const corPartido = profile.politica.partidoCorHex;
+            stateFill = corPartido || '#2563eb';
+            underglowColor = stateFill;
+            wallGradId =
+              profile.politica.siglaPartido === 'PT'
+                ? 'url(#extrusionWallGradGold)'
+                : profile.politica.siglaPartido === 'MDB'
+                ? 'url(#extrusionWallGradEmerald)'
+                : 'url(#extrusionWallGradCyan)';
+            break;
+          }
+
+          case 'miscigenacao': {
+            const pardo = profile.etnia.pardoPercent;
+            const branco = profile.etnia.brancoPercent;
+            const preto = profile.etnia.pretoPercent;
+            const indigena = profile.etnia.indigenaPercent;
+
+            if (indigena > 10 || stateId === 'RR') {
+              stateFill = '#059669'; // Verde esmeralda indígena
+              underglowColor = '#10b981';
+              wallGradId = 'url(#extrusionWallGradEmerald)';
+            } else if (preto > 18 || (stateId === 'BA' && preto > 20)) {
+              stateFill = '#7e22ce'; // Púrpura nobre afro-brasileira
+              underglowColor = '#a855f7';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (branco > pardo) {
+              stateFill = '#0284c7'; // Ciano glacial / Azul safira (Sul / Sudeste)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else {
+              stateFill = '#b45309'; // Dourado / Âmbar pardo (Norte / Nordeste / Centro-Oeste)
+              underglowColor = '#f59e0b';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            }
+            break;
+          }
+
+          case 'genero': {
+            const mul = profile.genero.mulheresPercent;
+            if (mul >= 52.2) {
+              stateFill = '#be185d'; // Magenta / Pink vibrante (RJ, PE, AL, SP)
+              underglowColor = '#ec4899';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else if (mul >= 51.5) {
+              stateFill = '#7c3aed'; // Púrpura violeta
+              underglowColor = '#a855f7';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (mul >= 50.5) {
+              stateFill = '#4f46e5'; // Índigo
+              underglowColor = '#818cf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else {
+              stateFill = '#0284c7'; // Ciano azul (RR, MT, TO, RO, AP)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            }
+            break;
+          }
+
+          case 'mortalidade': {
+            const exp = profile.vitais.expectativaVidaAnos;
+            if (exp >= 78.5) {
+              stateFill = '#059669'; // Verde esmeralda (SC: 80.1, RS: 78.9, SP: 78.8, DF: 78.6)
+              underglowColor = '#10b981';
+              wallGradId = 'url(#extrusionWallGradEmerald)';
+            } else if (exp >= 76.0) {
+              stateFill = '#0284c7'; // Azul safira (PR: 77.8, MG: 77.5, ES: 77.2, RJ: 76.8)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (exp >= 73.0) {
+              stateFill = '#d97706'; // Âmbar / Terracota
+              underglowColor = '#f59e0b';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else {
+              stateFill = '#e11d48'; // Coral avermelhado
+              underglowColor = '#fb7185';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            }
+            break;
+          }
+
+          case 'analfabetismo': {
+            const alf = profile.educacao.taxaAlfabetizacao;
+            if (alf >= 96.0) {
+              stateFill = '#059669'; // Verde esmeralda (SC: 97.4%, DF: 97.2%, RS: 96.9%, SP: 96.9%)
+              underglowColor = '#10b981';
+              wallGradId = 'url(#extrusionWallGradEmerald)';
+            } else if (alf >= 92.0) {
+              stateFill = '#0284c7'; // Azul safira (PR, MG, ES, MS, GO, MT, AP, AM)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (alf >= 86.0) {
+              stateFill = '#d97706'; // Âmbar (BA, TO, PA, RN, SE, PE, CE)
+              underglowColor = '#f59e0b';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            } else {
+              stateFill = '#ea580c'; // Laranja intenso (AL: 82.3%, PI: 84.8%, MA: 85.0%, PB: 85.2%)
+              underglowColor = '#f97316';
+              wallGradId = 'url(#extrusionWallGradGold)';
+            }
+            break;
+          }
+
+          case 'natalidade': {
+            const nat = profile.vitais.taxaNatalidadePorMil;
+            if (nat >= 16.5) {
+              stateFill = '#06b6d4'; // Ciano turquesa brilhante (RR: 19.8, AM: 17.5, AP: 16.9, AC: 16.5)
+              underglowColor = '#22d3ee';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (nat >= 13.0) {
+              stateFill = '#0284c7'; // Azul cerúleo (PA, MT, TO, MA, PI, CE)
+              underglowColor = '#38bdf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else if (nat >= 10.0) {
+              stateFill = '#4f46e5'; // Índigo
+              underglowColor = '#818cf8';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            } else {
+              stateFill = '#7c3aed'; // Violeta / Púrpura (RS: 9.2, SP: 9.8, RJ: 9.6, SC: 10.1)
+              underglowColor = '#a855f7';
+              wallGradId = 'url(#extrusionWallGradCyan)';
+            }
+            break;
+          }
+        }
+      }
+
+      stateFillOpacity = isSelected ? 0.98 : isHovered ? 0.94 : 0.82;
+      strokeColor = isSelected ? '#ffffff' : isHovered ? '#ffffff' : '#fde047';
+      strokeWidth = isSelected ? 3.4 : isHovered ? 2.6 : 1.4;
     } else {
       const colors = getStateColor(
         stateId,
@@ -338,6 +532,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     ? focusedClimateStateId
     : focusedBiodiversityStateId
     ? focusedBiodiversityStateId
+    : focusedGeopoliticsStateId
+    ? focusedGeopoliticsStateId
     : (hoveredStateId || selectedStateId);
   const activePathD = activeElevatedStateId ? statePathMap[activeElevatedStateId] : null;
   const activeVisuals = activeElevatedStateId ? getStateVisuals(activeElevatedStateId, hoveredStateId === activeElevatedStateId, selectedStateId === activeElevatedStateId) : null;
@@ -470,8 +666,9 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
 
       {/* =========================================================================
           2. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite)
+          Ocultado quando qualquer estado estiver isolado para garantir cinza 100% fosco
          ========================================================================= */}
-      {visualStyle === 'tiles' && !focusedClimateStateId && !focusedBiodiversityStateId && (
+      {visualStyle === 'tiles' && !focusedClimateStateId && !focusedBiodiversityStateId && !focusedGeopoliticsStateId && (
         <ClippedMapTilesLayer
           geoData={geoData}
           projection={projection}
@@ -525,12 +722,28 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           const belongsToActiveRegion = !isRegionActive || (REGION_STATES_MAP[activeRegionFilter]?.includes(stateId) ?? false);
           const isNeighborOfSelected = Boolean(showNeighbors && selectedStateId && STATE_NEIGHBORS_MAP[selectedStateId]?.includes(stateId));
 
+          const activeIsolatedState =
+            (isClimateActive ? focusedClimateStateId : null) ||
+            focusedBiodiversityStateId ||
+            focusedGeopoliticsStateId ||
+            null;
+
           return (
             <g
               key={stateId}
               className={`grupo-estado-svg grupo-estado-${stateId.toLowerCase()} transition-all duration-200`}
               style={{
-                opacity: isRegionActive ? (belongsToActiveRegion ? 1.0 : 0.20) : (showNeighbors && selectedStateId ? (isSelected || isNeighborOfSelected ? 1.0 : 0.45) : 1.0),
+                opacity: activeIsolatedState
+                  ? 1.0
+                  : isRegionActive
+                  ? belongsToActiveRegion
+                    ? 1.0
+                    : 0.20
+                  : showNeighbors && selectedStateId
+                  ? isSelected || isNeighborOfSelected
+                    ? 1.0
+                    : 0.45
+                  : 1.0,
               }}
             >
               {/* High Contrast Dark Under-Stroke Layer */}
@@ -551,7 +764,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 id={`state-path-${stateId}`}
                 d={pathD}
                 fill={
-                  isClimateActive && focusedClimateStateId
+                  activeIsolatedState
                     ? visuals.stateFill
                     : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
                     ? '#10b981'
@@ -560,7 +773,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                     : visuals.stateFill
                 }
                 fillOpacity={
-                  isClimateActive && focusedClimateStateId
+                  activeIsolatedState
                     ? visuals.stateFillOpacity
                     : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
                     ? 0.40
@@ -569,7 +782,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                     : visuals.stateFillOpacity
                 }
                 stroke={
-                  isClimateActive && focusedClimateStateId
+                  activeIsolatedState
                     ? visuals.strokeColor
                     : isRegionActive && belongsToActiveRegion
                     ? '#34d399'
@@ -578,7 +791,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                     : visuals.strokeColor
                 }
                 strokeWidth={
-                  isClimateActive && focusedClimateStateId
+                  activeIsolatedState
                     ? visuals.strokeWidth
                     : isRegionActive && belongsToActiveRegion
                     ? 2.2
@@ -590,7 +803,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
                 className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} ${
-                  isClimateActive && focusedClimateStateId && stateId !== focusedClimateStateId
+                  activeIsolatedState && stateId !== activeIsolatedState
                     ? 'cursor-default pointer-events-none'
                     : 'cursor-pointer pointer-events-auto'
                 } transition-all duration-150`}
@@ -612,7 +825,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 className={`hit-target-estado-expandido ${
-                  isClimateActive && focusedClimateStateId && stateId !== focusedClimateStateId
+                  activeIsolatedState && stateId !== activeIsolatedState
                     ? 'pointer-events-none'
                     : 'pointer-events-auto cursor-pointer'
                 }`}

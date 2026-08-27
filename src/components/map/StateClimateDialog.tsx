@@ -19,10 +19,13 @@ import {
   MapPin,
   Clock,
   Sparkles,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { STATE_CLIMATOLOGY_DATABASE, StateClimatologyDetail } from '../../data/stateClimatologyData';
 import { StateWeatherData, formatFullDayTime } from '../../services/climateService';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
+import { audioEngine } from '../../lib/audioSynth';
 
 interface StateClimateDialogProps {
   stateId: string | null;
@@ -30,6 +33,7 @@ interface StateClimateDialogProps {
   allStatesWeather?: Record<string, StateWeatherData>;
   lastUpdated?: string | number;
   onClose: () => void;
+  onToggleExpand?: (expanded: boolean) => void;
 }
 
 export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
@@ -38,8 +42,10 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
   allStatesWeather,
   lastUpdated,
   onClose,
+  onToggleExpand,
 }) => {
   const [activeTab, setActiveTab] = useState<'geral' | 'enchentes' | 'extremos' | 'relevo' | 'estatisticas'>('geral');
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   if (!stateId) return null;
 
@@ -74,11 +80,22 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
     }
   }
 
+  const handleToggleExpand = () => {
+    audioEngine.playSfx('click');
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onToggleExpand?.(next);
+  };
+
   return (
     <div
       id="dialog-climatologia-estado"
       data-scrollable="true"
-      className="modal-dialog-climatologia-estado fixed top-[62px] sm:top-[66px] bottom-[58px] sm:bottom-[62px] left-2 sm:left-4 md:left-6 z-40 w-[calc(100vw-16px)] sm:w-[520px] md:w-[560px] max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default"
+      className={`modal-dialog-climatologia-estado painel-dialog-clima fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] left-2 sm:left-3 md:left-4 z-40 max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default transition-all duration-300 ${
+        isExpanded
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+          : 'w-[calc(100vw-16px)] sm:w-[480px] md:w-[520px]'
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Indicador de puxador / notch em telas móveis */}
@@ -114,7 +131,23 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-2">
+        {/* CONTROLES DE JANELA: Restaurar / Maximizar (50%) | Fechar */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          <button
+            id="btn-tamanho-dialog-clima"
+            type="button"
+            onClick={handleToggleExpand}
+            className={`btn-tamanho-painel p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer shadow-lg hover:scale-105 active:scale-95 touch-manipulation min-w-[34px] min-h-[34px] flex items-center justify-center ${
+              isExpanded
+                ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-400/60'
+                : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-600/80'
+            }`}
+            title={isExpanded ? 'Restaurar Tamanho Compacto' : 'Maximizar Painel (50% da Tela)'}
+            aria-label="Alternar Tamanho do Painel de Clima"
+          >
+            {isExpanded ? <Minimize2 className="w-4 h-4 text-cyan-300" /> : <Maximize2 className="w-4 h-4 text-cyan-300" />}
+          </button>
+
           <button
             id="btn-fechar-dialog-clima"
             type="button"

@@ -109,7 +109,7 @@ export const VintageRadioPlayer: React.FC<Props> = ({
   const stateData: StateMusicalHeritage = getStateMusicalHeritage(activeStateId);
   const guardian = GUARDIANS_DATA.find((g) => g.id === activeStateId);
 
-  const [viewMode, setViewMode] = useState<RadioViewMode>('normal');
+  const [viewMode, setViewMode] = useState<RadioViewMode>('expanded');
   const [activeSubTab, setActiveSubTab] = useState<RadioSubTab>('aparelho');
   const [activeCategory, setActiveCategory] = useState<'state_anthems' | 'top5' | 'national'>(initialActiveCategory);
   const [currentEraId, setCurrentEraId] = useState<string>(() => selectedRadioEraId || getSavedDefaultRadioEraId());
@@ -423,7 +423,9 @@ export const VintageRadioPlayer: React.FC<Props> = ({
       onTouchMove={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       className={`painel-radio-vintage-player painel-app-radio-vintage h-full flex flex-col bg-slate-950/70 backdrop-blur-xl border border-amber-500/40 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/90 text-white overflow-hidden select-none font-sans transition-all duration-300 ${
-        isExpanded ? 'w-[min(960px,calc(100vw-32px))] lg:w-[calc(50vw-24px)]' : 'w-[min(480px,calc(100vw-24px))]'
+        isExpanded
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+          : 'w-[calc(100vw-24px)] sm:w-[480px] md:w-[500px]'
       }`}
     >
       {/* 1. CABEÇALHO DO APP DO RÁDIO (IDENTIDADE + CONTROLES DE JANELA) */}

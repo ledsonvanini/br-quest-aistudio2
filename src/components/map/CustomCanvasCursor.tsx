@@ -40,10 +40,18 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
 
-      // Check if mouse is over any modal, dialog, top menu, footer, scrollable window or scrollbar
+      // Check if mouse is over any modal, dialog, lateral panel, vintage radio, climate observatory, top menu, footer, scrollable window or scrollbar
       const isOverModalOrScrollable = Boolean(
         target?.closest?.(
-          '.modal-dialog-climatologia-estado, #dialog-climatologia-estado, [role="dialog"], .dialog-overlay, .modal-backdrop, .modal-conteudo, .modal-arvore-habilidades, .modal-quiz-guardiao, .modal-configuracoes, .modal-inventario-guardiao, .modal-filosofia-sobre, .modal-neighbor-country, [data-scrollable], .overflow-y-auto, .overflow-x-auto, .scrollbar-thin, .menu-superior-status, #menu-global-topo-unificado, .rodape-aplicacao, #rodape-aplicacao-dinamico, .painel-toolbar-relevo'
+          '.modal-dialog-climatologia-estado, #dialog-climatologia-estado, .painel-dialog-clima, ' +
+          '.modal-dialog-biodiversidade-estado, #dialog-biodiversidade-estado, .painel-dialog-biodiversidade, ' +
+          '.coluna-radio-vintage-independente, .painel-radio-vintage-player, .painel-app-radio-vintage, .painel-split-radio-esquerda, #painel-split-radio-esquerda, ' +
+          '.painel-observatorio-clima, .painel-observatorio-ambiental, .painel-app-observatorio, #painel-controle-biodiversidade, ' +
+          '.painel-card-telemetria-observatorio, .painel-card-musical-mapa, .painel-lateral-detalhes-estado, #sidebar-detalhes-estado, ' +
+          '.menu-superior-status, #menu-global-topo-unificado, .rodape-aplicacao, #rodape-aplicacao-dinamico, .painel-toolbar-relevo, ' +
+          '.modal-arvore-habilidades, .modal-quiz-guardiao, .modal-configuracoes, .modal-inventario-guardiao, .modal-filosofia-sobre, .modal-neighbor-country, ' +
+          '.painel-hud-controles, .painel-controles-clima, .painel-controles-biodiversidade, .painel-card-detalhes-estado, .painel-split-view-app, ' +
+          '[role="dialog"], .dialog-overlay, .modal-backdrop, .modal-conteudo, [data-scrollable], .overflow-y-auto, .overflow-x-auto, .scrollbar-thin'
         )
       );
 

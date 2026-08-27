@@ -12,7 +12,7 @@ import {
   Flame,
   Snowflake,
   Leaf,
-  Bug,
+  Bird,
   Trees,
   ShieldAlert,
   BarChart3,
@@ -30,6 +30,7 @@ import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor, formatFullDayTime, formatBra
 import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityData';
 import { biodiversityService } from '../services/biodiversityService';
 import { apiTracker } from '../services/apiTracker';
+import { perfEngine, FpsTelemetry } from '../lib/performanceEngine';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -92,9 +93,15 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   }, [climateLastUpdated]);
   const biodivTimeOnly = useMemo(() => biodiversityService.getBrasiliaTimeOnly(), []);
 
-  // Real-time synchronization with Vintage Radio Player Engine
+  // Real-time synchronization with Vintage Radio Player Engine & Performance Engine
   const [radioState, setRadioState] = useState<RadioPlaybackState>(() => vintageRadioEngine.getState());
   const [apiCallsCount, setApiCallsCount] = useState<number>(() => apiTracker.getTotalCallsToday());
+  const [fpsTelemetry, setFpsTelemetry] = useState<FpsTelemetry>({
+    fps: 60,
+    frametimeMs: 16.6,
+    quality: 'optimal',
+    activeParticles: 0,
+  });
 
   useEffect(() => {
     const unsubscribeRadio = vintageRadioEngine.subscribe((state) => {
@@ -104,10 +111,14 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
       setApiCallsCount(apiTracker.getTotalCallsToday());
     };
     const unsubscribeApi = apiTracker.subscribe(updateApiCount);
+    const unsubscribePerf = perfEngine.subscribe((data) => {
+      setFpsTelemetry(data);
+    });
 
     return () => {
       unsubscribeRadio();
       unsubscribeApi();
+      unsubscribePerf();
     };
   }, []);
 
@@ -312,7 +323,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
               <div className="h-3.5 w-px bg-emerald-500/30 hidden sm:block shrink-0" />
               <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-300 shrink-0">
                 <span className="flex items-center gap-1 text-amber-300">
-                  <Bug className="w-3 h-3 text-amber-400" /> Fauna
+                  <Bird className="w-3 h-3 text-amber-400" /> Fauna
                 </span>
                 <span className="flex items-center gap-1 text-emerald-300">
                   <Trees className="w-3 h-3 text-emerald-400" /> Flora
@@ -464,25 +475,50 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             <span className="hidden sm:inline">Saiba +</span>
           </button>
 
-          {/* Botão 2: FPS Medidor de Performance */}
+          {/* Botão 2: FPS Medidor de Performance (Com Swap de Componente no Mesmo Local) */}
           {onToggleFps && (
-            <button
-              id="btn-fps-rodape"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onToggleFps();
-              }}
-              className={`btn-fps-rodape flex items-center gap-1 px-2 py-1 rounded-xl border text-xs font-mono font-bold transition shadow-sm cursor-pointer ${
-                showFps
-                  ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-emerald-500/20'
-                  : 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200'
-              }`}
-              title={showFps ? 'Ocultar Medidor de FPS' : 'Exibir Medidor de FPS em Tempo Real'}
-              aria-label="Alternar FPS"
-            >
-              <Gauge className={`w-3.5 h-3.5 ${showFps ? 'text-emerald-400' : 'text-slate-400'}`} />
-              <span className="hidden md:inline">FPS</span>
-            </button>
+            showFps ? (
+              <button
+                id="btn-fps-rodape"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onToggleFps();
+                }}
+                className={`btn-fps-rodape painel-fps-swap flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-mono font-bold transition-all shadow-lg shadow-black/80 cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
+                  fpsTelemetry.quality === 'optimal'
+                    ? 'bg-emerald-950/90 border-emerald-400/80 text-emerald-300 shadow-emerald-500/20'
+                    : fpsTelemetry.quality === 'good'
+                    ? 'bg-amber-950/90 border-amber-400/80 text-amber-300 shadow-amber-500/20'
+                    : 'bg-rose-950/90 border-rose-400/80 text-rose-300 shadow-rose-500/20'
+                }`}
+                title={`Taxa de Atualização: ${fpsTelemetry.fps} FPS | Tempo de Quadro: ${fpsTelemetry.frametimeMs}ms | Clique para ocultar`}
+                aria-label={`FPS: ${fpsTelemetry.fps} - ${fpsTelemetry.quality}`}
+              >
+                <Activity className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                <span className="font-black">{fpsTelemetry.fps} FPS</span>
+                <span className="text-slate-500 font-sans">|</span>
+                <span className="text-[10px] font-sans font-bold uppercase tracking-wider shrink-0">
+                  {fpsTelemetry.quality === 'optimal' ? 'Fluido' : fpsTelemetry.quality === 'good' ? 'Estável' : 'Otimizando'}
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono hidden xl:inline">
+                  {fpsTelemetry.frametimeMs}ms
+                </span>
+              </button>
+            ) : (
+              <button
+                id="btn-fps-rodape"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onToggleFps();
+                }}
+                className="btn-fps-rodape flex items-center gap-1 px-2 py-1 rounded-xl border text-xs font-mono font-bold transition shadow-sm cursor-pointer bg-slate-900/80 hover:bg-slate-800 border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200"
+                title="Exibir Medidor de FPS em Tempo Real (Swap no Rodapé)"
+                aria-label="Ativar Medidor de FPS"
+              >
+                <Gauge className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden md:inline">FPS</span>
+              </button>
+            )
           )}
 
           {/* Botão 3: APIs, Cotas e Telemetria */}

@@ -122,6 +122,10 @@ export const AboutInfoModal: React.FC<Props> = ({ isOpen, onClose }) => {
                 <p className="text-slate-400">Modelos de Elevação Digital NASA SRTM e sombreamento cartográfico contínuo.</p>
               </div>
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="font-bold text-slate-200 block mb-0.5">🌱 Biodiversidade & Espécies</span>
+                <p className="text-slate-400">iNaturalist Research Grade BR, GBIF (Global Biodiversity Facility), JBRJ (Flora e Funga do Brasil / Reflora) e IBAMA (SisCITES / MMA).</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
                 <span className="font-bold text-slate-200 block mb-0.5">🛡️ Heráldica & Brasões Oficiais</span>
                 <p className="text-slate-400">Símbolos cívicos oficiais das 27 Unidades Federativas sob regime de domínio público cívico.</p>
               </div>

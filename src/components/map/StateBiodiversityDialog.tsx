@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   Leaf,
-  Bug,
+  Bird,
   Sparkles,
   ShieldCheck,
   ShieldAlert,
@@ -21,11 +21,15 @@ import {
   Dna,
   Share2,
   Clock,
+  Maximize2,
+  Minimize2,
+  Camera,
 } from 'lucide-react';
 import { StateBiodiversityProfile, BiodiversitySpecimen, BiodiversityKingdom, BrazilBiome } from '../../types';
 import { STATE_BIODIVERSITY_PROFILES, IUCN_STATUS_LABELS, BIOME_COLORS, getSpecimensByState } from '../../data/brazilBiodiversityData';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
 import { biodiversityService, GbifTaxonMatch, IbamaSisCitesPackage, WikipediaSummaryResponse } from '../../services/biodiversityService';
+import { ScientificImageResult } from '../../services/biodiversityImageService';
 import { audioEngine } from '../../lib/audioSynth';
 import { BiodiversityImage } from '../common/BiodiversityImage';
 
@@ -36,6 +40,7 @@ interface StateBiodiversityDialogProps {
   activeKingdomFilter?: BiodiversityKingdom | 'all';
   isThreatenedOnly?: boolean;
   onSelectSpecimenDetail?: (specimen: BiodiversitySpecimen) => void;
+  onToggleExpand?: (expanded: boolean) => void;
 }
 
 export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = ({
@@ -45,6 +50,7 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
   activeKingdomFilter = 'all',
   isThreatenedOnly = false,
   onSelectSpecimenDetail,
+  onToggleExpand,
 }) => {
   const computeDefaultTab = () => {
     if (initialTab) return initialTab;
@@ -56,10 +62,19 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
   };
 
   const [activeTab, setActiveTab] = useState<'geral' | 'fauna' | 'flora' | 'fungos_micro' | 'ameacadas' | 'siscites'>(computeDefaultTab);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [coatOfArmsError, setCoatOfArmsError] = useState<boolean>(false);
   const [selectedSpecimen, setSelectedSpecimen] = useState<BiodiversitySpecimen | null>(null);
+
+  const handleToggleExpand = () => {
+    audioEngine.playSfx('click');
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onToggleExpand?.(next);
+  };
   const [gbifData, setGbifData] = useState<GbifTaxonMatch | null>(null);
   const [wikiSummary, setWikiSummary] = useState<WikipediaSummaryResponse | null>(null);
+  const [scientificPhotoMeta, setScientificPhotoMeta] = useState<ScientificImageResult | null>(null);
   const [ibamaPkg, setIbamaPkg] = useState<IbamaSisCitesPackage | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
@@ -73,6 +88,7 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
     setSelectedSpecimen(null);
     setGbifData(null);
     setWikiSummary(null);
+    setScientificPhotoMeta(null);
     setCoatOfArmsError(false);
     setActiveTab(computeDefaultTab());
   }, [stateId, initialTab, activeKingdomFilter, isThreatenedOnly]);
@@ -137,7 +153,11 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
     <div
       id="dialog-biodiversidade-estado"
       data-scrollable="true"
-      className="modal-dialog-biodiversidade-estado fixed top-[62px] sm:top-[66px] bottom-[58px] sm:bottom-[62px] left-2 sm:left-4 md:left-6 z-40 w-[calc(100vw-16px)] sm:w-[540px] md:w-[600px] max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(16,185,129,0.25)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default pointer-events-auto"
+      className={`modal-dialog-biodiversidade-estado painel-dialog-biodiversidade fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] left-2 sm:left-3 md:left-4 z-40 max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(16,185,129,0.25)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default pointer-events-auto transition-all duration-300 ${
+        isExpanded
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+          : 'w-[calc(100vw-16px)] sm:w-[500px] md:w-[540px]'
+      }`}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
@@ -181,7 +201,23 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-2">
+        {/* CONTROLES DE JANELA: Restaurar / Maximizar (50%) | Fechar */}
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          <button
+            id="btn-tamanho-dialog-biodiversidade"
+            type="button"
+            onClick={handleToggleExpand}
+            className={`btn-tamanho-painel p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer shadow-lg hover:scale-105 active:scale-95 touch-manipulation min-w-[34px] min-h-[34px] flex items-center justify-center ${
+              isExpanded
+                ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-400/60'
+                : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-600/80'
+            }`}
+            title={isExpanded ? 'Restaurar Tamanho Compacto' : 'Maximizar Painel (50% da Tela)'}
+            aria-label="Alternar Tamanho do Painel de Biodiversidade"
+          >
+            {isExpanded ? <Minimize2 className="w-4 h-4 text-emerald-300" /> : <Maximize2 className="w-4 h-4 text-emerald-300" />}
+          </button>
+
           <button
             id="btn-fechar-dialog-biodiversidade"
             type="button"
@@ -224,7 +260,7 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
               : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
           }`}
         >
-          <Bug className="w-3.5 h-3.5" />
+          <Bird className="w-3.5 h-3.5" />
           <span>Fauna</span>
         </button>
 
@@ -338,17 +374,29 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
             {/* Imagem em alta definição */}
             <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video sm:aspect-[21/9] max-h-56">
               <BiodiversityImage
-                src={wikiSummary?.originalimage?.source || wikiSummary?.thumbnail?.source || selectedSpecimen.imageUrl}
+                src={selectedSpecimen.imageUrl}
+                scientificName={selectedSpecimen.scientificName}
                 alt={selectedSpecimen.namePt}
                 kingdom={selectedSpecimen.kingdom}
                 fallbackSrc={selectedSpecimen.thumbnailUrl || selectedSpecimen.imageUrl}
+                size="full"
                 containerClassName="w-full h-full"
                 className="w-full h-full object-cover"
+                onScientificMetadataLoaded={(meta) => setScientificPhotoMeta(meta)}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-85 pointer-events-none" />
+              
+              {/* Badge de Atribuição Científica da Foto */}
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-slate-700/80 text-[10px] text-slate-300 pointer-events-none shadow-md">
+                <Camera className="w-3 h-3 text-emerald-400" />
+                <span className="font-mono truncate max-w-[200px]">
+                  {scientificPhotoMeta?.photographer || 'Acervo Científico'} ({scientificPhotoMeta?.license || 'CC-BY'})
+                </span>
+              </div>
+
               <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] text-slate-300 pointer-events-none">
-                <span>{selectedSpecimen.subcategoryPt}</span>
-                <span className="bg-slate-950/80 px-2 py-0.5 rounded backdrop-blur">
+                <span className="font-medium">{selectedSpecimen.subcategoryPt}</span>
+                <span className="bg-slate-950/85 px-2 py-0.5 rounded-full border border-slate-800 backdrop-blur">
                   Biomas: {selectedSpecimen.biomes.join(', ')}
                 </span>
               </div>
@@ -548,9 +596,11 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
                   >
                     <BiodiversityImage
                       src={specimen.thumbnailUrl || specimen.imageUrl}
+                      scientificName={specimen.scientificName}
                       alt={specimen.namePt}
                       kingdom={specimen.kingdom}
                       fallbackSrc={specimen.imageUrl}
+                      size="card"
                       containerClassName="w-12 h-12 rounded-lg border border-slate-700 shrink-0"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
@@ -612,9 +662,11 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
                     <div className="flex items-start gap-3">
                       <BiodiversityImage
                         src={specimen.thumbnailUrl || specimen.imageUrl}
+                        scientificName={specimen.scientificName}
                         alt={specimen.namePt}
                         kingdom={specimen.kingdom}
                         fallbackSrc={specimen.imageUrl}
+                        size="card"
                         containerClassName="w-16 h-16 rounded-xl border border-slate-700 shrink-0"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />

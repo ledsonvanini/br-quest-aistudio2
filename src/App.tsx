@@ -7,8 +7,8 @@ import { SettingsModal } from './components/SettingsModal';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { AboutInfoModal } from './components/AboutInfoModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
-import { FpsCounterWidget } from './components/FpsCounterWidget';
 import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from './types';
+import { GeopoliticaMetricKey } from './types/geopolitica';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
@@ -48,6 +48,10 @@ export function App() {
   const [isBiodiversityThreatenedOnly, setIsBiodiversityThreatenedOnly] = useState<boolean>(false);
   const [isBiodiversityEndemicOnly, setIsBiodiversityEndemicOnly] = useState<boolean>(false);
   const [isBiodiversityPanelOpen, setIsBiodiversityPanelOpen] = useState<boolean>(false);
+
+  // Geopolítica Mode State
+  const [geopoliticaMetric, setGeopoliticaMetric] = useState<GeopoliticaMetricKey>('miscigenacao');
+  const [isGeopoliticaPanelOpen, setIsGeopoliticaPanelOpen] = useState<boolean>(true);
 
   const [climateTelemetry, setClimateTelemetry] = useState<{
     avgTempBrazil: number;
@@ -111,6 +115,16 @@ export function App() {
   const handleSelectMainMode = (newMode: AppMainMode) => {
     setMainMode(newMode);
 
+    // Regra Padrão: Sempre que mudar entre os modos do TopMenu, os apps laterais começam fechados e o Mapa centraliza na tela cheia
+    setIsObservatorioOpen(false);
+    setIsBiodiversityPanelOpen(false);
+    setIsGeopoliticaPanelOpen(false);
+    setIsRadioOpen(false);
+    setFocusedStateId(null);
+    setSelectedRegionFilter('todos');
+    setShowNeighbors(false);
+    setCenterMapTrigger((prev) => prev + 1);
+
     if (newMode === 'aventura') {
       // Modo Aventura Padrão: Apenas nuvens ativas; textura shaded_relief; sem vizinhos; astro em auto
       setTerrainProvider('shaded_relief');
@@ -121,11 +135,8 @@ export function App() {
       setIsWavesActive(false);
       setIsAtmosphereActive(true);
       setCelestialTimeOverride('auto');
-      setShowNeighbors(false);
-      setSelectedRegionFilter('todos');
-      setIsObservatorioOpen(false);
     } else if (newMode === 'clima') {
-      // Modo Clima Padrão: Sol automático de Brasília, nuvens, ondas, cor neutra para América do Sul; Observatório Ambiental desmarcado por padrão
+      // Modo Clima Padrão: Sol automático de Brasília, nuvens, ondas, cor neutra para América do Sul; Observatório fechado por padrão
       setTerrainProvider('muted_gray');
       setVisualStyle('tiles');
       setClimateMode('temperaturas_frentes');
@@ -134,11 +145,8 @@ export function App() {
       setCelestialTimeOverride('auto');
       setIsWavesActive(true);
       setIsRainSimActive(false);
-      setShowNeighbors(false);
-      setSelectedRegionFilter('todos');
-      setIsObservatorioOpen(false);
     } else if (newMode === 'biodiversidade') {
-      // Modo Biodiversidade Padrão: Cores Naturais da Terra (Natural Earth Land Cover), relevo ecológico, nuvens, ondas costeiras, sem vizinhos
+      // Modo Biodiversidade Padrão: Cores Naturais da Terra (Natural Earth Land Cover), relevo ecológico, nuvens, ondas costeiras, sem vizinhos; Painel fechado por padrão
       setTerrainProvider('natural_earth');
       setVisualStyle('tiles');
       setIsCloudsActive(true);
@@ -146,13 +154,18 @@ export function App() {
       setCelestialTimeOverride('auto');
       setIsWavesActive(true);
       setIsRainSimActive(false);
-      setShowNeighbors(false);
-      setSelectedRegionFilter('todos');
-      setIsObservatorioOpen(false);
-      setIsBiodiversityPanelOpen(false);
+    } else if (newMode === 'geopolitica') {
+      // Modo Geopolítica Padrão: Relevo topográfico sombreado de alta definição com camada coroplética estatística viva
+      setTerrainProvider('shaded_relief');
+      setVisualStyle('tiles');
+      setChoroplethSubTheme('regions');
+      setIsCloudsActive(true);
+      setIsAtmosphereActive(true);
+      setCelestialTimeOverride('auto');
+      setIsWavesActive(true);
+      setIsRainSimActive(false);
     } else if (newMode === 'musicalidades') {
-
-      // Modo Musicalidades Padrão: Rádio aberto, sol e nuvens leves, ondas
+      // Modo Musicalidades Padrão: Sol e nuvens leves, ondas costeiras; Rádio fechado por padrão até o usuário acionar
       setTerrainProvider('shaded_relief');
       setVisualStyle('tiles');
       setIsCloudsActive(true);
@@ -160,11 +173,7 @@ export function App() {
       setCelestialTimeOverride('auto');
       setIsWavesActive(true);
       setIsRainSimActive(false);
-      setIsRadioOpen(true);
       setActiveMusicCategory('state_anthems');
-      setShowNeighbors(false);
-      setSelectedRegionFilter('todos');
-      setIsObservatorioOpen(false);
     } else if (newMode === 'globo3d') {
       // Modo Globo 3D Padrão: NASA Satellite Blue Marble, nuvens orbitais, brasões 40% preto translúcidos e bordas douradas
       setGlobeTextureMode('nasa_satellite');
@@ -172,7 +181,6 @@ export function App() {
       setIsGlobeBordersActive(true);
       setGlobePinMode('all');
       setIsGlobeAutoRotateActive(false);
-      setIsObservatorioOpen(false);
     }
 
     if (activeTab !== 'map') {
@@ -393,6 +401,10 @@ export function App() {
           onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
           isBiodiversityPanelOpen={isBiodiversityPanelOpen}
           onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
+          geopoliticaMetric={geopoliticaMetric}
+          onGeopoliticaMetricChange={setGeopoliticaMetric}
+          isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
+          onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onResetView={() => setCenterMapTrigger((prev) => prev + 1)}
           onResetViewIfNotCentered={() => setCenterMapTrigger((prev) => prev + 1)}
@@ -483,6 +495,10 @@ export function App() {
               onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
               isBiodiversityPanelOpen={isBiodiversityPanelOpen}
               onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
+              geopoliticaMetric={geopoliticaMetric}
+              onGeopoliticaMetricChange={setGeopoliticaMetric}
+              isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
+              onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
             />
           </div>
 
@@ -524,13 +540,7 @@ export function App() {
         onClose={() => setIsAboutInfoOpen(false)}
       />
 
-      {/* Real-time FPS & Performance Telemetry Widget */}
-      <FpsCounterWidget
-        isVisible={showFps}
-        onToggleVisibility={() => setShowFps(false)}
-      />
-
-      {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS | APIs | Bússola ] */}
+      {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS Swap | APIs ] */}
       <DynamicAppFooter
         mainMode={mainMode}
         activeTab={activeTab}

@@ -9,6 +9,7 @@ import {
   getBrasiliaCelestialEphemeris,
   CelestialEphemeris,
 } from '../../services/astronomyService';
+import { audioEngine } from '../../lib/audioSynth';
 import {
   RefreshCw,
   X,
@@ -24,6 +25,8 @@ import {
   Activity,
   Orbit,
   Clock,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 interface ClimateControlPanelProps {
@@ -77,9 +80,15 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'stations' | 'astronomy' | 'enso' | 'settings'>('astronomy');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [ephemeris, setEphemeris] = useState<CelestialEphemeris>(() =>
     getBrasiliaCelestialEphemeris(timeOverride)
   );
+
+  const handleToggleExpand = () => {
+    audioEngine.playSfx('click');
+    setIsExpanded((prev) => !prev);
+  };
 
   // Sincronização de efemérides solares a cada segundo com a Hora de Brasília
   useEffect(() => {
@@ -97,10 +106,13 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
     <>
       {/* Botão Flutuante Discreto para Reabrir Observatório (quando minimizado) */}
       {!isDrawerOpen && (
-        <div className="fixed bottom-6 right-6 z-40 pointer-events-auto">
+        <div className="fixed bottom-12 right-4 sm:right-6 z-40 pointer-events-auto">
           <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-950/90 hover:bg-slate-900 border border-amber-500/50 text-amber-300 text-xs font-serif font-bold shadow-2xl shadow-black/80 hover:scale-105 transition-all cursor-pointer"
+            onClick={() => {
+              audioEngine.playSfx('click');
+              setIsDrawerOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-950/95 hover:bg-slate-900 border border-amber-500/60 text-amber-300 text-xs font-serif font-bold shadow-2xl shadow-black/90 hover:scale-105 transition-all cursor-pointer"
             title="Abrir Observatório Meteorológico & Astronomia"
           >
             <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
@@ -109,39 +121,68 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
         </div>
       )}
 
-      {/* PAINEL OBSERVATÓRIO LATERAL */}
+      {/* PAINEL OBSERVATÓRIO LATERAL (Alcance até o rodapé com controles de maximizar / restaurar) */}
       {isDrawerOpen && (
         <div
+          id="painel-observatorio-ambiental"
+          data-scrollable="true"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className="painel-observatorio-clima fixed top-16 sm:top-24 right-2 sm:right-6 z-40 w-[calc(100vw-16px)] sm:w-96 max-h-[82vh] bg-slate-950/95 backdrop-blur-xl border border-slate-800/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-100 animate-in fade-in slide-in-from-right-4 duration-300 pointer-events-auto select-none"
+          className={`painel-observatorio-clima painel-observatorio-ambiental painel-app-observatorio fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] right-2 sm:right-3 md:right-4 z-40 max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.25)] flex flex-col overflow-hidden text-slate-100 animate-in fade-in slide-in-from-right-4 duration-300 pointer-events-auto select-none cursor-default transition-all duration-300 ${
+            isExpanded
+              ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+              : 'w-[calc(100vw-16px)] sm:w-96 md:w-[420px]'
+          }`}
         >
           {/* Header */}
-          <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-slate-900/90 to-slate-950">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+          <div className="p-3 sm:p-3.5 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-cyan-950/80 via-slate-900/95 to-slate-950 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
                 <Radio className="w-4 h-4 animate-pulse" />
               </div>
-              <div>
-                <h3 className="font-black text-sm text-slate-100 flex items-center gap-1.5 font-serif">
+              <div className="min-w-0">
+                <h3 className="font-black text-sm text-slate-100 flex items-center gap-1.5 font-serif truncate">
                   Observatório Ambiental
                 </h3>
-                <p className="text-[10px] text-slate-400 font-mono">Telemetria & Efemérides • Hora de Brasília</p>
+                <p className="text-[10px] text-slate-400 font-mono truncate">Telemetria & Efemérides • Hora de Brasília</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            {/* CONTROLES DE JANELA: Atualizar | Maximizar (50%) / Restaurar | Fechar */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
               <button
+                id="btn-atualizar-observatorio"
                 onClick={onRefreshTelemetry}
                 disabled={isLoading}
                 title="Atualizar dados em tempo real"
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-amber-400 hover:border-amber-500/50 transition-all disabled:opacity-50 cursor-pointer"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/50 transition-all disabled:opacity-50 cursor-pointer shadow-md min-w-[34px] min-h-[34px] flex items-center justify-center"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
+
               <button
-                onClick={() => setIsDrawerOpen(false)}
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+                id="btn-tamanho-observatorio"
+                type="button"
+                onClick={handleToggleExpand}
+                className={`btn-tamanho-painel p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer shadow-md hover:scale-105 active:scale-95 touch-manipulation min-w-[34px] min-h-[34px] flex items-center justify-center ${
+                  isExpanded
+                    ? 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-400/60'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700'
+                }`}
+                title={isExpanded ? 'Restaurar Tamanho Compacto' : 'Maximizar Painel (50% da Tela)'}
+                aria-label="Alternar Tamanho do Observatório"
+              >
+                {isExpanded ? <Minimize2 className="w-3.5 h-3.5 text-cyan-300" /> : <Maximize2 className="w-3.5 h-3.5 text-cyan-300" />}
+              </button>
+
+              <button
+                id="btn-fechar-observatorio"
+                type="button"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  setIsDrawerOpen(false);
+                }}
+                className="btn-fechar-painel p-1.5 sm:p-2 rounded-xl bg-slate-900/90 border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer shadow-md min-w-[34px] min-h-[34px] flex items-center justify-center"
                 title="Minimizar Painel"
               >
                 <X className="w-3.5 h-3.5" />
