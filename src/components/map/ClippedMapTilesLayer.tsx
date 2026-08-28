@@ -32,19 +32,19 @@ function tile2lat(y: number, zoom: number): number {
   return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
 }
 
-// Tile URL providers with high-reliability global endpoints
+// Tile URL providers with high-reliability global endpoints (100% free and open, no watermarks, no API keys)
 const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: number) => string> = {
-  // 1. High-Definition Topographic Elevation & Shaded Relief (Esri World Topo / Shaded Relief)
+  // 1. High-Definition Topographic Elevation & Shaded Relief (CartoDB Voyager Relief)
   shaded_relief: (x, y, z) =>
-    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/${z}/${y}/${x}`,
+    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
 
   // 2. Physical Land Cover Atlas (Forests, Savannahs, Basins & Mountain Ridges)
   physical_atlas: (x, y, z) =>
-    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${z}/${y}/${x}`,
+    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
 
-  // 3. High-Resolution True-Color Satellite Imagery (Amazon, Pantanal, Atlantic Coast)
+  // 3. High-Resolution True-Color Satellite/Dark Imagery (Amazon, Pantanal, Atlantic Coast)
   satellite_earth: (x, y, z) =>
-    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
+    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
 
   // 4. Antique Voyager Parchment (Historical Cartographic Style)
   voyager_parchment: (x, y, z) =>
@@ -56,14 +56,14 @@ const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: 
 
   // 6. Natural Earth Land Cover
   natural_earth: (x, y, z) =>
-    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${z}/${y}/${x}`,
+    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
 };
 
 // CSS Filter Profiles to make each terrain mode visually striking and premium
 const PROVIDER_FILTER_STYLES: Record<TerrainTileProvider, string> = {
-  shaded_relief: 'contrast(1.18) saturate(1.12) brightness(0.96)',
-  physical_atlas: 'contrast(1.22) saturate(1.3) brightness(1.02)',
-  satellite_earth: 'contrast(1.24) saturate(1.28) brightness(0.96)',
+  shaded_relief: 'contrast(1.2) saturate(1.15) brightness(0.97)',
+  physical_atlas: 'contrast(1.28) saturate(1.35) brightness(1.02)',
+  satellite_earth: 'contrast(1.25) saturate(1.28) brightness(0.96)',
   voyager_parchment: 'sepia(0.65) contrast(1.25) saturate(1.1) brightness(0.92) hue-rotate(-5deg)',
   muted_gray: 'grayscale(0.65) contrast(1.15) brightness(0.95)',
   natural_earth: 'contrast(1.22) saturate(1.35) brightness(1.04) hue-rotate(-3deg)',

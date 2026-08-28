@@ -42,7 +42,7 @@ export const IsolatedLeftGuardianStandee: React.FC<IsolatedLeftGuardianStandeePr
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: -40, scale: 0.95 }}
           transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="painel-guardiao-isolado-esquerda absolute left-3 sm:left-6 top-14 bottom-24 z-20 pointer-events-none flex flex-col justify-end items-center select-none"
+          className="painel-guardiao-isolado-esquerda absolute left-3 sm:left-[76px] md:left-[84px] top-14 bottom-24 z-20 pointer-events-none flex flex-col justify-end items-center select-none"
         >
           {/* --- UNBOXED GUARDIAN NPC STANDEE (80% OF AVAILABLE CANVA SPACE / TRANSPARENT BACKGROUND) --- */}
           <div className="standee-guardiao-corpo-inteiro relative h-[80%] max-h-[80%] flex flex-col justify-end items-center overflow-visible group">

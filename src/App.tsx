@@ -31,8 +31,8 @@ export function App() {
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
 
-  // App Modes: 1º Aventura/Navegação (default on page load), 2º Clima, 3º Biodiversidade, 4º Musicalidades, 5º Globo 3D
-  const [mainMode, setMainMode] = useState<AppMainMode>('aventura');
+  // App Modes: 1º Clima e Telemetria (default on page load), 2º Aventura/Navegação, 3º Biodiversidade, 4º Geopolítica, 5º Musicalidades, 6º Globo 3D
+  const [mainMode, setMainMode] = useState<AppMainMode>('clima');
   const [terrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
   const [visualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
   const [choroplethSubTheme, setChoroplethSubTheme] = useState<ChoroplethSubTheme>('regions');
@@ -628,6 +628,16 @@ export function App() {
         maxTempState={climateTelemetry.maxTempState}
         minTempState={climateTelemetry.minTempState}
         climateLastUpdated={climateTelemetry.lastUpdated}
+        isRainSimActive={isRainSimActive}
+        onToggleRainSim={() => setIsRainSimActive((prev) => !prev)}
+        isCloudsActive={isCloudsActive}
+        onToggleClouds={() => setIsCloudsActive((prev) => !prev)}
+        isWavesActive={isWavesActive}
+        onToggleWaves={() => setIsWavesActive((prev) => !prev)}
+        isAtmosphereActive={isAtmosphereActive}
+        onToggleAtmosphere={() => setIsAtmosphereActive((prev) => !prev)}
+        timeOverride={celestialTimeOverride}
+        onTimeOverrideChange={setCelestialTimeOverride}
         onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
       />
     </div>

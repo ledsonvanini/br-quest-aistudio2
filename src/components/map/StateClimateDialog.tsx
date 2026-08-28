@@ -21,17 +21,21 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  CalendarDays,
+  CloudSun,
 } from 'lucide-react';
 import { STATE_CLIMATOLOGY_DATABASE, StateClimatologyDetail } from '../../data/stateClimatologyData';
-import { StateWeatherData, formatFullDayTime } from '../../services/climateService';
+import { StateWeatherData, formatFullDayTime, getEcmwfTempColor } from '../../services/climateService';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
 import { audioEngine } from '../../lib/audioSynth';
+import { ClimateMode } from './ClimatePhenomenaLayer';
 
 interface StateClimateDialogProps {
   stateId: string | null;
   weatherData?: StateWeatherData;
   allStatesWeather?: Record<string, StateWeatherData>;
   lastUpdated?: string | number;
+  climateMode?: ClimateMode;
   onClose: () => void;
   onToggleExpand?: (expanded: boolean) => void;
 }
@@ -41,10 +45,13 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
   weatherData,
   allStatesWeather,
   lastUpdated,
+  climateMode = 'temperaturas_frentes',
   onClose,
   onToggleExpand,
 }) => {
-  const [activeTab, setActiveTab] = useState<'geral' | 'enchentes' | 'extremos' | 'relevo' | 'estatisticas'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'previsao' | 'enchentes' | 'extremos' | 'relevo' | 'estatisticas'>(
+    climateMode === 'previsao_tempo' ? 'previsao' : 'geral'
+  );
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   if (!stateId) return null;
@@ -91,9 +98,9 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
     <div
       id="dialog-climatologia-estado"
       data-scrollable="true"
-      className={`modal-dialog-climatologia-estado painel-dialog-clima fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] left-2 sm:left-3 md:left-4 z-40 max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default transition-all duration-300 ${
+      className={`modal-dialog-climatologia-estado painel-dialog-clima fixed top-3 sm:top-3.5 md:top-4 bottom-14 sm:bottom-16 left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] z-40 max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-cyan-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(6,182,212,0.2)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default transition-all duration-300 ${
         isExpanded
-          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-44px)] lg:w-[calc(50vw-48px)] xl:w-[calc(50vw-52px)]'
           : 'w-[calc(100vw-16px)] sm:w-[480px] md:w-[520px]'
       }`}
       onClick={(e) => e.stopPropagation()}
@@ -222,6 +229,18 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
       <div className="flex border-b border-slate-800 text-[11px] sm:text-xs font-semibold bg-slate-900/60 overflow-x-auto scrollbar-none shrink-0 px-1">
         <button
           type="button"
+          onClick={() => setActiveTab('previsao')}
+          className={`flex-1 py-2 px-1.5 sm:px-2 flex items-center justify-center gap-1 sm:gap-1.5 transition-colors border-b-2 cursor-pointer ${
+            activeTab === 'previsao'
+              ? 'border-yellow-400 text-yellow-300 bg-yellow-950/30 font-bold'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <CalendarDays className="w-3.5 h-3.5 shrink-0 text-yellow-400" />
+          <span>Previsão 7D</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('geral')}
           className={`flex-1 py-2 px-1.5 sm:px-2 flex items-center justify-center gap-1 sm:gap-1.5 transition-colors border-b-2 cursor-pointer ${
             activeTab === 'geral'
@@ -287,6 +306,114 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
         data-scrollable="true"
         className="flex-1 min-h-0 p-3.5 sm:p-4 overflow-y-auto space-y-3.5 text-xs text-slate-200 leading-relaxed scrollbar-thin scrollbar-thumb-slate-600 hover:scrollbar-thumb-slate-500 scrollbar-track-slate-900/50"
       >
+        {/* ABA: PREVISÃO DO TEMPO 7 DIAS (ECMWF GLOBAL) */}
+        {activeTab === 'previsao' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Header com Síntese Semanal */}
+            <div className="bg-gradient-to-r from-yellow-950/40 via-slate-900/90 to-amber-950/30 p-4 sm:p-5 rounded-2xl border border-yellow-500/30 shadow-sm space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-mono text-yellow-300 font-bold tracking-wider flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-yellow-400" />
+                  PROGNÓSTICO METEOROLÓGICO SEMANAL (7 DIAS)
+                </span>
+                <span className="px-2.5 py-1 rounded-md bg-yellow-500/20 text-yellow-300 font-mono text-[11px] font-bold border border-yellow-500/40">
+                  Modelo ECMWF / Open-Meteo
+                </span>
+              </div>
+              <div className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                Previsão para {capital} e Microrregião ({stateId})
+              </div>
+              <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                Tendência climática calculada pelo modelo de alta resolução do Centro Europeu (ECMWF), atualizada a cada 60 minutos com probabilidade de precipitação acumulada e extremos térmicos.
+              </p>
+            </div>
+
+            {/* Lista dos 7 Dias com Indicadores Visuais */}
+            {weatherData?.forecast && weatherData.forecast.length > 0 ? (
+              <div className="space-y-2.5">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                  Grade Diária Detalhada (D+0 a D+6)
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {weatherData.forecast.slice(0, 7).map((fDay, idx) => {
+                    const tempColor = getEcmwfTempColor(fDay.maxTemp);
+                    const isToday = idx === 0;
+                    return (
+                      <div
+                        key={fDay.dayIndex}
+                        className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                          isToday
+                            ? 'bg-slate-900/95 border-yellow-500/50 shadow-md ring-1 ring-yellow-500/20'
+                            : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        {/* Identificação do Dia */}
+                        <div className="flex items-center gap-3 min-w-[140px]">
+                          <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-lg shrink-0">
+                            {fDay.rainProb > 50 ? '🌧️' : fDay.maxTemp > 30 ? '☀️' : '⛅'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-white text-xs sm:text-sm">
+                                {fDay.dayName}
+                              </span>
+                              {isToday && (
+                                <span className="px-1.5 py-0.2 rounded bg-yellow-500/20 text-yellow-300 text-[9px] font-mono font-bold">
+                                  HOJE
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              {fDay.date} • {fDay.condition || 'Tempo estável'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Faixa Térmica Mín / Máx com Barra Visual */}
+                        <div className="flex-1 flex items-center gap-3 min-w-[160px]">
+                          <div className="text-[11px] font-mono font-bold text-sky-400 w-10 text-right">
+                            {Math.round(fDay.minTemp)}°C
+                          </div>
+                          <div className="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-sky-400 via-amber-400 to-rose-500"
+                              style={{
+                                marginLeft: `${Math.max(0, Math.min(60, (fDay.minTemp - 10) * 2.5))}%`,
+                                width: `${Math.max(20, Math.min(100, (fDay.maxTemp - fDay.minTemp) * 7))}%`,
+                              }}
+                            />
+                          </div>
+                          <div className="text-[11px] font-mono font-bold text-rose-400 w-10">
+                            {Math.round(fDay.maxTemp)}°C
+                          </div>
+                        </div>
+
+                        {/* Probabilidade de Chuva & Volume */}
+                        <div className="flex items-center gap-4 text-xs font-mono shrink-0 sm:border-l sm:border-slate-800 sm:pl-3">
+                          <div className="flex items-center gap-1.5 text-cyan-300 min-w-[75px]">
+                            <CloudRain className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                            <span>{fDay.rainProb}%</span>
+                          </div>
+                          <div className="text-slate-400 min-w-[55px] text-right">
+                            {fDay.rainSum > 0 ? `${fDay.rainSum} mm` : '0 mm'}
+                          </div>
+                          <div className="text-[10px] text-amber-300/80 min-w-[45px] text-right hidden sm:block">
+                            UV {uvIdx > 0 ? uvIdx.toFixed(0) : '6'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center text-slate-400">
+                Carregando prognóstico de 7 dias via Open-Meteo ECMWF...
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ABA: CLIMA & KÖPPEN */}
         {activeTab === 'geral' && (
           <div className="space-y-4 animate-in fade-in duration-200">

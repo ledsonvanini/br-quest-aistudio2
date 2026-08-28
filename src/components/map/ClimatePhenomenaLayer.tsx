@@ -30,7 +30,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-export type ClimateMode = 'temperaturas_frentes' | 'ventos_aliseos' | 'precipitacao_zcas' | 'el_nino_la_nina';
+export type ClimateMode = 'temperaturas_frentes' | 'previsao_tempo' | 'ventos_aliseos' | 'precipitacao_zcas' | 'el_nino_la_nina';
 
 interface ClimatePhenomenaLayerProps {
   active: boolean;
@@ -699,10 +699,11 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         </defs>
 
         {/* 3.1 Temperature Badges, Thermal Hotspots & Coldspots on State Centroids */}
-        {mode === 'temperaturas_frentes' && (
+        {(mode === 'temperaturas_frentes' || mode === 'previsao_tempo') && (
           <g className="camada-termica-extremos-e-badges pointer-events-none">
             {/* 3.1.1 MANCHAS TÉRMICAS DE CALOR EXTREMO (HOTSPOTS CRÍTICOS) */}
-            {statePathList
+            {mode === 'temperaturas_frentes' &&
+              statePathList
               .filter(
                 (item) =>
                   item.centroidX &&
@@ -772,7 +773,8 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
               })}
 
             {/* 3.1.2 MANCHAS TÉRMICAS DE FRIO INTENSO (COLDSPOTS CRÍTICOS) */}
-            {statePathList
+            {mode === 'temperaturas_frentes' &&
+              statePathList
               .filter(
                 (item) =>
                   item.centroidX &&
@@ -841,7 +843,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                 );
               })}
 
-            {/* 3.1.3 Badges de Temperatura Centróides com Alto Contraste e Tipografia Grande para Idosos */}
+            {/* 3.1.3 Badges de Temperatura / Previsão Centróides com Alto Contraste */}
             <g className="badges-temperatura-estados pointer-events-none">
               {statePathList.map((item) => {
                 if (!item.centroidX || !item.centroidY) return null;
@@ -851,6 +853,148 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                 const isHovered = hoveredStateInfo?.stateId === item.stateId;
                 const isMax = item.stateId === maxTempStateInfo?.stateId;
                 const isMin = item.stateId === minTempStateInfo?.stateId;
+
+                const isForecast = mode === 'previsao_tempo';
+                const forecastDay = item.weather?.forecast?.[0];
+                const maxT = Math.round(forecastDay?.maxTemp ?? item.weather?.maxTemperature ?? (item.temp + 3));
+                const minT = Math.round(forecastDay?.minTemp ?? item.weather?.minTemperature ?? (item.temp - 4));
+                const wCode = forecastDay?.weatherCode ?? item.weather?.weatherCode ?? 1;
+                const rainProb = forecastDay?.rainProb ?? (forecastDay?.rainSum && forecastDay.rainSum > 1 ? 65 : 20);
+
+                const getWeatherEmoji = (code: number) => {
+                  if (code === 0) return '☀️';
+                  if (code <= 3) return '⛅';
+                  if (code <= 48) return '🌫️';
+                  if (code <= 57) return '🌦️';
+                  if (code <= 67) return '🌧️';
+                  if (code <= 82) return '🌧️';
+                  return '⛈️';
+                };
+                const weatherEmoji = getWeatherEmoji(wCode);
+
+                if (isForecast) {
+                  return (
+                    <g
+                      key={`temp-badge-${item.stateId}`}
+                      transform={`translate(${item.centroidX}, ${item.centroidY})`}
+                      className={`transition-all duration-200 ${
+                        isFocused ? 'scale-135 z-50' : isHovered ? 'scale-120 z-40' : isMuted ? 'opacity-70 scale-95' : 'opacity-95'
+                      }`}
+                    >
+                      {/* Glow Shadow Backdrop */}
+                      <rect
+                        x="-56"
+                        y="-20"
+                        width="112"
+                        height="40"
+                        rx="20"
+                        fill="none"
+                        stroke={isFocused ? '#38bdf8' : '#facc15'}
+                        strokeWidth={isFocused ? '6' : isHovered ? '4' : '2.5'}
+                        strokeOpacity={isFocused ? '0.6' : isHovered ? '0.45' : '0.3'}
+                      />
+
+                      {/* Main High-Contrast Solid Badge Container */}
+                      <rect
+                        x="-54"
+                        y="-18"
+                        width="108"
+                        height="36"
+                        rx="18"
+                        fill="rgba(15, 23, 42, 0.96)"
+                        stroke={isFocused ? '#38bdf8' : isHovered ? '#fbbf24' : '#eab308'}
+                        strokeWidth={isFocused ? '3.5' : isHovered ? '3.0' : '2.2'}
+                      />
+
+                      {/* UF Tag (Gold / Yellow) */}
+                      <text
+                        x="-36"
+                        y="5"
+                        textAnchor="middle"
+                        fill="#fef08a"
+                        fontSize="12.5"
+                        fontWeight="900"
+                        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+                      >
+                        {item.stateId}
+                      </text>
+
+                      {/* Divider Dot */}
+                      <circle
+                        cx="-22"
+                        cy="0"
+                        r="1.5"
+                        fill="#eab308"
+                      />
+
+                      {/* Weather Icon Emoji */}
+                      <text
+                        x="-10"
+                        y="5"
+                        textAnchor="middle"
+                        fontSize="13"
+                      >
+                        {weatherEmoji}
+                      </text>
+
+                      {/* Forecast Máxima Temp */}
+                      <text
+                        x="13"
+                        y="5"
+                        textAnchor="middle"
+                        fill="#fb923c"
+                        fontSize="13.5"
+                        fontWeight="900"
+                        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+                      >
+                        ↑{maxT}°
+                      </text>
+
+                      {/* Forecast Mínima Temp */}
+                      <text
+                        x="37"
+                        y="5"
+                        textAnchor="middle"
+                        fill="#38bdf8"
+                        fontSize="11.5"
+                        fontWeight="800"
+                        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+                      >
+                        ↓{minT}°
+                      </text>
+
+                      {/* Rain probability tag if significant */}
+                      {rainProb >= 40 && (
+                        <g transform="translate(0, -25)">
+                          <rect
+                            x="-22"
+                            y="-9"
+                            width="44"
+                            height="18"
+                            rx="9"
+                            fill="rgba(2, 132, 199, 0.95)"
+                            stroke="#38bdf8"
+                            strokeWidth="1.2"
+                          />
+                          <text
+                            x="0"
+                            y="4"
+                            textAnchor="middle"
+                            fill="#ffffff"
+                            fontSize="9.5"
+                            fontWeight="bold"
+                            fontFamily="system-ui, sans-serif"
+                          >
+                            ☔ {rainProb}%
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                }
+
+                // Modo Temperatura em Tempo Real (Atual)
+                const displayedVal = `${Math.round(item.temp)}°`;
 
                 return (
                   <g
@@ -944,7 +1088,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                       fontWeight="900"
                       fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                     >
-                      {Math.round(item.temp)}°
+                      {displayedVal}
                     </text>
                   </g>
                 );

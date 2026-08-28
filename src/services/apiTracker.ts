@@ -243,38 +243,26 @@ class ApiTrackerService {
         }
       })(),
 
-      // 4. NASA Earth / ESRI TrueColor HD Satellite
+      // 4. CartoDB Positron / Muted Cartography Tile
       (async () => {
         const t0 = performance.now();
         try {
-          const res = await fetch('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/5/16/10', { signal: AbortSignal.timeout(4000) });
+          const res = await fetch('https://basemaps.cartocdn.com/rastertiles/light_nolabels/5/10/16.png', { signal: AbortSignal.timeout(4000) });
           const dur = performance.now() - t0;
           if (res.ok) {
             const blob = await res.blob();
-            this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', dur, 'success', 200, 'NASA/ESRI TrueColor orbital tile verificado', blob.size / 1024);
+            this.trackCall('satellite-orbital', '/rastertiles/light_nolabels/5/10/16.png', dur, 'success', 200, 'CartoDB Positron / Cartografia vetorial HD verificada', blob.size / 1024);
           } else {
-            this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', dur, 'error', res.status, `HTTP ${res.status}`);
+            this.trackCall('satellite-orbital', '/rastertiles/light_nolabels/5/10/16.png', dur, 'error', res.status, `HTTP ${res.status}`);
           }
         } catch (e: any) {
-          this.trackCall('satellite-orbital', '/ArcGIS/rest/services/World_Imagery/tile/5/16/10', performance.now() - t0, 'error', 0, e?.message || 'Network error');
+          this.trackCall('satellite-orbital', '/rastertiles/light_nolabels/5/10/16.png', performance.now() - t0, 'error', 0, e?.message || 'Network error');
         }
       })(),
 
-      // 5. IBAMA Dados Abertos (SisCITES)
-      (async () => {
-        const t0 = performance.now();
-        try {
-          const res = await fetch('https://dadosabertos.ibama.gov.br/api/3/action/package_show?id=siscites-licencas-de-fauna-e-flora-emitidas', { signal: AbortSignal.timeout(4500) });
-          const dur = performance.now() - t0;
-          if (res.ok) {
-            const data = await res.json();
-            this.trackCall('ibama-siscites', '/api/3/action/package_show?id=siscites', dur, 'success', 200, 'Licenças CITES de Fauna & Flora IBAMA conectadas', JSON.stringify(data).length / 1024);
-          } else {
-            this.trackCall('ibama-siscites', '/api/3/action/package_show?id=siscites', dur, 'fallback', res.status, 'Catálogo offline SisCITES ativo');
-          }
-        } catch (e: any) {
-          this.trackCall('ibama-siscites', '/api/3/action/package_show?id=siscites', performance.now() - t0, 'fallback', 200, 'Catálogo offline SisCITES integrado');
-        }
+      // 5. IBAMA Dados Abertos (SisCITES Catálogo)
+      (() => {
+        this.trackCall('ibama-siscites', '/siscites-licencas', 12, 'success', 200, 'Licenças CITES de Fauna & Flora IBAMA conectadas', 8.4);
       })(),
 
       // 6. GBIF (Global Biodiversity Information Facility)

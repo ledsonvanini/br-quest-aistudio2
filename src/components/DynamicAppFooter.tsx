@@ -18,6 +18,12 @@ import {
   BarChart3,
   Clock,
   RefreshCw,
+  CloudRain,
+  Cloud,
+  Waves,
+  Sun,
+  SunMedium,
+  Moon,
 } from 'lucide-react';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { GuardianData } from '../types';
@@ -50,7 +56,7 @@ interface DynamicAppFooterProps {
   onToggleFps?: () => void;
   onOpenApiStatus?: () => void;
 
-  // Climate context
+  // Climate context & Common Atmosphere Controls
   climateMode?: ClimateMode;
   onOpenObservatorio?: () => void;
   isObservatorioOpen?: boolean;
@@ -58,6 +64,17 @@ interface DynamicAppFooterProps {
   maxTempState?: { stateId: string; temp: number };
   minTempState?: { stateId: string; temp: number };
   climateLastUpdated?: string | number;
+
+  isRainSimActive?: boolean;
+  onToggleRainSim?: () => void;
+  isCloudsActive?: boolean;
+  onToggleClouds?: () => void;
+  isWavesActive?: boolean;
+  onToggleWaves?: () => void;
+  isAtmosphereActive?: boolean;
+  onToggleAtmosphere?: () => void;
+  timeOverride?: 'auto' | 'day' | 'night';
+  onTimeOverrideChange?: (mode: 'auto' | 'day' | 'night') => void;
 
   // Music context
   onToggleRadio?: () => void;
@@ -85,6 +102,16 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   maxTempState = { stateId: 'MT', temp: 35.1 },
   minTempState = { stateId: 'RS', temp: 17.5 },
   climateLastUpdated,
+  isRainSimActive = false,
+  onToggleRainSim,
+  isCloudsActive = true,
+  onToggleClouds,
+  isWavesActive = true,
+  onToggleWaves,
+  isAtmosphereActive = true,
+  onToggleAtmosphere,
+  timeOverride = 'auto',
+  onTimeOverrideChange,
   onToggleRadio,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
@@ -132,47 +159,20 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
       id="rodape-aplicacao-dinamico"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="rodape-aplicacao container-rodape-dinamico shrink-0 w-full bg-[#020d20]/70 backdrop-blur-md border-t border-cyan-500/30 px-2 sm:px-4 py-1.5 z-40 text-slate-200 select-none shadow-[0_-8px_24px_rgba(0,0,0,0.6)]"
+      className="rodape-aplicacao container-rodape-dinamico fixed bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-40 bg-[#020d24]/80 backdrop-blur-md border border-amber-500/35 rounded-2xl px-2.5 sm:px-3.5 py-1.5 text-slate-200 select-none shadow-[0_8px_32px_rgba(0,0,0,0.85)] flex items-center justify-between gap-2 sm:gap-3 pointer-events-auto max-w-[calc(100vw-24px)] md:max-w-fit"
       role="contentinfo"
       aria-label="Rodapé do Sistema BR Quest"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
         
         {/* ========================================================================= */}
-        {/* 1. SEÇÃO ESQUERDA: LOGO BR QUEST (Com Retorno ao Mapa) */}
-        {/* ========================================================================= */}
-        <div className="secao-logo-rodape flex items-center gap-2 shrink-0">
-          <button
-            id="btn-logo-rodape-home"
-            onClick={() => {
-              audioEngine.playSfx('click');
-              onNavigateHome();
-            }}
-            className="btn-logo-brquest flex items-center gap-2 group p-1 sm:px-2 sm:py-1 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-cyan-500/30 hover:border-cyan-400/80 transition-all cursor-pointer shadow-inner"
-            title="BR Quest • Ir para o Mapa Principal"
-          >
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-500/20 border border-amber-400 flex items-center justify-center text-sm shadow-sm group-hover:scale-105 transition-transform">
-              <span>🇧🇷</span>
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="font-serif font-black text-xs sm:text-sm text-amber-300 tracking-wide group-hover:text-amber-200 leading-tight">
-                BR Quest
-              </span>
-              <span className="text-[9px] font-mono text-slate-400 group-hover:text-slate-300 hidden md:inline leading-tight">
-                Guardiões da Cultura
-              </span>
-            </div>
-          </button>
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 2. SEÇÃO CENTRAL: CONTEÚDO DINÂMICO AUXILIAR */}
+        {/* 1. SEÇÃO CENTRAL: CONTEÚDO DINÂMICO AUXILIAR */}
         {/* ========================================================================= */}
         <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
           
           {/* CASO A: Modo Aventura no Mapa (Carrossel Compacto de 5 Estados) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
-            <div className="container-carrossel-compacto-wrapper w-full max-w-[480px] sm:max-w-[540px] flex items-center justify-center">
+            <div className="container-carrossel-compacto-wrapper w-full max-w-[420px] sm:max-w-[480px] flex items-center justify-center">
               <MapStateCarousel
                 completedStateIds={completedSet}
                 hoveredStateId={hoveredStateId}
@@ -185,7 +185,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
 
           {/* CASO B: Modo Globo 3D no Mapa (Carrossel Compacto de Navegação Orbital) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'globo3d' && (
-            <div className="container-carrossel-globo3d-wrapper w-full max-w-[480px] sm:max-w-[540px] flex items-center justify-center">
+            <div className="container-carrossel-globo3d-wrapper w-full max-w-[420px] sm:max-w-[480px] flex items-center justify-center">
               <MapStateCarousel
                 completedStateIds={completedSet}
                 hoveredStateId={hoveredStateId}
@@ -218,7 +218,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                 <div className="secao-cartela-cores-clima flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">-4°</span>
                   <div
-                    className="relative w-16 xs:w-24 sm:w-32 md:w-36 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
+                    className="relative w-16 xs:w-20 sm:w-28 md:w-32 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
                     title={`Cartela Térmica ECMWF (-4°C a 40°C) | Mín: ${minTempState.stateId} ${minTempState.temp}°C | Máx: ${maxTempState.stateId} ${maxTempState.temp}°C`}
                   >
                     <div className="absolute inset-0 rounded-full overflow-hidden flex">
@@ -449,6 +449,109 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </div>
           )}
 
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 2. GRUPO COMUM: CONTROLES DE CLIMA & ATMOSFERA (CHUVA, NUVENS, ONDAS, ASTRO) */}
+        {/* ========================================================================= */}
+        <div
+          id="grupo-clima-atmosfera-rodape"
+          className="grupo-clima-rodape flex items-center gap-1 p-0.5 rounded-xl bg-slate-950/85 border border-slate-700/80 shrink-0"
+        >
+          {/* 1. Simulador de Chuva */}
+          {onToggleRainSim && (
+            <button
+              id="btn-rodape-chuva"
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                onToggleRainSim();
+              }}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                isRainSimActive
+                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+              title={isRainSimActive ? 'Desativar Simulador de Chuva' : 'Ativar Simulador de Chuva em Tempo Real'}
+              aria-label="Simulador de Chuva"
+            >
+              <CloudRain className={`w-3.5 h-3.5 ${isRainSimActive ? 'animate-bounce' : ''}`} />
+            </button>
+          )}
+
+          {/* 2. Nuvens Volumétricas */}
+          {onToggleClouds && (
+            <button
+              id="btn-rodape-nuvens"
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                onToggleClouds();
+              }}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                isCloudsActive
+                  ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.4)]'
+                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+              title={isCloudsActive ? 'Ocultar Nuvens Volumétricas' : 'Exibir Nuvens Volumétricas e Turbulência'}
+              aria-label="Nuvens Volumétricas"
+            >
+              <Cloud className={`w-3.5 h-3.5 ${isCloudsActive ? 'animate-pulse' : ''}`} />
+            </button>
+          )}
+
+          {/* 3. Ventos Alísios e Ondas Costeiras */}
+          {onToggleWaves && (
+            <button
+              id="btn-rodape-ventos-ondas"
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                onToggleWaves();
+              }}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                isWavesActive
+                  ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
+                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+              title={isWavesActive ? 'Desativar Ventos Alísios & Ondas' : 'Ativar Ventos Alísios & Ondas Costeiras'}
+              aria-label="Ventos Alísios e Ondas"
+            >
+              <Waves className={`w-3.5 h-3.5 ${isWavesActive ? 'animate-pulse' : ''}`} />
+            </button>
+          )}
+
+          {/* 4. Astro e Atmosfera / Ciclo Solar */}
+          {(onToggleAtmosphere || onTimeOverrideChange) && (
+            <button
+              id="btn-rodape-astro-atmosfera"
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                if (onTimeOverrideChange) {
+                  const next = timeOverride === 'auto' ? 'day' : timeOverride === 'day' ? 'night' : 'auto';
+                  onTimeOverrideChange(next);
+                } else if (onToggleAtmosphere) {
+                  onToggleAtmosphere();
+                }
+              }}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                isAtmosphereActive
+                  ? 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+              title={`Astro & Atmosfera (${timeOverride === 'auto' ? 'Tempo Real Brasília' : timeOverride === 'day' ? 'Dia Fixado' : 'Noite Fixada'}). Clique para alternar.`}
+              aria-label="Astro e Atmosfera"
+            >
+              {timeOverride === 'night' ? (
+                <Moon className="w-3.5 h-3.5 text-indigo-300 animate-pulse" />
+              ) : timeOverride === 'day' ? (
+                <Sun className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '12s' }} />
+              ) : (
+                <SunMedium className="w-3.5 h-3.5 text-amber-400" />
+              )}
+            </button>
+          )}
         </div>
 
         {/* ========================================================================= */}

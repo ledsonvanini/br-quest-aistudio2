@@ -98,20 +98,29 @@ export const NeighborCountryPinsLayer: React.FC<NeighborCountryPinsLayerProps> =
             >
               {/* Vertical Flagpole Mast connecting Pin (0,0) to Center of Flag and crowning the top */}
               <div
-                className="haste-mastro-bandeira absolute left-0 -translate-x-1/2 w-1.5 pointer-events-none"
+                className="haste-mastro-bandeira absolute left-0 -translate-x-1/2 w-2 pointer-events-none"
                 style={{
                   bottom: '0px',
-                  height: '136px',
-                  background: 'linear-gradient(to top, #92400e, #d97706, #fbbf24, #fef3c7)',
-                  boxShadow: '0 0 10px rgba(251, 191, 36, 0.7), 1px 1px 4px rgba(0,0,0,0.85)',
+                  height: '144px',
+                  background: 'linear-gradient(to right, #78350f, #d97706, #fbbf24, #fef3c7, #b45309)',
+                  boxShadow: isHovered
+                    ? '0 0 14px rgba(251, 191, 36, 0.9), 2px 2px 6px rgba(0,0,0,0.9)'
+                    : '0 0 8px rgba(251, 191, 36, 0.6), 1px 1px 4px rgba(0,0,0,0.85)',
                   borderRadius: '2px',
+                  transformStyle: 'preserve-3d',
                 }}
               >
-                {/* Base collar connecting to the ground beacon pin */}
-                <div className="anel-base-mastro absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-2 rounded-full bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 shadow-[0_0_6px_#f59e0b]" />
+                {/* Base collar connecting directly to the ground beacon pin center */}
+                <div className="anel-base-mastro absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-2.5 rounded-full bg-gradient-to-r from-amber-700 via-yellow-300 to-amber-700 shadow-[0_0_8px_#f59e0b] border border-amber-400/80" />
+
+                {/* Central Flag Mounting Bracket (Abraçadeira no centro exato da bandeira) */}
+                <div
+                  className="abracadeira-centro-bandeira absolute left-1/2 -translate-x-1/2 w-3.5 h-6 rounded bg-gradient-to-b from-yellow-300 via-amber-500 to-yellow-200 border border-yellow-200/90 shadow-[0_0_6px_rgba(251,191,36,0.8)]"
+                  style={{ bottom: '78px' }}
+                />
 
                 {/* Masthead Golden Finial Ball at the very top of the mast */}
-                <div className="ponta-mastro-dourada absolute -top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-white shadow-[0_0_8px_#fef08a]" />
+                <div className="ponta-mastro-dourada absolute -top-3 left-1/2 -translate-x-1/2 w-4.5 h-4.5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-200 to-white shadow-[0_0_10px_#fef08a] border border-yellow-300/80" />
               </div>
 
               {/* National Flag Banner & Name Pill centered exactly on the Mast at height 90px */}

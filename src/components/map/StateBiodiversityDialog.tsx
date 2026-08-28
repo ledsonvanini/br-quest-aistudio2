@@ -153,9 +153,9 @@ export const StateBiodiversityDialog: React.FC<StateBiodiversityDialogProps> = (
     <div
       id="dialog-biodiversidade-estado"
       data-scrollable="true"
-      className={`modal-dialog-biodiversidade-estado painel-dialog-biodiversidade fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] left-2 sm:left-3 md:left-4 z-40 max-w-[calc(100vw-16px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(16,185,129,0.25)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default pointer-events-auto transition-all duration-300 ${
+      className={`modal-dialog-biodiversidade-estado painel-dialog-biodiversidade fixed top-3 sm:top-3.5 md:top-4 bottom-14 sm:bottom-16 left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] z-40 max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] bg-slate-950/98 sm:bg-slate-950/95 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.9),0_0_24px_rgba(16,185,129,0.25)] flex flex-col text-slate-100 animate-in fade-in slide-in-from-left-4 duration-300 select-text overflow-hidden cursor-default pointer-events-auto transition-all duration-300 ${
         isExpanded
-          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-44px)] lg:w-[calc(50vw-48px)] xl:w-[calc(50vw-52px)]'
           : 'w-[calc(100vw-16px)] sm:w-[500px] md:w-[540px]'
       }`}
       onClick={(e) => e.stopPropagation()}

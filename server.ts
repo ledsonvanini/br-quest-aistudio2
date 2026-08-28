@@ -62,10 +62,22 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
   const lats = BRAZIL_COORDS.map((s) => s.lat).join(',');
   const lngs = BRAZIL_COORDS.map((s) => s.lng).join(',');
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,uv_index&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FSao_Paulo`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,uv_index&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code,uv_index_max&forecast_days=7&timezone=America%2FSao_Paulo`;
 
   const stateWeather: Record<string, any> = {};
   const stations: any[] = [];
+
+  const getConditionName = (wCode: number) => {
+    if (wCode === 0) return 'Céu Limpo / Ensolarado';
+    if (wCode <= 3) return 'Parcialmente Nublado';
+    if (wCode <= 48) return 'Nevoeiro / Neblina';
+    if (wCode <= 57) return 'Garoa Leve';
+    if (wCode <= 67) return 'Chuva Contínua';
+    if (wCode <= 82) return 'Pancadas de Chuva';
+    return 'Tempestades & Trovoadas';
+  };
+
+  const dayNamesPt = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -93,6 +105,44 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
       const uvIdx = typeof current.uv_index === 'number' ? Math.round(current.uv_index * 10) / 10 : (state.lat > -15 ? 8.5 : 6.0);
       const wCode = current.weather_code ?? 1;
 
+      // Montar Forecast de 7 dias
+      const forecast: any[] = [];
+      const times = daily.time || [];
+      const maxs = daily.temperature_2m_max || [];
+      const mins = daily.temperature_2m_min || [];
+      const rainSums = daily.precipitation_sum || [];
+      const rainProbs = daily.precipitation_probability_max || [];
+      const codes = daily.weather_code || [];
+
+      for (let d = 0; d < Math.max(times.length, 7); d++) {
+        const dateStr = times[d] || `Dia +${d}`;
+        let dayName = 'Hoje';
+        if (d === 0) dayName = 'Hoje';
+        else if (d === 1) dayName = 'Amanhã';
+        else {
+          const dObj = new Date(dateStr + 'T12:00:00');
+          dayName = !isNaN(dObj.getTime()) ? dayNamesPt[dObj.getDay()] : `+${d}d`;
+        }
+
+        const fMax = typeof maxs[d] === 'number' ? Math.round(maxs[d] * 10) / 10 : Math.round((temp + 3 + (d % 3) * 0.5) * 10) / 10;
+        const fMin = typeof mins[d] === 'number' ? Math.round(mins[d] * 10) / 10 : Math.round((temp - 4 - (d % 2) * 0.5) * 10) / 10;
+        const fRain = typeof rainSums[d] === 'number' ? Math.round(rainSums[d] * 10) / 10 : (d % 2 === 0 ? 2.5 : 0.0);
+        const fProb = typeof rainProbs[d] === 'number' ? Math.round(rainProbs[d]) : (fRain > 1 ? 70 : 15);
+        const fCode = typeof codes[d] === 'number' ? codes[d] : (fRain > 5 ? 61 : fRain > 0.5 ? 51 : 1);
+
+        forecast.push({
+          dayIndex: d,
+          date: dateStr,
+          dayName,
+          maxTemp: fMax,
+          minTemp: fMin,
+          rainSum: fRain,
+          rainProb: fProb,
+          weatherCode: fCode,
+          condition: getConditionName(fCode),
+        });
+      }
+
       stateWeather[state.id] = {
         stateId: state.id,
         stateName: state.name,
@@ -110,11 +160,30 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
         surfacePressure: press,
         uvIndex: uvIdx,
         weatherCode: wCode,
+        condition: getConditionName(wCode),
+        forecast,
       };
     });
   } catch (err) {
     console.warn('[SERVER PROXY] Falha na Open-Meteo, usando base sintética calibrada:', err);
     BRAZIL_COORDS.forEach((state) => {
+      const temp = state.baseT;
+      const forecast: any[] = [];
+      for (let d = 0; d < 7; d++) {
+        const dayNames = ['Hoje', 'Amanhã', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+        forecast.push({
+          dayIndex: d,
+          date: `2026-08-${28 + d}`,
+          dayName: dayNames[d] || `+${d}d`,
+          maxTemp: Math.round((temp + 3.2 + (d % 2) * 0.8) * 10) / 10,
+          minTemp: Math.round((temp - 4.1 - (d % 3) * 0.4) * 10) / 10,
+          rainSum: state.baseR * (d % 2 === 0 ? 1.2 : 0.4),
+          rainProb: state.baseR > 1.0 ? 65 : 20,
+          weatherCode: state.baseR > 2.0 ? 61 : 1,
+          condition: state.baseR > 2.0 ? 'Pancadas de Chuva' : 'Ensolarado',
+        });
+      }
+
       stateWeather[state.id] = {
         stateId: state.id,
         stateName: state.name,
@@ -132,6 +201,8 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
         surfacePressure: 1013,
         uvIndex: state.lat > -15 ? 8.5 : 6.0,
         weatherCode: 1,
+        condition: 'Parcialmente Nublado',
+        forecast,
       };
     });
   }

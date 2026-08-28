@@ -32,6 +32,7 @@ interface GeopoliticsMapLayerProps {
   is3D?: boolean;
   hoveredStateId?: string | null;
   centroids?: Record<string, [number, number]>;
+  disableHoverTooltip?: boolean;
 }
 
 export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
@@ -43,6 +44,7 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
   is3D = true,
   hoveredStateId,
   centroids,
+  disableHoverTooltip = true,
 }) => {
   // Formatadores de métricas para badge do pin e tooltip
   const getMetricBadgeContent = (profile: StateGeopoliticsProfile, metric: GeopoliticaMetricKey) => {
@@ -304,7 +306,7 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
               </div>
 
               {/* TOOLTIP FLUTUANTE EXPANDIDO NO HOVER - Responde Diretamente à Subcategoria/Métrica Ativa com Alto Contraste e Auto-Posicionamento */}
-              {isHovered && (() => {
+              {!disableHoverTooltip && isHovered && (() => {
                 const isNearTop = projY < 380;
                 const isNearBottom = projY > 980;
                 const isNearRight = projX > 1550;

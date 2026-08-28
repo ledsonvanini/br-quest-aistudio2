@@ -37,6 +37,7 @@ interface BiodiversityMapLayerProps {
   is3D?: boolean;
   hoveredStateId?: string | null;
   centroids?: Record<string, [number, number]>;
+  disableHoverTooltip?: boolean;
 }
 
 export const BiodiversityMapLayer: React.FC<BiodiversityMapLayerProps> = ({
@@ -51,6 +52,7 @@ export const BiodiversityMapLayer: React.FC<BiodiversityMapLayerProps> = ({
   is3D = true,
   hoveredStateId,
   centroids,
+  disableHoverTooltip = true,
 }) => {
   const [hoveredSpecimenId, setHoveredSpecimenId] = React.useState<string | null>(null);
 
@@ -447,7 +449,7 @@ export const BiodiversityMapLayer: React.FC<BiodiversityMapLayerProps> = ({
       })}
 
       {/* 2. Balão de Telemetria e Ficha Rápida de Biodiversidade no Hover (+50% Scale, 100% Solid Deep Slate, Anti-Blur) */}
-      {hoveredStateId && hoveredProfile && hoverPos && !selectedStateId && (
+      {!disableHoverTooltip && hoveredStateId && hoveredProfile && hoverPos && !selectedStateId && (
         <div
           id="balao-biodiversidade-estado-hover"
           className="balao-biodiversidade-estado-hover absolute pointer-events-none transition-all duration-150 select-none"

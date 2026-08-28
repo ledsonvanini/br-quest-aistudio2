@@ -284,6 +284,15 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
         strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.6;
         underglowColor = temp > 28 ? '#f97316' : temp > 20 ? '#38bdf8' : '#60a5fa';
         wallGradId = temp > 28 ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
+      } else if (climateMode === 'previsao_tempo') {
+        const fDay = weather?.forecast?.[0];
+        const maxTemp = fDay?.maxTemp ?? weather?.maxTemperature ?? weather?.temperature ?? 28;
+        stateFill = getEcmwfTempColor(maxTemp).hex;
+        stateFillOpacity = isSelected ? 0.98 : isHovered ? 0.94 : 0.82;
+        strokeColor = isSelected ? '#ffffff' : isHovered ? '#fde047' : '#ffffff';
+        strokeWidth = isSelected ? 3.4 : isHovered ? 2.8 : 1.8;
+        underglowColor = maxTemp > 28 ? '#f97316' : maxTemp > 20 ? '#38bdf8' : '#60a5fa';
+        wallGradId = maxTemp > 28 ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
       } else if (climateMode === 'precipitacao_zcas') {
         const rain = weather?.precipitation ?? 0;
         stateFill =

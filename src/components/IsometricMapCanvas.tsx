@@ -77,6 +77,7 @@ import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
 import { GeopoliticsLegendOverlay } from './map/GeopoliticsLegendOverlay';
+import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio } from 'lucide-react';
 
 interface Props {
@@ -506,6 +507,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       setSelectedStateId(focusedStateId);
       setTransitionMode('button');
       if (isClimateActive || mainMode === 'clima') {
+        if (propIsObservatorioOpen && onToggleObservatorio) {
+          onToggleObservatorio();
+        }
+        setInternalIsClimatePanelOpen(false);
+        setSelectedClimateStation(null);
+
         const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
           centroids[focusedStateId],
           focusedStateId,
@@ -873,10 +880,14 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     const centroid = centroids[stateId];
 
     // 1. MODO CLIMA: Abre o diálogo de clima local e foca na telemetria (50% da tela)
+    // Desmarca e fecha o Observatório e telemetrias flutuantes para não poluir a tela junto com o App Lateral
     if (isClimateActive || mainMode === 'clima') {
-      if (!propIsObservatorioOpen && onToggleObservatorio) {
+      if (propIsObservatorioOpen && onToggleObservatorio) {
         onToggleObservatorio();
       }
+      setInternalIsClimatePanelOpen(false);
+      setSelectedClimateStation(null);
+
       if (centroid) {
         const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
           centroid,
@@ -899,10 +910,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
 
     // 1.5. MODO BIODIVERSIDADE: Abre o diálogo de biodiversidade do estado e foca na região considerando os 50% de largura
+    // Desmarca e fecha o Painel geral de Biodiversidade para não sobrepor o App Lateral do Estado
     if (mainMode === 'biodiversidade') {
-      if (!propIsBiodiversityPanelOpen && onToggleBiodiversityPanel) {
+      if (propIsBiodiversityPanelOpen && onToggleBiodiversityPanel) {
         onToggleBiodiversityPanel();
       }
+      setInternalIsBiodiversityPanelOpen(false);
+
       if (centroid) {
         const { targetZoom, targetPan } = getBiodiversityFocusZoomAndPan(
           centroid,
@@ -925,10 +939,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
 
     // 1.6. MODO GEOPOLÍTICA: Abre o painel lateral de geopolítica/demografia e centraliza no espaço restante
+    // Desmarca e fecha o Painel geral de Geopolítica para não sobrepor o App Lateral do Estado
     if (mainMode === 'geopolitica') {
-      if (!propIsGeopoliticaPanelOpen && onToggleGeopoliticaPanel) {
+      if (propIsGeopoliticaPanelOpen && onToggleGeopoliticaPanel) {
         onToggleGeopoliticaPanel();
       }
+      setInternalIsGeopoliticaPanelOpen(false);
+
       if (centroid) {
         const { targetZoom, targetPan } = getBiodiversityFocusZoomAndPan(
           centroid,
@@ -1691,7 +1708,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 isClimateActive={isClimateActive}
                 climateMode={currentClimateMode}
                 stateWeather={stateWeather}
-                isGeopoliticaActive={mainMode === 'geopolitica'}
+                isGeopoliticaActive={mainMode === 'geopolitica' && !showNeighbors}
                 geopoliticaMetric={geopoliticaMetric}
                 focusedClimateStateId={isClimateActive ? selectedClimateStateId : null}
                 focusedBiodiversityStateId={mainMode === 'biodiversidade' ? selectedBiodiversityStateId : null}
@@ -1724,7 +1741,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 speedMultiplier={climateSpeedMultiplier}
                 dateTimeFormatted={climateDateTimeFormatted}
                 focusedStateId={isClimateActive ? selectedClimateStateId : null}
-                disableHoverTooltip={Boolean(isClimateActive && selectedClimateStateId)}
+                disableHoverTooltip={true}
               />
             </div>
 
@@ -1939,7 +1956,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 12. Floating Climate & Meteorology Observatório Panel */}
       <ClimateControlPanel
-        isOpen={!showNeighbors && isClimatePanelOpen && isClimateActive}
+        isOpen={!showNeighbors && !selectedClimateStateId && !selectedStateId && isClimatePanelOpen && isClimateActive}
         onClose={() => handleToggleClimate()}
         mode={currentClimateMode}
         onModeChange={handleClimateModeChange}
@@ -1969,7 +1986,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       />
 
       {/* 13. Card de Telemetria Flutuante da Estação Selecionada */}
-      {!showNeighbors && isClimateActive && selectedClimateStation && (
+      {!showNeighbors && !selectedClimateStateId && !selectedStateId && isClimateActive && selectedClimateStation && (
         <ClimateStationTelemetryCard
           station={selectedClimateStation}
           onClose={() => setSelectedClimateStation(null)}
@@ -1984,6 +2001,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           weatherData={stateWeather[selectedClimateStateId]}
           allStatesWeather={stateWeather}
           lastUpdated={climateUpdatedAt || climateDateTimeFormatted}
+          climateMode={currentClimateMode}
           onClose={handleCloseInspection}
           onToggleExpand={(expanded) => {
             const centroid = centroids[selectedClimateStateId];
@@ -2034,7 +2052,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 13.8. Painel Flutuante de Controle e Filtros de Biodiversidade */}
       <BiodiversityControlPanel
-        isOpen={!showNeighbors && isBiodiversityPanelOpen && mainMode === 'biodiversidade'}
+        isOpen={!showNeighbors && !selectedBiodiversityStateId && !selectedStateId && isBiodiversityPanelOpen && mainMode === 'biodiversidade'}
         onClose={() => {
           if (onToggleBiodiversityPanel) {
             onToggleBiodiversityPanel();
@@ -2074,6 +2092,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         endemicOnly={isBiodiversityEndemicOnly}
         onToggleEndemicOnly={handleToggleEndemicOnly}
         onOpenStateDetails={(stateId) => {
+          if (onToggleBiodiversityPanel) {
+            onToggleBiodiversityPanel();
+          }
+          setInternalIsBiodiversityPanelOpen(false);
           setSelectedBiodiversityStateId(stateId);
           handleStateClick(stateId);
         }}
@@ -2108,7 +2130,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 13.10. Painel Flutuante de Controle e Métricas Geopolíticas (Nacional, Regional, Estadual) */}
       <GeopoliticsControlPanel
-        isOpen={!showNeighbors && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
+        isOpen={!showNeighbors && !selectedGeopoliticaStateId && !selectedStateId && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
         onClose={() => {
           if (onToggleGeopoliticaPanel) {
             onToggleGeopoliticaPanel();
@@ -2145,6 +2167,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onScopeChange={setGeopoliticaScope}
         selectedStateId={selectedGeopoliticaStateId || selectedStateId}
         onSelectState={(stateId: string) => {
+          if (onToggleGeopoliticaPanel) {
+            onToggleGeopoliticaPanel();
+          }
+          setInternalIsGeopoliticaPanelOpen(false);
           setSelectedGeopoliticaStateId(stateId);
           handleStateClick(stateId);
         }}
@@ -2164,6 +2190,23 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         hoveredCountryId={hoveredCountryId}
         isDwellZoomed={isDwellZoomedRef.current}
         containerRef={containerRef}
+      />
+
+      {/* 15. Balão Universal de Hover dos Estados com Cálculo de Posicionamento Inteligente (Anti-Corte / Clamping / Z-Index Superior) */}
+      <UnifiedStateHoverTooltip
+        hoveredStateId={hoveredStateId}
+        centroids={centroids}
+        mainMode={mainMode}
+        isClimateActive={isClimateActive}
+        climateMode={currentClimateMode}
+        stateWeather={stateWeather}
+        geopoliticaMetric={geopoliticaMetric}
+        biodiversityKingdom={biodiversityKingdom}
+        pan={pan}
+        zoom={zoom}
+        rotateX={is3D ? sphericalAngles.rotateX : 0}
+        selectedStateId={selectedStateId || selectedGeopoliticaStateId || selectedBiodiversityStateId || selectedClimateStateId}
+        showNeighbors={showNeighbors}
       />
     </div>
   );

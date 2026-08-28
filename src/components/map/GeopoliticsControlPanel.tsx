@@ -233,7 +233,7 @@ export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = (
     <>
       {/* Botão Flutuante quando Minimizada a Gaveta */}
       {!isDrawerOpen && (
-        <div className="fixed bottom-10 left-4 z-40 animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="fixed bottom-14 left-4 sm:left-[80px] z-40 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <button
             id="btn-reabrir-painel-geopolitica"
             onClick={() => {
@@ -254,9 +254,9 @@ export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = (
         <div
           id="painel-geopolitica-catalogo"
           data-scrollable="true"
-          className={`painel-hud-controles painel-controle-geopolitica fixed top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] left-2 sm:left-3 md:left-4 z-40 bg-slate-950/98 border border-cyan-500/50 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_24px_rgba(6,182,212,0.25)] backdrop-blur-2xl text-slate-100 flex flex-col animate-in fade-in slide-in-from-left-4 duration-300 select-none overflow-hidden pointer-events-auto transition-all ${
+          className={`painel-hud-controles painel-controle-geopolitica fixed top-3 sm:top-3.5 md:top-4 bottom-14 sm:bottom-16 left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] z-40 bg-slate-950/98 border border-cyan-500/50 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_24px_rgba(6,182,212,0.25)] backdrop-blur-2xl text-slate-100 flex flex-col animate-in fade-in slide-in-from-left-4 duration-300 select-none overflow-hidden pointer-events-auto transition-all ${
             isExpanded
-              ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
+              ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-44px)] lg:w-[calc(50vw-48px)] xl:w-[calc(50vw-52px)]'
               : 'w-[calc(100vw-16px)] sm:w-[500px] md:w-[540px]'
           }`}
           onClick={(e) => e.stopPropagation()}

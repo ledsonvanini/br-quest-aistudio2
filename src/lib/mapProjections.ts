@@ -230,9 +230,10 @@ export const BRAZIL_MAP_PIVOT_CENTER: [number, number] = [1235, 640];
 export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   const offsetX = BRAZIL_MAP_PIVOT_CENTER[0] - MAP_CANVAS_WIDTH / 2; // 1235 - 1280 = -45
   const offsetY = BRAZIL_MAP_PIVOT_CENTER[1] - MAP_CANVAS_HEIGHT / 2; // 640 - 720 = -80
+  const sidebarCompensationX = 28; // visual compensation for left navigation sidebar
 
   return {
-    x: Math.round(-offsetX * zoom),
+    x: Math.round((-offsetX + sidebarCompensationX) * zoom),
     y: Math.round((-offsetY * (is3D ? 0.80 : 1.0) - (is3D ? 20 : 0)) * zoom),
   };
 }
@@ -320,9 +321,10 @@ export function getParameterizedMapCentering(
 
 /**
  * Zoom level for viewing South American neighboring countries:
- * Increased zoom-out by 40% beyond previous level (0.81 / 1.40 = 0.58) to display expansive South American territory.
+ * Increased zoom out by 20% from 0.81 (0.81 / 1.20 = 0.68) using the exact same 'Centralizar Mapa' centering anchor
+ * to display all 10 neighbor countries and territories cleanly centered in the viewport.
  */
-export const NEIGHBORS_CONTINENT_ZOOM = Number((DEFAULT_BRAZIL_ZOOM / (1.40 * 1.40)).toFixed(2)); // 0.58
+export const NEIGHBORS_CONTINENT_ZOOM = Number((0.81 / 1.20).toFixed(2)); // 0.68
 
 /**
  * Calculates the exact pan & zoom to center the entire South American continent in the viewport
