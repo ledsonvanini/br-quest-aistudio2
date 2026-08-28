@@ -197,6 +197,19 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     const weather = stateWeather?.[stateId];
     const isParchment = !isClimateActive && terrainProvider === 'voyager_parchment';
 
+    // 0. Quando o modo 'Mostrar Vizinhos' está ativo, o Mapa do Brasil fica em Muted Gray puro e fosco
+    // sem cores vívidas nem interações, direcionando todo o foco visual para os países vizinhos e suas bandeiras.
+    if (showNeighbors) {
+      return {
+        stateFill: '#27272a', // Cinza neutro escuro sólido fosco (Zinc 800)
+        stateFillOpacity: 1.0,
+        strokeColor: '#3f3f46', // Borda cinza neutra suave discreta (Zinc 700)
+        strokeWidth: 1.0,
+        underglowColor: 'transparent',
+        wallGradId: 'url(#extrusionWallGradDefault)',
+      };
+    }
+
     // Quando um estado está focado/isolado especificamente em qualquer um dos modos
     // (Clima, Biodiversidade, Geopolítica, Aventura ou Musicalidades),
     // o estado isolado é o ÚNICO a preservar o destaque e a cor vívida.
@@ -588,12 +601,17 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
         className={`camada-america-do-sul south-america-context ${showNeighbors ? 'pointer-events-auto' : 'pointer-events-none'}`}
       >
         {neighborFeaturesList.map(({ pathD, countryName, matchedCountry, key }) => {
-          const effectiveCountry = matchedCountry || {
+          const effectiveCountry: NeighborCountryData = matchedCountry || {
             id: countryName.toUpperCase().slice(0, 3),
             code: countryName.toLowerCase().slice(0, 2),
             name: countryName,
             officialName: countryName,
-            capital: '',
+            capital: 'Não informada',
+            population: 'Não informada',
+            populationNumber: 0,
+            area: 'Não informada',
+            currency: 'Não informada',
+            language: 'Espanhol / Português',
             flagUrl: '',
             flagEmoji: '🌎',
             isDirectNeighbor: true,
@@ -803,13 +821,19 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
                 className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} ${
-                  activeIsolatedState && stateId !== activeIsolatedState
+                  showNeighbors || (activeIsolatedState && stateId !== activeIsolatedState)
                     ? 'cursor-default pointer-events-none'
                     : 'cursor-pointer pointer-events-auto'
                 } transition-all duration-150`}
-                onMouseEnter={() => onStateEnter(stateId)}
-                onMouseLeave={() => onStateLeave(stateId)}
-                onClick={(e) => onStateClick(stateId, e)}
+                onMouseEnter={() => {
+                  if (!showNeighbors) onStateEnter(stateId);
+                }}
+                onMouseLeave={() => {
+                  if (!showNeighbors) onStateLeave(stateId);
+                }}
+                onClick={(e) => {
+                  if (!showNeighbors) onStateClick(stateId, e);
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -825,13 +849,19 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 className={`hit-target-estado-expandido ${
-                  activeIsolatedState && stateId !== activeIsolatedState
+                  showNeighbors || (activeIsolatedState && stateId !== activeIsolatedState)
                     ? 'pointer-events-none'
                     : 'pointer-events-auto cursor-pointer'
                 }`}
-                onMouseEnter={() => onStateEnter(stateId)}
-                onMouseLeave={() => onStateLeave(stateId)}
-                onClick={(e) => onStateClick(stateId, e)}
+                onMouseEnter={() => {
+                  if (!showNeighbors) onStateEnter(stateId);
+                }}
+                onMouseLeave={() => {
+                  if (!showNeighbors) onStateLeave(stateId);
+                }}
+                onClick={(e) => {
+                  if (!showNeighbors) onStateClick(stateId, e);
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -846,7 +876,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           4. CAMADA DE REALCE TOPOGRÁFICO INTEGRADO (Estado em Foco/Hover/Selecionado)
              Conectado perfeitamente ao território, sem cortes, sem desconexão, sem glow borrado
          ========================================================================= */}
-      {activeElevatedStateId && activePathD && activeVisuals && (
+      {!showNeighbors && activeElevatedStateId && activePathD && activeVisuals && (
         <g
           key={`highlight-topografico-${activeElevatedStateId}`}
           className={`camada-realce-topografico estado-focado-${activeElevatedStateId.toLowerCase()} pointer-events-auto`}

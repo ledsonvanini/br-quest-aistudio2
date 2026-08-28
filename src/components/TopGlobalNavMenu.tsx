@@ -600,34 +600,6 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 );
               })}
 
-              {/* Botão: Mostrar Vizinhos / Fronteiras da América do Sul */}
-              {onToggleNeighbors && (
-                <div className="relative">
-                  <button
-                    id="btn-toggle-vizinhos"
-                    onClick={() => {
-                      audioEngine.playSfx('click');
-                      onToggleNeighbors();
-                    }}
-                    {...bindTooltip({
-                      title: 'Mostrar Vizinhos & Fronteiras',
-                      badge: showNeighbors ? 'Ativo' : 'Oculto',
-                      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
-                      description:
-                        'Ilumina as fronteiras internacionais com os 10 países vizinhos da América do Sul e estados limítrofes.',
-                    })}
-                    className={`btn-toggle-vizinhos w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
-                      showNeighbors
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-sm'
-                        : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-emerald-300 hover:border-emerald-500/40'
-                    }`}
-                    aria-label="Mostrar Países e Estados Vizinhos"
-                  >
-                    <Flag className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
               {/* Santuário de Insígnias */}
               {onNavigateToSanctuary && (
                 <div className="relative">
@@ -1127,7 +1099,37 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 </button>
               </div>
 
-              {/* 8. Toggle Painel Geopolítico */}
+              {/* 8. Botão: Mostrar Vizinhos / Fronteiras da América do Sul */}
+              {onToggleNeighbors && (
+                <div className="relative pl-0.5 border-l border-slate-800">
+                  <button
+                    id="btn-toggle-vizinhos"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onToggleNeighbors();
+                    }}
+                    {...bindTooltip({
+                      title: 'Países Vizinhos & América do Sul',
+                      badge: showNeighbors ? 'Ativo (Continente)' : 'Oculto (Foco Brasil)',
+                      badgeColor: showNeighbors
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                        : 'bg-slate-800 text-slate-300 border-slate-700',
+                      description:
+                        'Abre o enquadramento para todo o continente sul-americano com bandeiras e dados geopolíticos dos 10 países vizinhos.',
+                    })}
+                    className={`btn-toggle-vizinhos w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                      showNeighbors
+                        ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md font-bold scale-105 ring-1 ring-amber-400/50'
+                        : 'bg-slate-900 text-amber-400/90 border-slate-700 hover:bg-slate-800 hover:text-amber-300 hover:border-amber-500/50'
+                    }`}
+                    aria-label="Mostrar Países e Estados Vizinhos"
+                  >
+                    <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* 9. Toggle Painel Geopolítico */}
               {onToggleGeopoliticaPanel && (
                 <div className="relative pl-0.5 border-l border-slate-800">
                   <button

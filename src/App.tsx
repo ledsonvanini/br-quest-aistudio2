@@ -322,6 +322,23 @@ export function App() {
     });
   };
 
+  const handleToggleNeighbors = () => {
+    setShowNeighbors((prev) => {
+      const next = !prev;
+      if (next) {
+        // Fechar painéis laterais e limpar seleções para foco exclusivo em Mostrar Vizinhos
+        setIsGeopoliticaPanelOpen(false);
+        setIsBiodiversityPanelOpen(false);
+        setIsObservatorioOpen(false);
+        setFocusedStateId(null);
+        setSelectedRegionFilter('todos');
+        setHoveredRegionFilter(null);
+        setHoveredStateId(null);
+      }
+      return next;
+    });
+  };
+
   return (
     <div
       className="container-app-principal h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 select-none"
@@ -341,19 +358,35 @@ export function App() {
           mainMode={mainMode}
           onSelectMainMode={handleSelectMainMode}
           terrainProvider={terrainProvider}
-          onTerrainProviderChange={setTerrainProvider}
+          onTerrainProviderChange={(p) => {
+            setTerrainProvider(p);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           visualStyle={visualStyle}
-          onVisualStyleChange={setVisualStyle}
+          onVisualStyleChange={(v) => {
+            setVisualStyle(v);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           choroplethSubTheme={choroplethSubTheme}
-          onChoroplethSubThemeChange={setChoroplethSubTheme}
+          onChoroplethSubThemeChange={(c) => {
+            setChoroplethSubTheme(c);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           selectedRegionFilter={selectedRegionFilter}
-          onSelectRegionFilter={setSelectedRegionFilter}
+          onSelectRegionFilter={(region) => {
+            setSelectedRegionFilter(region);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           onHoverRegionFilter={setHoveredRegionFilter}
           showNeighbors={showNeighbors}
-          onToggleNeighbors={() => setShowNeighbors((prev) => !prev)}
+          onToggleNeighbors={handleToggleNeighbors}
           isObservatorioOpen={isObservatorioOpen}
-          onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
+          onToggleObservatorio={() => {
+            setIsObservatorioOpen((prev) => !prev);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           onNavigateToSanctuary={() => {
+            if (showNeighbors) setShowNeighbors(false);
             setActiveGuardian(null);
             setActiveTab('insignias');
             window.location.hash = '#/insignias';
@@ -363,7 +396,10 @@ export function App() {
           completedStateCount={progress.completedStateIds.length}
           unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
           climateMode={climateMode}
-          onClimateModeChange={setClimateMode}
+          onClimateModeChange={(mode) => {
+            setClimateMode(mode);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           isRainSimActive={isRainSimActive}
           onToggleRainSim={() => setIsRainSimActive((prev) => !prev)}
           isCloudsActive={isCloudsActive}
@@ -373,7 +409,10 @@ export function App() {
           isAtmosphereActive={isAtmosphereActive}
           onToggleAtmosphere={handleCycleCelestial}
           celestialTimeOverride={celestialTimeOverride}
-          onFocusState={(stateId) => setFocusedStateId(stateId)}
+          onFocusState={(stateId) => {
+            setFocusedStateId(stateId);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           isRadioOpen={isRadioOpen}
           onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
           activeMusicCategory={activeMusicCategory}
@@ -392,9 +431,15 @@ export function App() {
           onGlobePinModeChange={setGlobePinMode}
           onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
           biodiversityKingdom={biodiversityKingdom}
-          onBiodiversityKingdomChange={setBiodiversityKingdom}
+          onBiodiversityKingdomChange={(k) => {
+            setBiodiversityKingdom(k);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           biodiversityBiome={biodiversityBiome}
-          onBiodiversityBiomeChange={setBiodiversityBiome}
+          onBiodiversityBiomeChange={(b) => {
+            setBiodiversityBiome(b);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           isBiodiversityThreatenedOnly={isBiodiversityThreatenedOnly}
           onToggleBiodiversityThreatenedOnly={() => setIsBiodiversityThreatenedOnly((p) => !p)}
           isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
@@ -402,12 +447,24 @@ export function App() {
           isBiodiversityPanelOpen={isBiodiversityPanelOpen}
           onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
           geopoliticaMetric={geopoliticaMetric}
-          onGeopoliticaMetricChange={setGeopoliticaMetric}
+          onGeopoliticaMetricChange={(metric) => {
+            setGeopoliticaMetric(metric);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
-          onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
+          onToggleGeopoliticaPanel={() => {
+            setIsGeopoliticaPanelOpen((p) => !p);
+            if (showNeighbors) setShowNeighbors(false);
+          }}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onResetView={() => setCenterMapTrigger((prev) => prev + 1)}
-          onResetViewIfNotCentered={() => setCenterMapTrigger((prev) => prev + 1)}
+          onResetView={() => {
+            if (showNeighbors) setShowNeighbors(false);
+            setCenterMapTrigger((prev) => prev + 1);
+          }}
+          onResetViewIfNotCentered={() => {
+            if (showNeighbors) setShowNeighbors(false);
+            setCenterMapTrigger((prev) => prev + 1);
+          }}
           hoveredStateId={hoveredStateId}
         />
       )}
@@ -462,7 +519,7 @@ export function App() {
               selectedRegionFilter={selectedRegionFilter}
               hoveredRegionFilter={hoveredRegionFilter}
               showNeighbors={showNeighbors}
-              onToggleNeighbors={() => setShowNeighbors((prev) => !prev)}
+              onToggleNeighbors={handleToggleNeighbors}
               isObservatorioOpen={isObservatorioOpen}
               onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
               atmosphereEnabled={isAtmosphereActive}

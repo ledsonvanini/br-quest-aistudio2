@@ -217,9 +217,9 @@ export function clampPanZoom(
 /**
  * Mathematical center of Brazil based on the calibrated border between GO, TO, and MT
  * (Rio Araguaia / Ilha do Bananal region, slightly above the geographic center of Goiás).
- * Centers the entire territorial mass of Brazil in the viewport with 30% increased default zoom (0.95).
+ * Centers the entire territorial mass of Brazil in the viewport with 20% increased default zoom (1.14).
  */
-export const DEFAULT_BRAZIL_ZOOM = 0.95;
+export const DEFAULT_BRAZIL_ZOOM = 1.14;
 
 /**
  * Pivot center point coordinates on the 2560x1440 canvas:
@@ -252,10 +252,10 @@ export function getBrazilOverviewFocusZoomAndPan(
   if (containerWidth >= 640) {
     if (isExpanded) {
       screenOffsetX = Math.round(containerWidth * 0.25);
-      baseZoom *= Math.max(0.78, Math.min(0.95, (containerWidth * 0.5) / 580));
+      baseZoom *= Math.max(0.85, Math.min(1.14, (containerWidth * 0.5) / 580));
     } else {
       screenOffsetX = Math.round(Math.min(300, 250));
-      baseZoom *= Math.max(0.80, Math.min(0.95, (containerWidth - 500) / 600));
+      baseZoom *= Math.max(0.90, Math.min(1.14, (containerWidth - 500) / 600));
     }
   }
 
@@ -270,10 +270,64 @@ export function getCenteredGoPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: 
   return getBrazilACtoPBMidpointPan(zoom, is3D);
 }
 
+export type MapCenterScenario =
+  | 'Centralizar Mapa'
+  | 'Centralizar Mapa com App Lateral'
+  | 'Centralizar Mapa mostrar Vizinhos';
+
+export interface MapCenteringConfig {
+  scenario?: MapCenterScenario;
+  is3D?: boolean;
+  containerWidth?: number;
+  isExpanded?: boolean;
+  customZoom?: number;
+}
+
+/**
+ * Função Universal Parametrizada para Centralização do Mapa do Brasil e Continente:
+ * - 'Centralizar Mapa': Enquadra o Brasil perfeitamente no centro da viewport no zoom padrão (1.14).
+ * - 'Centralizar Mapa com App Lateral': Centraliza o Brasil na metade útil visível quando há painel lateral aberto.
+ * - 'Centralizar Mapa mostrar Vizinhos': Mantém o Brasil no centro geométrico e aplica o percentual de zoom out ideal (0.58)
+ *   para enquadrar perfeitamente o Brasil e todos os seus 10 países vizinhos e territórios com suas bandeiras.
+ */
+export function getParameterizedMapCentering(
+  config: MapCenteringConfig = {}
+): { targetZoom: number; targetPan: { x: number; y: number } } {
+  const {
+    scenario = 'Centralizar Mapa',
+    is3D = true,
+    containerWidth = 1920,
+    isExpanded = true,
+    customZoom,
+  } = config;
+
+  if (scenario === 'Centralizar Mapa mostrar Vizinhos') {
+    const targetZoom = customZoom ?? NEIGHBORS_CONTINENT_ZOOM;
+    // O Brasil permanece como o ponto focal e âncora central, aplicando o zoom out proporcional
+    const targetPan = getBrazilACtoPBMidpointPan(targetZoom, is3D);
+    return { targetZoom, targetPan };
+  }
+
+  if (scenario === 'Centralizar Mapa com App Lateral') {
+    return getBrazilOverviewFocusZoomAndPan(containerWidth, is3D, isExpanded);
+  }
+
+  // 'Centralizar Mapa' padrão
+  const targetZoom = customZoom ?? DEFAULT_BRAZIL_ZOOM;
+  const targetPan = getBrazilACtoPBMidpointPan(targetZoom, is3D);
+  return { targetZoom, targetPan };
+}
+
+/**
+ * Zoom level for viewing South American neighboring countries:
+ * Increased zoom-out by 40% beyond previous level (0.81 / 1.40 = 0.58) to display expansive South American territory.
+ */
+export const NEIGHBORS_CONTINENT_ZOOM = Number((DEFAULT_BRAZIL_ZOOM / (1.40 * 1.40)).toFixed(2)); // 0.58
+
 /**
  * Calculates the exact pan & zoom to center the entire South American continent in the viewport
  */
-export function getSouthAmericaMidpointPan(zoom = 0.52, is3D = true): { x: number; y: number } {
+export function getSouthAmericaMidpointPan(zoom = NEIGHBORS_CONTINENT_ZOOM, is3D = true): { x: number; y: number } {
   // Centroid of South American landmass is around [1000, 1050]
   const offsetX = 1000 - MAP_CANVAS_WIDTH / 2; // -280
   const offsetY = 1050 - MAP_CANVAS_HEIGHT / 2; // +330

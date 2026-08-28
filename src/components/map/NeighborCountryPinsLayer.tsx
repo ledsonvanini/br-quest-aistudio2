@@ -87,35 +87,40 @@ export const NeighborCountryPinsLayer: React.FC<NeighborCountryPinsLayerProps> =
 
             {/* 2. Flagpole & Mast tilted at 45° relative to map plane */}
             <div
-              className="container-estandarte-vizinho absolute pointer-events-none anim-pin-spring-in"
+              className="container-estandarte-vizinho absolute left-0 top-0 pointer-events-none anim-pin-spring-in"
               style={{
-                left: '0px',
-                bottom: '0px',
                 transformStyle: 'preserve-3d',
-                transformOrigin: 'bottom center',
-                transform: 'rotateX(-45deg) translateY(-4px)',
+                transformOrigin: '0px 0px',
+                transform: 'rotateX(-45deg)',
               }}
               onMouseEnter={() => onCountryEnter?.(country.id)}
               onMouseLeave={() => onCountryLeave?.(country.id)}
             >
-              {/* Vertical Flagpole Mast */}
+              {/* Vertical Flagpole Mast connecting Pin (0,0) to Center of Flag and crowning the top */}
               <div
-                className="haste-mastro-bandeira absolute left-1/2 bottom-0 -translate-x-1/2 w-1 pointer-events-none"
+                className="haste-mastro-bandeira absolute left-0 -translate-x-1/2 w-1.5 pointer-events-none"
                 style={{
-                  height: '32px',
-                  background: 'linear-gradient(to top, #d97706, #fbbf24, #fef3c7)',
-                  boxShadow: '0 0 8px rgba(251, 191, 36, 0.6), 2px 2px 4px rgba(0,0,0,0.8)',
+                  bottom: '0px',
+                  height: '136px',
+                  background: 'linear-gradient(to top, #92400e, #d97706, #fbbf24, #fef3c7)',
+                  boxShadow: '0 0 10px rgba(251, 191, 36, 0.7), 1px 1px 4px rgba(0,0,0,0.85)',
                   borderRadius: '2px',
                 }}
               >
-                {/* Masthead Golden Finial Ball */}
-                <div className="ponta-mastro-dourada absolute -top-1.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-white shadow-[0_0_6px_#fef08a]" />
+                {/* Base collar connecting to the ground beacon pin */}
+                <div className="anel-base-mastro absolute -bottom-1 left-1/2 -translate-x-1/2 w-3.5 h-2 rounded-full bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-600 shadow-[0_0_6px_#f59e0b]" />
+
+                {/* Masthead Golden Finial Ball at the very top of the mast */}
+                <div className="ponta-mastro-dourada absolute -top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-300 to-white shadow-[0_0_8px_#fef08a]" />
               </div>
 
-              {/* National Flag Banner hanging on the mast */}
+              {/* National Flag Banner & Name Pill centered exactly on the Mast at height 90px */}
               <div
-                className="estandarte-bandeira-pais relative -translate-x-1/2 flex flex-col items-center pointer-events-auto cursor-pointer group"
-                style={{ marginBottom: '28px' }}
+                className="estandarte-bandeira-pais absolute left-0 flex flex-col items-center pointer-events-auto cursor-pointer group"
+                style={{
+                  bottom: '90px',
+                  transform: 'translate(-50%, 50%)',
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectCountry?.(country);
@@ -123,17 +128,17 @@ export const NeighborCountryPinsLayer: React.FC<NeighborCountryPinsLayerProps> =
               >
                 {/* Hover Aura */}
                 <div
-                  className={`aura-bandeira-vizinho absolute -inset-2 rounded-xl bg-amber-400/20 blur-md pointer-events-none transition-opacity duration-300 ${
-                    isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-80'
+                  className={`aura-bandeira-vizinho absolute -inset-3 rounded-2xl bg-amber-400/25 blur-lg pointer-events-none transition-opacity duration-300 ${
+                    isHovered ? 'opacity-100' : 'opacity-0 group-hover:opacity-85'
                   }`}
                 />
 
-                {/* Flag Card Frame */}
+                {/* Flag Card Frame (Dobro do tamanho: 112px x 80px com borda metálica nobre) */}
                 <div
-                  className={`quadro-bandeira-nacional relative w-14 h-10 rounded-md overflow-hidden border-2 shadow-2xl transition-all duration-300 flex items-center justify-center ${
+                  className={`quadro-bandeira-nacional relative w-28 h-20 rounded-lg overflow-hidden border-2 shadow-[0_8px_24px_rgba(0,0,0,0.8)] transition-all duration-300 flex items-center justify-center ${
                     isHovered
-                      ? 'border-amber-300 ring-2 ring-amber-400/50 shadow-[0_0_16px_rgba(245,158,11,0.8)] scale-110'
-                      : 'border-slate-700 hover:border-amber-400 shadow-black/90'
+                      ? 'border-amber-300 ring-2 ring-amber-400/70 shadow-[0_0_24px_rgba(245,158,11,0.9)] scale-110'
+                      : 'border-slate-600 hover:border-amber-400 shadow-black/90'
                   }`}
                   style={{
                     background: 'linear-gradient(135deg, #1e293b, #0f172a)',
@@ -148,22 +153,22 @@ export const NeighborCountryPinsLayer: React.FC<NeighborCountryPinsLayerProps> =
                       onError={() => setImageErrors((prev) => ({ ...prev, [country.id]: true }))}
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center p-1">
-                      <span className="text-xl">{country.flagEmoji}</span>
+                    <div className="flex flex-col items-center justify-center p-2">
+                      <span className="text-3xl">{country.flagEmoji}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Parchment Country Name Pill */}
                 <div
-                  className={`pill-nome-pais-vizinho mt-1 px-2 py-0.5 rounded-md border backdrop-blur-md shadow-2xl flex items-center gap-1 transition-all ${
+                  className={`pill-nome-pais-vizinho mt-1.5 px-2.5 py-1 rounded-lg border backdrop-blur-md shadow-2xl flex items-center gap-1.5 transition-all ${
                     isHovered
-                      ? 'bg-amber-950/95 border-amber-300 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
-                      : 'bg-slate-950/90 border-slate-700/80 text-slate-200 group-hover:border-amber-400/60 group-hover:text-amber-200'
+                      ? 'bg-amber-950/95 border-amber-300 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.6)] scale-105'
+                      : 'bg-slate-950/90 border-slate-700 text-slate-200 group-hover:border-amber-400/70 group-hover:text-amber-200'
                   }`}
                 >
-                  <span className="text-[10px] select-none leading-none">{country.flagEmoji}</span>
-                  <span className="text-[10px] font-serif font-bold tracking-wide whitespace-nowrap leading-none">
+                  <span className="text-xs sm:text-sm select-none leading-none">{country.flagEmoji}</span>
+                  <span className="text-xs font-serif font-bold tracking-wide whitespace-nowrap leading-none">
                     {country.name}
                   </span>
                 </div>
