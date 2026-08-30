@@ -42,6 +42,7 @@ interface MapStatesLayerProps {
   focusedClimateStateId?: string | null;
   focusedBiodiversityStateId?: string | null;
   focusedGeopoliticsStateId?: string | null;
+  focusedMusicalStateId?: string | null;
   is3D?: boolean;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
@@ -111,6 +112,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   focusedClimateStateId = null,
   focusedBiodiversityStateId = null,
   focusedGeopoliticsStateId = null,
+  focusedMusicalStateId = null,
   is3D = false,
   onStateEnter,
   onStateLeave,
@@ -556,6 +558,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     ? focusedBiodiversityStateId
     : focusedGeopoliticsStateId
     ? focusedGeopoliticsStateId
+    : focusedMusicalStateId
+    ? focusedMusicalStateId
     : (hoveredStateId || selectedStateId);
   const activePathD = activeElevatedStateId ? statePathMap[activeElevatedStateId] : null;
   const activeVisuals = activeElevatedStateId ? getStateVisuals(activeElevatedStateId, hoveredStateId === activeElevatedStateId, selectedStateId === activeElevatedStateId) : null;
@@ -695,7 +699,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           2. D3 CLIPPED MAP TILES (Natural Earth, Shaded Relief, Satellite)
           Ocultado quando qualquer estado estiver isolado para garantir cinza 100% fosco
          ========================================================================= */}
-      {visualStyle === 'tiles' && !focusedClimateStateId && !focusedBiodiversityStateId && !focusedGeopoliticsStateId && (
+      {visualStyle === 'tiles' && !focusedClimateStateId && !focusedBiodiversityStateId && !focusedGeopoliticsStateId && !focusedMusicalStateId && (
         <ClippedMapTilesLayer
           geoData={geoData}
           projection={projection}
@@ -753,6 +757,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
             (isClimateActive ? focusedClimateStateId : null) ||
             focusedBiodiversityStateId ||
             focusedGeopoliticsStateId ||
+            focusedMusicalStateId ||
             null;
 
           return (

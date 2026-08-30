@@ -222,6 +222,25 @@ export function clampPanZoom(
 export const DEFAULT_BRAZIL_ZOOM = 1.14;
 
 /**
+ * Calculates responsive default zoom dynamically based on container/screen dimensions.
+ * Ensures that on smaller screens (e.g. 1366x768, 1440x900, 1280x720, mobile) the map is never
+ * too close or cropped, scaling smoothly to fit Brazil's entire territorial mass.
+ */
+export function calculateResponsiveDefaultZoom(containerWidth = 1920, containerHeight = 1080): number {
+  if (!containerWidth || !containerHeight) return DEFAULT_BRAZIL_ZOOM;
+  const scaleX = containerWidth / 1920;
+  const scaleY = containerHeight / 1080;
+  const scaleFactor = Math.min(scaleX, scaleY);
+  
+  if (scaleFactor >= 1.0) {
+    return DEFAULT_BRAZIL_ZOOM;
+  }
+  // Adaptive exponential scaling that prevents extreme shrinking on ultra-small screens
+  const adaptedZoom = DEFAULT_BRAZIL_ZOOM * Math.pow(scaleFactor, 0.62);
+  return Number(Math.max(0.55, Math.min(1.14, adaptedZoom)).toFixed(2));
+}
+
+/**
  * Pivot center point coordinates on the 2560x1440 canvas:
  * Border between Goiás (GO), Tocantins (TO), and Mato Grosso (MT) [1235, 640].
  */
@@ -245,23 +264,25 @@ export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = tr
 export function getBrazilOverviewFocusZoomAndPan(
   containerWidth: number,
   is3D = true,
-  isExpanded = true
+  isExpanded = true,
+  containerHeight = 1080
 ): { targetZoom: number; targetPan: { x: number; y: number } } {
-  let baseZoom = DEFAULT_BRAZIL_ZOOM;
+  const responsiveBase = calculateResponsiveDefaultZoom(containerWidth, containerHeight);
+  let baseZoom = responsiveBase;
   let screenOffsetX = 0;
 
   if (containerWidth >= 640) {
     if (isExpanded) {
       screenOffsetX = Math.round(containerWidth * 0.25);
-      baseZoom *= Math.max(0.85, Math.min(1.14, (containerWidth * 0.5) / 580));
+      baseZoom *= Math.max(0.80, Math.min(1.0, (containerWidth * 0.5) / 580));
     } else {
       screenOffsetX = Math.round(Math.min(300, 250));
-      baseZoom *= Math.max(0.90, Math.min(1.14, (containerWidth - 500) / 600));
+      baseZoom *= Math.max(0.85, Math.min(1.0, (containerWidth - 500) / 600));
     }
   }
 
   const targetPan = calculateStateCenterPan(BRAZIL_MAP_PIVOT_CENTER, baseZoom, is3D, screenOffsetX);
-  return { targetZoom: baseZoom, targetPan };
+  return { targetZoom: Number(baseZoom.toFixed(2)), targetPan };
 }
 
 /**
@@ -280,13 +301,14 @@ export interface MapCenteringConfig {
   scenario?: MapCenterScenario;
   is3D?: boolean;
   containerWidth?: number;
+  containerHeight?: number;
   isExpanded?: boolean;
   customZoom?: number;
 }
 
 /**
  * Função Universal Parametrizada para Centralização do Mapa do Brasil e Continente:
- * - 'Centralizar Mapa': Enquadra o Brasil perfeitamente no centro da viewport no zoom padrão (1.14).
+ * - 'Centralizar Mapa': Enquadra o Brasil perfeitamente no centro da viewport no zoom padrão adaptado à tela.
  * - 'Centralizar Mapa com App Lateral': Centraliza o Brasil na metade útil visível quando há painel lateral aberto.
  * - 'Centralizar Mapa mostrar Vizinhos': Mantém o Brasil no centro geométrico e aplica o percentual de zoom out ideal (0.58)
  *   para enquadrar perfeitamente o Brasil e todos os seus 10 países vizinhos e territórios com suas bandeiras.
@@ -298,23 +320,27 @@ export function getParameterizedMapCentering(
     scenario = 'Centralizar Mapa',
     is3D = true,
     containerWidth = 1920,
+    containerHeight = 1080,
     isExpanded = true,
     customZoom,
   } = config;
 
+  const responsiveBase = calculateResponsiveDefaultZoom(containerWidth, containerHeight);
+
   if (scenario === 'Centralizar Mapa mostrar Vizinhos') {
-    const targetZoom = customZoom ?? NEIGHBORS_CONTINENT_ZOOM;
+    const neighborsZoom = Number((responsiveBase * 0.60).toFixed(2));
+    const targetZoom = customZoom ?? neighborsZoom;
     // O Brasil permanece como o ponto focal e âncora central, aplicando o zoom out proporcional
     const targetPan = getBrazilACtoPBMidpointPan(targetZoom, is3D);
     return { targetZoom, targetPan };
   }
 
   if (scenario === 'Centralizar Mapa com App Lateral') {
-    return getBrazilOverviewFocusZoomAndPan(containerWidth, is3D, isExpanded);
+    return getBrazilOverviewFocusZoomAndPan(containerWidth, is3D, isExpanded, containerHeight);
   }
 
   // 'Centralizar Mapa' padrão
-  const targetZoom = customZoom ?? DEFAULT_BRAZIL_ZOOM;
+  const targetZoom = customZoom ?? responsiveBase;
   const targetPan = getBrazilACtoPBMidpointPan(targetZoom, is3D);
   return { targetZoom, targetPan };
 }
@@ -441,9 +467,13 @@ export function getMusicalFocusZoomAndPan(
   centroid: [number, number],
   containerWidth: number,
   is3D = true,
-  isExpanded = true
+  isExpanded = true,
+  stateId?: string
 ): { targetZoom: number; targetPan: { x: number; y: number } } {
-  let baseZoom = 1.6;
+  const isSmallState = stateId && ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
+  const isLargeState = stateId && ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
+
+  let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.35 : 1.68;
   let screenOffsetX = 0;
 
   if (containerWidth >= 640) {

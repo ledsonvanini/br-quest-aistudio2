@@ -314,14 +314,14 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           {!activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
             <div
               id="painel-biodiversidade-ticker-rodape"
-              className="painel-biodiversidade-ticker-rodape flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0"
+              className="painel-biodiversidade-ticker-rodape flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0 max-w-[90vw] sm:max-w-max"
             >
               <div className="flex items-center gap-1.5 text-emerald-300 font-serif font-bold shrink-0">
                 <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Biodiversidade do Brasil</span>
+                <span className="truncate">Biodiversidade do Brasil</span>
               </div>
-              <div className="h-3.5 w-px bg-emerald-500/30 hidden sm:block shrink-0" />
-              <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-300 shrink-0">
+              <div className="h-3.5 w-px bg-emerald-500/30 hidden md:block shrink-0" />
+              <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-slate-300 shrink-0">
                 <span className="flex items-center gap-1 text-amber-300">
                   <Bird className="w-3 h-3 text-amber-400" /> Fauna
                 </span>
@@ -329,7 +329,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                   <Trees className="w-3 h-3 text-emerald-400" /> Flora
                 </span>
                 <span className="flex items-center gap-1 text-rose-300">
-                  <ShieldAlert className="w-3 h-3 text-rose-400" /> SisCITES / IBAMA
+                  <ShieldAlert className="w-3 h-3 text-rose-400" /> SisCITES
                 </span>
               </div>
 
@@ -341,7 +341,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                 title="Horário do catálogo de biodiversidade (Horário de Brasília UTC-3)"
               >
                 <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="text-slate-400 font-sans text-[10px]">atualizado</span>
+                <span className="text-slate-400 font-sans text-[10px] hidden xs:inline">atualizado</span>
                 <span className="font-semibold text-emerald-100">{biodivTimeOnly}</span>
               </div>
             </div>
@@ -452,110 +452,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. GRUPO COMUM: CONTROLES DE CLIMA & ATMOSFERA (CHUVA, NUVENS, ONDAS, ASTRO) */}
-        {/* ========================================================================= */}
-        <div
-          id="grupo-clima-atmosfera-rodape"
-          className="grupo-clima-rodape flex items-center gap-1 p-0.5 rounded-xl bg-slate-950/85 border border-slate-700/80 shrink-0"
-        >
-          {/* 1. Simulador de Chuva */}
-          {onToggleRainSim && (
-            <button
-              id="btn-rodape-chuva"
-              type="button"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onToggleRainSim();
-              }}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                isRainSimActive
-                  ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
-                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-              title={isRainSimActive ? 'Desativar Simulador de Chuva' : 'Ativar Simulador de Chuva em Tempo Real'}
-              aria-label="Simulador de Chuva"
-            >
-              <CloudRain className={`w-3.5 h-3.5 ${isRainSimActive ? 'animate-bounce' : ''}`} />
-            </button>
-          )}
-
-          {/* 2. Nuvens Volumétricas */}
-          {onToggleClouds && (
-            <button
-              id="btn-rodape-nuvens"
-              type="button"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onToggleClouds();
-              }}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                isCloudsActive
-                  ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.4)]'
-                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-              title={isCloudsActive ? 'Ocultar Nuvens Volumétricas' : 'Exibir Nuvens Volumétricas e Turbulência'}
-              aria-label="Nuvens Volumétricas"
-            >
-              <Cloud className={`w-3.5 h-3.5 ${isCloudsActive ? 'animate-pulse' : ''}`} />
-            </button>
-          )}
-
-          {/* 3. Ventos Alísios e Ondas Costeiras */}
-          {onToggleWaves && (
-            <button
-              id="btn-rodape-ventos-ondas"
-              type="button"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onToggleWaves();
-              }}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                isWavesActive
-                  ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.4)]'
-                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-              title={isWavesActive ? 'Desativar Ventos Alísios & Ondas' : 'Ativar Ventos Alísios & Ondas Costeiras'}
-              aria-label="Ventos Alísios e Ondas"
-            >
-              <Waves className={`w-3.5 h-3.5 ${isWavesActive ? 'animate-pulse' : ''}`} />
-            </button>
-          )}
-
-          {/* 4. Astro e Atmosfera / Ciclo Solar */}
-          {(onToggleAtmosphere || onTimeOverrideChange) && (
-            <button
-              id="btn-rodape-astro-atmosfera"
-              type="button"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                if (onTimeOverrideChange) {
-                  const next = timeOverride === 'auto' ? 'day' : timeOverride === 'day' ? 'night' : 'auto';
-                  onTimeOverrideChange(next);
-                } else if (onToggleAtmosphere) {
-                  onToggleAtmosphere();
-                }
-              }}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                isAtmosphereActive
-                  ? 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.4)]'
-                  : 'bg-slate-900/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-              title={`Astro & Atmosfera (${timeOverride === 'auto' ? 'Tempo Real Brasília' : timeOverride === 'day' ? 'Dia Fixado' : 'Noite Fixada'}). Clique para alternar.`}
-              aria-label="Astro e Atmosfera"
-            >
-              {timeOverride === 'night' ? (
-                <Moon className="w-3.5 h-3.5 text-indigo-300 animate-pulse" />
-              ) : timeOverride === 'day' ? (
-                <Sun className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '12s' }} />
-              ) : (
-                <SunMedium className="w-3.5 h-3.5 text-amber-400" />
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* ========================================================================= */}
-        {/* 3. SEÇÃO DIREITA: ÍCONES FIXOS (Saiba +, FPS, APIs) */}
+        {/* 2. SEÇÃO DIREITA: ÍCONES FIXOS (Saiba +, FPS, APIs) */}
         {/* ========================================================================= */}
         <div
           id="secao-controles-fixos-direita-rodape"

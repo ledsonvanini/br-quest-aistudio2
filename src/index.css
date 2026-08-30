@@ -498,3 +498,33 @@ h1, h2, h3, .font-outfit {
 .anim-border-fade-standard {
   animation: bio-border-fade-standard 3.5s ease-in-out infinite;
 }
+
+/* Explicit system cursor styles for Vintage Radio & Side Panels over canvas */
+.coluna-radio-vintage-independente,
+.painel-radio-vintage-player,
+.painel-app-radio-vintage,
+.painel-split-radio-esquerda,
+.painel-radio-vintage-minimizado,
+.modal-dialog-climatologia-estado,
+.modal-dialog-biodiversidade-estado {
+  cursor: default !important;
+}
+
+.coluna-radio-vintage-independente button,
+.coluna-radio-vintage-independente a,
+.coluna-radio-vintage-independente select,
+.coluna-radio-vintage-independente [role="button"],
+.coluna-radio-vintage-independente .cursor-pointer,
+.painel-radio-vintage-player button,
+.painel-radio-vintage-player a,
+.painel-radio-vintage-player select,
+.painel-radio-vintage-player [role="button"],
+.painel-radio-vintage-player .cursor-pointer,
+.painel-radio-vintage-minimizado button,
+.btn-reabrir-radio-flutuante {
+  cursor: pointer !important;
+}
+
+.painel-radio-vintage-player input[type="range"] {
+  cursor: ew-resize !important;
+}

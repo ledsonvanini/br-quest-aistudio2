@@ -7,7 +7,9 @@ import { BiodiversityKingdom } from '../../types';
 import { BRAZIL_STATES_GEOPOLITICS } from '../../data/geopoliticaData';
 import { STATE_BIODIVERSITY_PROFILES } from '../../data/brazilBiodiversityData';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
-import { ALL_BRAZIL_STATES, getStateCoatOfArmsUrl } from '../../data/brazilStatesRegistry';
+import { ALL_BRAZIL_STATES, getStateCoatOfArmsUrl, getStateFlagUrl } from '../../data/brazilStatesRegistry';
+import { getStateMusicalHeritage } from '../../data/musicalHeritageData';
+import { getStateHighlightsForEra, VINTAGE_RADIO_ERAS } from '../../data/vintageRadioEras';
 import {
   Thermometer,
   Droplets,
@@ -32,6 +34,10 @@ import {
   CheckCircle2,
   ChevronRight,
   Zap,
+  Radio,
+  Disc,
+  Music,
+  Volume2,
 } from 'lucide-react';
 
 interface UnifiedStateHoverTooltipProps {
@@ -48,6 +54,7 @@ interface UnifiedStateHoverTooltipProps {
   rotateX?: number;
   selectedStateId?: string | null;
   showNeighbors?: boolean;
+  selectedRadioEraId?: string;
 }
 
 export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> = ({
@@ -64,9 +71,11 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   rotateX = 42,
   selectedStateId,
   showNeighbors,
+  selectedRadioEraId = 'catedral_1930_1940',
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [screenPos, setScreenPos] = useState<{ x: number; y: number; isNearTop: boolean } | null>(null);
+  const [measuredHeight, setMeasuredHeight] = useState<number>(280);
 
   // Se houver vizinhos abertos ou estado em isolamento/seleção ativa, desativa tooltip para evitar sobreposição
   const shouldHide = !hoveredStateId || showNeighbors || Boolean(selectedStateId);
@@ -113,6 +122,13 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
       // Identificar se o estado está perto do topo (< 280px do topo da tela)
       const isNearTop = rawY < 280;
 
+      if (cardRef.current) {
+        const h = cardRef.current.offsetHeight;
+        if (h > 50) {
+          setMeasuredHeight(h);
+        }
+      }
+
       setScreenPos({ x: rawX, y: rawY, isNearTop });
     };
 
@@ -136,15 +152,19 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   const stateName = registryInfo?.name || geoProfile?.stateName || stateId;
   const capital = registryInfo?.capital || geoProfile?.capital || weather?.capital || 'Capital';
   const coatOfArmsUrl = getStateCoatOfArmsUrl(stateId) || registryInfo?.coatOfArmsUrl;
+  const flagUrl = getStateFlagUrl(stateId) || registryInfo?.flagUrl;
+  const musicalHeritage = getStateMusicalHeritage(stateId);
+  const radioEra = VINTAGE_RADIO_ERAS.find((e) => e.id === selectedRadioEraId) || VINTAGE_RADIO_ERAS[0];
+  const eraHighlights = getStateHighlightsForEra(stateId, selectedRadioEraId);
 
   // Dimensões do card para cálculo de clamping
   const winW = typeof window !== 'undefined' ? window.innerWidth : 1920;
   const winH = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  const cardW = isClimateActive && climateMode === 'previsao_tempo' ? Math.min(480, winW - 32) : Math.min(420, winW - 32);
-  const cardEstimatedH = isClimateActive && climateMode === 'previsao_tempo' ? 350 : 260;
+  const cardW = isClimateActive && climateMode === 'previsao_tempo' ? Math.min(460, winW - 32) : Math.min(390, winW - 32);
+  const cardH = measuredHeight || (isClimateActive && climateMode === 'previsao_tempo' ? 360 : 260);
 
   // Cálculo de Posição X com clamping (garante margem e não sobrepõe a sidebar lateral esquerda)
-  const minLeftMargin = winW >= 640 ? 80 : 12;
+  const minLeftMargin = winW >= 640 ? 84 : 12;
   let finalLeft = screenPos.x - cardW / 2;
   if (finalLeft < minLeftMargin) finalLeft = minLeftMargin;
   if (finalLeft + cardW > winW - 16) finalLeft = winW - cardW - 16;
@@ -153,15 +173,15 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   let finalTop = 0;
   if (screenPos.isNearTop) {
     // Estado perto do topo (RR, AP, norte do AM, etc.): renderizar abaixo do pin
-    finalTop = screenPos.y + 24;
+    finalTop = screenPos.y + 20;
   } else {
     // Estado perto do centro ou rodapé (RS, SC, SP, etc.): renderizar acima do pin
-    finalTop = screenPos.y - cardEstimatedH - 24;
+    finalTop = screenPos.y - cardH - 20;
   }
 
   // Clamping vertical estrito: nunca passar de 12px no topo nem ultrapassar o rodapé
   if (finalTop < 12) finalTop = 12;
-  if (finalTop + cardEstimatedH > winH - 16) finalTop = winH - cardEstimatedH - 16;
+  if (finalTop + cardH > winH - 16) finalTop = Math.max(12, winH - cardH - 16);
 
   return (
     <aside
@@ -169,7 +189,7 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
       ref={cardRef}
       role="tooltip"
       aria-live="polite"
-      className="balao-universal-estado-hover fixed pointer-events-none select-none z-[99999] transition-all duration-150 ease-out"
+      className="balao-universal-estado-hover fixed pointer-events-none select-none z-[99999] transition-all duration-150 ease-out max-h-[calc(100vh-28px)] overflow-y-auto custom-scrollbar-gold"
       style={{
         left: `${finalLeft}px`,
         top: `${finalTop}px`,
@@ -179,7 +199,7 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
       }}
     >
       <div
-        className={`card-balao-conteudo-unificado rounded-2xl p-4 sm:p-5 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.4)] backdrop-blur-xl border-2 text-white space-y-3 ${
+        className={`card-balao-conteudo-unificado rounded-2xl p-3.5 sm:p-4 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.4)] backdrop-blur-xl border-2 text-white space-y-2.5 overflow-hidden break-words ${
           isClimateActive
             ? climateMode === 'previsao_tempo'
               ? 'bg-slate-950/95 border-yellow-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(250,204,21,0.4)]'
@@ -196,35 +216,45 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {isClimateActive && weather && (
           <>
-            {/* Header: UF + Nome + Capital + Temperatura ou Badge Forecast */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="min-w-0 pr-2">
-                <h4 className="font-black text-base sm:text-lg text-slate-100 flex items-center gap-2 truncate">
-                  <span
-                    className={`font-mono font-black text-xs sm:text-sm px-2 py-0.5 rounded-lg shrink-0 border ${
-                      climateMode === 'previsao_tempo'
-                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-400/60'
-                        : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/60'
-                    }`}
-                  >
-                    {stateId}
-                  </span>
-                  <span className="truncate font-serif font-bold text-white tracking-wide">{stateName}</span>
-                </h4>
-                <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
-                  Capital: <strong className="text-slate-200">{capital}</strong>
-                </p>
+            {/* Header: Bandeira + UF + Nome + Capital + Temperatura ou Badge Forecast */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                {flagUrl && (
+                  <img
+                    src={flagUrl}
+                    alt={`Bandeira de ${stateName}`}
+                    className="w-7 h-5 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm sm:text-base text-slate-100 flex items-center gap-1.5 truncate">
+                    <span
+                      className={`font-mono font-black text-xs px-1.5 py-0.5 rounded shrink-0 border ${
+                        climateMode === 'previsao_tempo'
+                          ? 'bg-yellow-500/20 text-yellow-300 border-yellow-400/60'
+                          : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/60'
+                      }`}
+                    >
+                      {stateId}
+                    </span>
+                    <span className="truncate font-serif font-bold text-white tracking-wide">{stateName}</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                    Capital: <strong className="text-slate-200">{capital}</strong>
+                  </p>
+                </div>
               </div>
 
               {climateMode === 'previsao_tempo' ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-950/80 border border-yellow-500/50 shadow-inner shrink-0">
-                  <SunMedium className="w-4 h-4 text-yellow-400 animate-spin-slow" />
-                  <span className="font-black text-xs sm:text-sm text-yellow-300 font-mono">Previsão 7D</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-yellow-950/80 border border-yellow-500/50 shadow-inner shrink-0">
+                  <SunMedium className="w-3.5 h-3.5 text-yellow-400 animate-spin-slow" />
+                  <span className="font-black text-xs text-yellow-300 font-mono">7 Dias</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-cyan-500/50 shadow-inner shrink-0">
-                  <Thermometer className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                  <span className="font-black text-base sm:text-xl text-amber-300 font-mono">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-cyan-500/50 shadow-inner shrink-0">
+                  <Thermometer className="w-4 h-4 text-amber-400" />
+                  <span className="font-black text-sm sm:text-base text-amber-300 font-mono">
                     {weather.temperature}°C
                   </span>
                 </div>
@@ -233,25 +263,24 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
 
             {/* SE MODO PREVISÃO DO TEMPO: Detalhes de Forecast 7 Dias */}
             {climateMode === 'previsao_tempo' ? (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {/* Resumo da Semana: Condição Geral + Máxima e Mínima Previstas */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-900 border border-slate-800">
                     <CloudSun className="w-4 h-4 text-amber-400 shrink-0" />
                     <div className="min-w-0">
-                      <span className="text-[10.5px] text-slate-400 block">Condição</span>
+                      <span className="text-[10px] text-slate-400 block">Condição</span>
                       <strong className="text-white text-xs truncate block font-bold">
                         {weather.forecast?.[0]?.condition || weather.condition || 'Ensolarado'}
                       </strong>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-900 border border-slate-800">
+                  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-900 border border-slate-800">
                     <CloudRain className="w-4 h-4 text-cyan-400 shrink-0" />
                     <div className="min-w-0">
-                      <span className="text-[10.5px] text-slate-400 block">Prob. Chuva</span>
+                      <span className="text-[10px] text-slate-400 block">Prob. Chuva</span>
                       <strong className="text-white text-xs block font-bold font-mono">
-                        {weather.forecast?.[0]?.rainProb ?? 25}% (
-                        {weather.forecast?.[0]?.rainSum ?? 0.0} mm)
+                        {weather.forecast?.[0]?.rainProb ?? 25}% ({weather.forecast?.[0]?.rainSum ?? 0.0} mm)
                       </strong>
                     </div>
                   </div>
@@ -259,37 +288,36 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
 
                 {/* Grade dos Próximos 7 Dias de Previsão */}
                 {weather.forecast && weather.forecast.length > 0 && (
-                  <div className="pt-2 border-t border-slate-800/80">
-                    <div className="text-[10.5px] font-bold text-yellow-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <div className="pt-1.5 border-t border-slate-800/80">
+                    <div className="text-[10px] font-bold text-yellow-300 uppercase tracking-wider mb-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                        Prognóstico Semanal 7D (ECMWF)
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                        Prognóstico Semanal (ECMWF)
                       </span>
-                      <span className="text-[9.5px] text-slate-400 font-normal">Máx / Mín</span>
+                      <span className="text-[9px] text-slate-400 font-normal">Máx / Mín</span>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center">
                       {weather.forecast.slice(0, 7).map((fDay) => {
-                        const tempColor = getEcmwfTempColor(fDay.maxTemp);
                         return (
                           <div
                             key={fDay.dayIndex}
                             className="p-1 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-col items-center justify-between min-w-0"
                           >
-                            <span className="text-[9.5px] font-bold text-slate-300 truncate w-full block">
+                            <span className="text-[9px] font-bold text-slate-300 truncate w-full block">
                               {fDay.dayName}
                             </span>
-                            <div className="my-1 text-xs">
+                            <div className="my-0.5 text-xs">
                               {fDay.rainProb > 50 ? (
-                                <CloudRain className="w-3.5 h-3.5 text-cyan-400 mx-auto" />
+                                <CloudRain className="w-3 h-3 text-cyan-400 mx-auto" />
                               ) : fDay.maxTemp > 30 ? (
-                                <Sun className="w-3.5 h-3.5 text-amber-400 mx-auto" />
+                                <Sun className="w-3 h-3 text-amber-400 mx-auto" />
                               ) : (
-                                <CloudSun className="w-3.5 h-3.5 text-yellow-300 mx-auto" />
+                                <CloudSun className="w-3 h-3 text-yellow-300 mx-auto" />
                               )}
                             </div>
-                            <div className="text-[9.5px] font-mono leading-tight">
+                            <div className="text-[9px] font-mono leading-tight">
                               <span className="text-rose-400 font-bold block">{Math.round(fDay.maxTemp)}°</span>
-                              <span className="text-sky-300 text-[8.5px] block">{Math.round(fDay.minTemp)}°</span>
+                              <span className="text-sky-300 text-[8px] block">{Math.round(fDay.minTemp)}°</span>
                             </div>
                           </div>
                         );
@@ -301,46 +329,46 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
             ) : (
               /* SE MODO CLIMA CONVENCIONAL: Telemetria Completa em Tempo Real */
               <>
-                <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm font-sans">
+                <div className="grid grid-cols-2 gap-1.5 text-xs font-sans">
                   <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
-                    <Droplets className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>
+                    <Droplets className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">
                       Umid: <strong className="text-white font-bold">{weather.humidity}%</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
-                    <CloudRain className="w-4 h-4 text-sky-400 shrink-0" />
-                    <span>
+                    <CloudRain className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span className="truncate">
                       Chuva: <strong className="text-white font-bold">{weather.precipitation} mm</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
-                    <Wind className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>
+                    <Wind className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">
                       Vento: <strong className="text-white font-bold">{weather.windSpeed} km/h</strong>
                     </span>
                   </div>
                   <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200">
-                    <Gauge className="w-4 h-4 text-indigo-400 shrink-0" />
-                    <span>
+                    <Gauge className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">
                       Pressão: <strong className="text-white font-bold">{weather.surfacePressure} hPa</strong>
                     </span>
                   </div>
                 </div>
 
                 {/* Temperaturas Mínima e Máxima com destaque */}
-                <div className="pt-2 border-t border-slate-800/90 grid grid-cols-2 gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-2 text-xs font-mono">
+                <div className="pt-1.5 border-t border-slate-800/90 grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center gap-1.5 text-xs font-mono">
                     <span className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_6px_#38bdf8] shrink-0" />
                     <span className="text-blue-300">Mín:</span>
-                    <strong className="text-white font-black text-sm">
+                    <strong className="text-white font-black text-xs sm:text-sm">
                       {Number(weather.minTemperature ?? weather.temperature - 4.45).toFixed(1)}°C
                     </strong>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-1.5 text-xs font-mono">
                     <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e] shrink-0" />
                     <span className="text-rose-300">Máx:</span>
-                    <strong className="text-white font-black text-sm">
+                    <strong className="text-white font-black text-xs sm:text-sm">
                       {Number(weather.maxTemperature ?? weather.temperature + 3.25).toFixed(1)}°C
                     </strong>
                   </div>
@@ -355,51 +383,65 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {!isClimateActive && mainMode === 'biodiversidade' && bioProfile && (
           <>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="min-w-0 flex-1 pr-2">
-                <h4 className="font-black text-base sm:text-lg text-slate-100 flex items-center gap-2 truncate">
-                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 font-mono font-black text-xs sm:text-sm shrink-0">
-                    {stateId}
-                  </span>
-                  <span className="truncate font-serif font-bold text-white tracking-wide">{bioProfile.stateName}</span>
-                </h4>
-                <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
-                  Capital: <strong className="text-slate-200">{capital}</strong> • Região {bioProfile.region}
-                </p>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                {flagUrl && (
+                  <img
+                    src={flagUrl}
+                    alt={`Bandeira de ${stateName}`}
+                    className="w-7 h-5 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm sm:text-base text-slate-100 flex items-center gap-1.5 truncate">
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 font-mono font-black text-xs shrink-0">
+                      {stateId}
+                    </span>
+                    <span className="truncate font-serif font-bold text-white tracking-wide">{bioProfile.stateName}</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                    Capital: <strong className="text-slate-200">{capital}</strong> • Região {bioProfile.region}
+                  </p>
+                </div>
               </div>
 
-              <div className="px-2.5 py-1 rounded-xl bg-emerald-950/80 border border-emerald-400/50 text-emerald-300 font-mono text-xs font-bold shrink-0">
+              <div className="px-2 py-0.5 rounded-xl bg-emerald-950/80 border border-emerald-400/50 text-emerald-300 font-mono text-[11px] font-bold shrink-0">
                 {bioProfile.predominantBiomes?.[0] || 'Bioma'}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
                 <Bird className="w-4 h-4 text-amber-400 shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <span className="text-[10px] text-slate-400 block">Espécies</span>
-                  <strong className="text-white text-xs block font-bold">{bioProfile.totalKnownSpeciesEst?.toLocaleString('pt-BR') || '1.200+'} catalogadas</strong>
+                  <strong className="text-white text-xs block font-bold truncate">
+                    {bioProfile.totalKnownSpeciesEst?.toLocaleString('pt-BR') || '1.200+'}
+                  </strong>
                 </div>
               </div>
-              <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <span className="text-[10px] text-slate-400 block">Ameaçadas</span>
-                  <strong className="text-rose-300 text-xs block font-bold">{bioProfile.threatenedSpeciesCount || 0} espécies</strong>
+                  <strong className="text-rose-300 text-xs block font-bold truncate">
+                    {bioProfile.threatenedSpeciesCount || 0} espécies
+                  </strong>
                 </div>
               </div>
             </div>
 
             {bioProfile.specimens && bioProfile.specimens.length > 0 && (
-              <div className="pt-2 border-t border-slate-800 text-xs space-y-1">
-                <span className="text-[10.5px] font-bold text-emerald-300 uppercase tracking-wider block">
+              <div className="pt-1.5 border-t border-slate-800 text-xs space-y-1">
+                <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider block">
                   Espécies Símbolo:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {bioProfile.specimens.slice(0, 2).map((sp, idx: number) => (
                     <span
                       key={idx}
-                      className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/30 text-emerald-200 text-[11px] font-medium"
+                      className="px-2 py-0.5 rounded-md bg-slate-900 border border-emerald-500/30 text-emerald-200 text-[11px] font-medium truncate max-w-full"
                     >
                       {sp.namePt}
                     </span>
@@ -415,37 +457,47 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {!isClimateActive && mainMode === 'geopolitica' && geoProfile && (
           <>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="min-w-0 pr-2">
-                <h4 className="font-black text-base sm:text-lg text-slate-100 flex items-center gap-2 truncate">
-                  <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-400/50">
-                    {stateId}
-                  </span>
-                  <span className="truncate font-serif font-bold text-amber-200 tracking-wide">{geoProfile.stateName}</span>
-                </h4>
-                <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
-                  Capital: <strong className="text-slate-200">{geoProfile.capital}</strong> • Região {geoProfile.regionName}
-                </p>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                {flagUrl && (
+                  <img
+                    src={flagUrl}
+                    alt={`Bandeira de ${stateName}`}
+                    className="w-7 h-5 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm sm:text-base text-slate-100 flex items-center gap-1.5 truncate">
+                    <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-xs font-black border border-cyan-400/50">
+                      {stateId}
+                    </span>
+                    <span className="truncate font-serif font-bold text-amber-200 tracking-wide">{geoProfile.stateName}</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                    Capital: <strong className="text-slate-200">{geoProfile.capital}</strong> • {geoProfile.regionName}
+                  </p>
+                </div>
               </div>
 
-              <span className="px-2 py-1 rounded-md bg-slate-900 border border-slate-800 text-[11px] text-cyan-300 font-mono font-bold shrink-0">
+              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10px] text-cyan-300 font-mono font-bold shrink-0">
                 Censo 2022
               </span>
             </div>
 
             {/* Métrica Dinâmica Ativa */}
             {geopoliticaMetric === 'miscigenacao' && geoProfile.etnia && (
-              <div className="space-y-2 text-xs">
-                <div className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="space-y-1.5 text-xs">
+                <div className="text-[10px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" /> Composição Étnica (IBGE)
                 </div>
-                <div className="w-full h-3 rounded-full overflow-hidden flex bg-slate-900 border border-slate-800">
+                <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-slate-900 border border-slate-800">
                   <div style={{ width: `${geoProfile.etnia.pardoPercent}%` }} className="bg-amber-600 h-full" title={`Pardos: ${geoProfile.etnia.pardoPercent}%`} />
                   <div style={{ width: `${geoProfile.etnia.brancoPercent}%` }} className="bg-slate-200 h-full" title={`Brancos: ${geoProfile.etnia.brancoPercent}%`} />
                   <div style={{ width: `${geoProfile.etnia.pretoPercent}%` }} className="bg-amber-950 h-full" title={`Pretos: ${geoProfile.etnia.pretoPercent}%`} />
                   <div style={{ width: `${geoProfile.etnia.indigenaPercent}%` }} className="bg-emerald-600 h-full" title={`Indígenas: ${geoProfile.etnia.indigenaPercent}%`} />
                 </div>
-                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-300">
+                <div className="grid grid-cols-2 gap-1 text-[10.5px] text-slate-300">
                   <span>Pardos: <strong className="text-white">{geoProfile.etnia.pardoPercent}%</strong></span>
                   <span>Brancos: <strong className="text-white">{geoProfile.etnia.brancoPercent}%</strong></span>
                   <span>Pretos: <strong className="text-white">{geoProfile.etnia.pretoPercent}%</strong></span>
@@ -456,34 +508,34 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
 
             {geopoliticaMetric === 'genero' && geoProfile.genero && (
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Mulheres</span>
-                  <strong className="text-rose-400 text-sm block font-mono font-bold">
+                  <strong className="text-rose-400 text-xs sm:text-sm block font-mono font-bold">
                     {geoProfile.genero.mulheresPercent}%
                   </strong>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">{geoProfile.genero.mulheresTotal.toLocaleString('pt-BR')}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">{geoProfile.genero.mulheresTotal.toLocaleString('pt-BR')}</span>
                 </div>
-                <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
+                <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 block">Homens</span>
-                  <strong className="text-sky-400 text-sm block font-mono font-bold">
+                  <strong className="text-sky-400 text-xs sm:text-sm block font-mono font-bold">
                     {geoProfile.genero.homensPercent}%
                   </strong>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">{geoProfile.genero.homensTotal.toLocaleString('pt-BR')}</span>
+                  <span className="text-[9px] text-slate-400 block mt-0.5">{geoProfile.genero.homensTotal.toLocaleString('pt-BR')}</span>
                 </div>
               </div>
             )}
 
             {geopoliticaMetric !== 'miscigenacao' && geopoliticaMetric !== 'genero' && geoProfile.demografia && (
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">População (Censo 2022)</span>
-                  <strong className="text-white text-sm block font-mono font-bold">
+                <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block">População</span>
+                  <strong className="text-white text-xs sm:text-sm block font-mono font-bold">
                     {geoProfile.demografia.populacaoTotal.toLocaleString('pt-BR')}
                   </strong>
                 </div>
-                <div className="p-2 rounded-xl bg-slate-900 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Densidade Demográfica</span>
-                  <strong className="text-cyan-300 text-sm block font-mono font-bold">
+                <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block">Densidade</span>
+                  <strong className="text-cyan-300 text-xs sm:text-sm block font-mono font-bold">
                     {geoProfile.demografia.densidadeHabKm2.toFixed(1)} hab/km²
                   </strong>
                 </div>
@@ -493,48 +545,135 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         )}
 
         {/* ========================================================================= */}
-        {/* MODO 4: AVENTURA / GERAL / MUSICALIDADES                                   */}
+        {/* MODO 4: MODO MUSICALIDADES (Balão Único Consolidado de Rádio e Cultura)    */}
         {/* ========================================================================= */}
-        {!isClimateActive && mainMode !== 'biodiversidade' && mainMode !== 'geopolitica' && guardian && (
-          <>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
+        {mainMode === 'musicalidades' && (
+          <div className="balao-hover-musicalidades space-y-2">
+            {/* Header com Bandeira, Brasão, Estado e Frequência do Dial */}
+            <div className="header-hover-musical flex items-center justify-between border-b border-amber-500/20 pb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {flagUrl && (
+                  <img
+                    src={flagUrl}
+                    alt={`Bandeira de ${stateName}`}
+                    className="w-7 h-5 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
                 {coatOfArmsUrl && (
                   <img
                     src={coatOfArmsUrl}
                     alt={stateName}
-                    className="w-7 h-7 object-contain drop-shadow shrink-0"
+                    className="w-6 h-6 object-contain drop-shadow shrink-0"
                     referrerPolicy="no-referrer"
                   />
                 )}
                 <div className="min-w-0">
-                  <h4 className="font-black text-base sm:text-lg text-slate-100 flex items-center gap-1.5 truncate">
+                  <h4 className="font-black text-sm sm:text-base text-slate-100 flex items-center gap-1.5 truncate">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-400/50">
+                      {stateId}
+                    </span>
+                    <span className="truncate font-serif font-bold text-amber-100">{stateName}</span>
+                  </h4>
+                  <p className="text-[11px] text-amber-300/70 font-medium truncate mt-0.5">Capital: {capital}</p>
+                </div>
+              </div>
+
+              <div className="badge-frequencia-dial px-2 py-0.5 rounded-full bg-amber-950/90 border border-amber-500/40 text-amber-300 font-mono text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>{musicalHeritage?.frequencyDialKHz ? `${musicalHeritage.frequencyDialKHz} kHz` : '840 kHz'}</span>
+              </div>
+            </div>
+
+            {/* Destaque da Era Musical e Emissora */}
+            <div className="card-hover-musical-conteudo p-2 rounded-xl bg-slate-900/90 border border-amber-500/20 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs text-amber-400 font-bold font-serif min-w-0">
+                  <Disc className="w-3.5 h-3.5 text-amber-400 animate-spin-slow shrink-0" />
+                  <span className="truncate">{eraHighlights?.movementName || 'Patrimônio Musical'}</span>
+                </div>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-950 text-amber-300/90 border border-amber-700/40 shrink-0">
+                  {radioEra.decade || radioEra.shortName}
+                </span>
+              </div>
+
+              {eraHighlights?.keyArtists && (
+                <div className="text-[10.5px] text-slate-300 line-clamp-2 leading-relaxed">
+                  <span className="text-amber-300/80 font-semibold">Expoentes: </span>
+                  {eraHighlights.keyArtists}
+                </div>
+              )}
+
+              {musicalHeritage?.famousBroadcastingStation && (
+                <div className="text-[10px] text-slate-400 flex items-center gap-1.5 font-mono truncate pt-1 border-t border-slate-800">
+                  <Radio className="w-3 h-3 text-amber-400/80 shrink-0" />
+                  <span className="truncate">{musicalHeritage.famousBroadcastingStation}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Dica de Ação / Rodapé */}
+            <div className="rodape-acao-musical pt-0.5 flex items-center justify-between text-[10.5px] text-amber-300/90 font-medium">
+              <span className="flex items-center gap-1.5 truncate">
+                <Volume2 className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="truncate">Clique para sintonizar a rádio e isolar</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODO 5: AVENTURA / GERAL                                                  */}
+        {/* ========================================================================= */}
+        {!isClimateActive && mainMode !== 'biodiversidade' && mainMode !== 'geopolitica' && mainMode !== 'musicalidades' && guardian && (
+          <div className="balao-hover-aventura space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {flagUrl && (
+                  <img
+                    src={flagUrl}
+                    alt={`Bandeira de ${stateName}`}
+                    className="w-7 h-5 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                {coatOfArmsUrl && (
+                  <img
+                    src={coatOfArmsUrl}
+                    alt={stateName}
+                    className="w-6 h-6 object-contain drop-shadow shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm sm:text-base text-slate-100 flex items-center gap-1.5 truncate">
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-400/50">
                       {stateId}
                     </span>
                     <span className="truncate font-serif font-bold text-white">{stateName}</span>
                   </h4>
-                  <p className="text-xs text-slate-400 font-medium truncate mt-0.5">Capital: {capital}</p>
+                  <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">Capital: {capital}</p>
                 </div>
               </div>
 
-              <span className="px-2 py-1 rounded-md bg-amber-950/80 border border-amber-500/40 text-amber-300 font-mono text-xs font-bold shrink-0">
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold shrink-0">
                 Guardião
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0">
-                <Shield className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0">
+                <Shield className="w-4 h-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <strong className="text-amber-200 text-sm block truncate font-serif font-bold">
+                <strong className="text-amber-200 text-xs sm:text-sm block truncate font-serif font-bold">
                   {guardian.guardianName}
                 </strong>
-                <span className="text-[11px] text-slate-400 block truncate">{guardian.guardianTitlePt}</span>
+                <span className="text-[10px] text-slate-400 block truncate">{guardian.guardianTitlePt}</span>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </aside>

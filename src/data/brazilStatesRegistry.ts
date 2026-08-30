@@ -344,3 +344,9 @@ export function getStateCoatOfArmsUrl(id: string): string {
   const state = BRAZIL_STATES_REGISTRY[id.toUpperCase()];
   return state ? state.coatOfArmsUrl : '';
 }
+
+export function getStateFlagUrl(id: string): string {
+  const state = BRAZIL_STATES_REGISTRY[id.toUpperCase()];
+  if (state?.flagUrl) return state.flagUrl;
+  return `https://flagcdn.com/w80/br-${id.toLowerCase()}.png`;
+}

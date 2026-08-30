@@ -99,7 +99,7 @@ export function App() {
     });
     setIsAtmosphereActive(true);
   };
-  const [isRadioOpen, setIsRadioOpen] = useState<boolean>(true);
+  const [isRadioOpen, setIsRadioOpen] = useState<boolean>(false);
   const [activeMusicCategory, setActiveMusicCategory] = useState<'state_anthems' | 'top5' | 'national'>('state_anthems');
   const [selectedRadioEraId, setSelectedRadioEraId] = useState<string>('catedral_1930_1940');
   const [focusedStateId, setFocusedStateId] = useState<string | null>(null);

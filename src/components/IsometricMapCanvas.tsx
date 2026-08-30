@@ -63,7 +63,6 @@ import { CompassLoadingScreen } from './map/CompassLoadingScreen';
 import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
 import { VintageRadioPlayer } from './music/VintageRadioPlayer';
-import { MusicalStateMapCard } from './music/MusicalStateMapCard';
 import { vintageRadioEngine } from '../lib/vintageRadioEngine';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
@@ -1213,15 +1212,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       isExpanded,
     });
 
-    let basePan = calculatedPan;
-    if (mainMode === 'musicalidades' && typeof window !== 'undefined' && window.innerWidth >= 640) {
-      const radioShiftX = Math.round((containerRef.current?.clientWidth || window.innerWidth) * 0.25);
-      basePan = { x: basePan.x + radioShiftX, y: basePan.y };
-    }
-
     baseUserZoomRef.current = finalZoom;
-    baseUserPanRef.current = basePan;
-    applyClampedPanZoom(basePan, finalZoom);
+    baseUserPanRef.current = calculatedPan;
+    applyClampedPanZoom(calculatedPan, finalZoom);
 
     // Dispara animação sutil do ponto âncora em vermelho sobre o centro geodésico do Brasil (GO) por 1.0s
     setShowAnchorPoint(true);
@@ -1573,7 +1566,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       {!showNeighbors && mainMode === 'musicalidades' && isRadioOpen && (
         <section
           id="coluna-radio-vintage-independente"
-          className="coluna-radio-vintage-independente painel-split-radio-esquerda fixed left-2 sm:left-3 md:left-4 top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] max-w-[calc(100vw-16px)] z-30 pointer-events-auto flex flex-col min-h-0"
+          className="coluna-radio-vintage-independente painel-split-radio-esquerda fixed left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] z-30 pointer-events-auto flex flex-col min-h-0 cursor-default"
           aria-label="Aparelho e Reprodutor de Rádio Vintage do Brasil"
         >
           <VintageRadioPlayer
@@ -1605,7 +1598,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 7.5.B MODO MUSICALIDADES: Ícone Grande Flutuante para Reabrir o Rádio (Sem background no ícone) */}
       {!showNeighbors && mainMode === 'musicalidades' && !isRadioOpen && onToggleRadio && (
-        <div className="fixed left-3 sm:left-5 top-16 sm:top-18 z-30 pointer-events-auto animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed left-3 sm:left-[80px] top-16 sm:top-18 z-30 pointer-events-auto animate-in fade-in zoom-in-95 duration-200">
           <button
             id="btn-reabrir-radio-flutuante"
             onClick={(e) => {
@@ -1632,22 +1625,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             </div>
           </button>
         </div>
-      )}
-
-      {/* 7.6. Card Flutuante com Informações Musicais e da Era do Estado em Hover/Seleção (Posicionado à Direita sem sobrepor o Rádio) */}
-      {!showNeighbors && mainMode === 'musicalidades' && (
-        <MusicalStateMapCard
-          stateId={hoveredStateId || selectedStateId}
-          selectedRadioEraId={selectedRadioEraId}
-          onTuneState={(stateId) => {
-            setSelectedStateId(stateId);
-            vintageRadioEngine.playTuningDialSfx();
-          }}
-          onClose={() => {
-            setSelectedStateId(null);
-            setHoveredStateId(null);
-          }}
-        />
       )}
 
       {/* 8. Main Stage: Either Interactive 3D Sphere Globe (React Three Fiber) OR Cartographic 2.5D Map */}
@@ -1713,6 +1690,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 focusedClimateStateId={isClimateActive ? selectedClimateStateId : null}
                 focusedBiodiversityStateId={mainMode === 'biodiversidade' ? selectedBiodiversityStateId : null}
                 focusedGeopoliticsStateId={mainMode === 'geopolitica' ? selectedGeopoliticaStateId : null}
+                focusedMusicalStateId={mainMode === 'musicalidades' ? selectedStateId : null}
                 is3D={is3D}
                 onStateEnter={handleStateEnter}
                 onStateLeave={handleStateLeave}
@@ -2207,6 +2185,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         rotateX={is3D ? sphericalAngles.rotateX : 0}
         selectedStateId={selectedStateId || selectedGeopoliticaStateId || selectedBiodiversityStateId || selectedClimateStateId}
         showNeighbors={showNeighbors}
+        selectedRadioEraId={selectedRadioEraId}
       />
     </div>
   );
