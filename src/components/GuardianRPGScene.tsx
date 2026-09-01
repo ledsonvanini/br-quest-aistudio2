@@ -6,6 +6,7 @@ import { getCoatOfArmsUrl } from '../data/coatOfArms';
 import {
   CULTURAL_INVENTORY_BY_STATE,
   CulturalItem,
+  getCulturalItemsForState,
 } from '../data/culturalInventoryData';
 import { CompassBadgeIcon } from './guardian/GuardianCommon';
 import { GuardianDialogueBox, DialogueNode } from './guardian/GuardianDialogueBox';
@@ -16,6 +17,7 @@ import { GuardianInsigniaCelebrationModal } from './guardian/GuardianInsigniaCel
 import { RPGEnvironmentCanvas, EnvironmentMode, ParticleMode } from './guardian/RPGEnvironmentCanvas';
 import { RPGEnvironmentGadgetHUD } from './guardian/RPGEnvironmentGadgetHUD';
 import { STATE_CAPITAL_GEO_DATA } from '../data/stateCapitalGeoData';
+import { getGuardianSpeech } from '../data/guardianPhrases';
 import {
   ArrowLeft,
   Sparkles,
@@ -26,6 +28,7 @@ import {
   Settings,
   Trophy,
   ChevronRight,
+  ChevronLeft,
   Shield,
 } from 'lucide-react';
 
@@ -100,6 +103,28 @@ export const GuardianRPGScene: React.FC<Props> = ({
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const speechTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Responsive check (< 1280x720) & manual toggle state
+  const [isScreenCompact, setIsScreenCompact] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1280 || window.innerHeight < 720;
+    }
+    return false;
+  });
+  const [isSidebarManualCollapsed, setIsSidebarManualCollapsed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const compact = window.innerWidth < 1280 || window.innerHeight < 720;
+      setIsScreenCompact(compact);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isChestModeActive = npcState === 'bau_aberto';
+  const isSidebarEffectiveCollapsed =
+    isChestModeActive || (isSidebarManualCollapsed !== null ? isSidebarManualCollapsed : isScreenCompact);
+
   // User player statistics
   const playerStats = useMemo(() => {
     if (!userProgress)
@@ -115,13 +140,9 @@ export const GuardianRPGScene: React.FC<Props> = ({
     return { level, currentXpInLevel, xpForNextLevel, titlePt, xpPercentage };
   }, [userProgress]);
 
-  // Inventory Items
+  // Inventory Items: Load strictly per state without RS fallback
   const inventoryItems: CulturalItem[] = useMemo(() => {
-    return (
-      CULTURAL_INVENTORY_BY_STATE[guardian.id] ||
-      CULTURAL_INVENTORY_BY_STATE['RS'] ||
-      []
-    );
+    return getCulturalItemsForState(guardian.id);
   }, [guardian.id]);
 
   // Speech function with smooth typewriter effect
@@ -144,26 +165,22 @@ export const GuardianRPGScene: React.FC<Props> = ({
 
   // Initial greeting
   useEffect(() => {
-    speak(
-      guardian.id === 'RS'
-        ? '“Bah, tchê! Sou o Guardião dos Pampas. O que tu desejas desvendar da nossa querência?”'
-        : `“Saudações, nobre viajante! Eu sou ${guardian.guardianName}. O que desejas desvendar?”`
-    );
+    setIsDialogueActive(true);
+    setDialogueNode('root');
+    const speechData = getGuardianSpeech(guardian.id);
+    speak(`${speechData.greeting} ${speechData.regionalCalling}`);
     return () => {
       if (speechTimerRef.current) clearInterval(speechTimerRef.current);
     };
-  }, [guardian]);
+  }, [guardian.id]);
 
   // Restore/open dialogue helper
   const handleRestoreDialogue = () => {
     if (npcState === 'idle') {
       setIsDialogueActive(true);
       setDialogueNode('root');
-      speak(
-        guardian.id === 'RS'
-          ? '“Bah, tchê! Sou o Guardião dos Pampas. O que tu desejas desvendar da nossa querência?”'
-          : `“Saudações, nobre viajante! Eu sou ${guardian.guardianName}. O que desejas desvendar?”`
-      );
+      const speechData = getGuardianSpeech(guardian.id);
+      speak(`${speechData.greeting} O que desejas desvendar sobre ${guardian.stateNamePt}?`);
     }
   };
 
@@ -182,13 +199,15 @@ export const GuardianRPGScene: React.FC<Props> = ({
       if (nextOpen) {
         setNpcState('bau_aberto');
         setIsDialogueActive(false);
+        const speechData = getGuardianSpeech(guardian.id);
+        const cleanGreeting = speechData.greeting.replace(/[“"”]/g, '');
         speak(
-          '“Bah, tchê! Abriste o Baú de Relíquias! Examine cada item com carinho, pois nele mora o fogo sagrado do nosso povo!”'
+          `“${cleanGreeting} Abriste o Baú de Relíquias de ${guardian.stateNamePt}! Examine cada acervo histórico e cultural guardado nesta arca sagrada!”`
         );
       } else {
         setNpcState('idle');
         setIsDialogueActive(true);
-        speak('“Baú guardado com honra! O que mais tu desejas saber da nossa querência?”');
+        speak(`“Baú guardado com honra! O que mais desejas desvendar sobre ${guardian.stateNamePt}?”`);
       }
     }, 250);
   };
@@ -222,7 +241,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
     onUnlockInsignia(insigniaId);
     setCelebrationData({
       titleText: `Insígnia Sagrada de ${guardian.stateNamePt} Conquistada!`,
-      subtitleText: `Você desvendou os enigmas dos pampas e provou sua honra com bravura!`,
+      subtitleText: `Você desvendou os enigmas de ${guardian.stateNamePt} e provou sua honra com bravura!`,
       insigniaName: guardian.insigniaNamePt,
       insigniaIcon: guardian.insigniaIcon,
       xpGained: 300,
@@ -236,7 +255,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
     npcState === 'hinos' ||
     npcState === 'quiz';
 
-  const isToolbarMode = npcState === 'bau_aberto';
+  const isToolbarMode = isSidebarEffectiveCollapsed;
 
   const coatOfArms = getCoatOfArmsUrl(guardian.id);
   const characterImgSrc = guardian.id === 'RS' ? '/RS/itens/w-gaucho.png' : guardian.avatarUrl;
@@ -252,12 +271,30 @@ export const GuardianRPGScene: React.FC<Props> = ({
       {/* ────────────────────────────────────────────────────────── */}
       <aside
         id="sidebar-lateral-detalhes-estado"
-        className={`sidebar-lateral-detalhes-estado h-full bg-slate-950 border-r border-amber-500/30 flex flex-col justify-between z-30 shadow-2xl shrink-0 overflow-y-auto custom-scrollbar-gold transition-all duration-500 ease-in-out ${
+        className={`sidebar-lateral-detalhes-estado h-full bg-slate-950 border-r border-amber-500/30 flex flex-col justify-between z-30 shadow-2xl shrink-0 overflow-y-auto custom-scrollbar-gold transition-all duration-300 ease-in-out relative ${
           isToolbarMode
             ? 'w-[58px] sm:w-[68px] min-w-[58px] sm:min-w-[68px] p-2 items-center'
             : 'w-[250px] sm:w-[270px] min-w-[250px] sm:min-w-[270px] p-3 sm:p-3.5'
         }`}
       >
+        {/* Botão Flutuante de Toggle Rápido da Sidebar */}
+        <button
+          onClick={() => {
+            audioEngine.playSfx('click');
+            setIsSidebarManualCollapsed(!isSidebarEffectiveCollapsed);
+          }}
+          className={`absolute top-3 z-40 p-1 rounded-full bg-slate-900 border border-amber-500/40 text-amber-400 hover:text-amber-200 hover:bg-slate-800 transition shadow-lg cursor-pointer ${
+            isToolbarMode ? 'right-1.5 translate-x-1' : 'right-2'
+          }`}
+          title={isToolbarMode ? 'Expandir Painel Lateral' : 'Minimizar Painel Lateral'}
+        >
+          {isToolbarMode ? (
+            <ChevronRight className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronLeft className="w-3.5 h-3.5" />
+          )}
+        </button>
+
         <div className={`space-y-3 w-full ${isToolbarMode ? 'flex flex-col items-center' : ''}`}>
           {/* 1.1 APP LOGO + SETTINGS */}
           {isToolbarMode ? (
@@ -607,7 +644,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
         {/* CENTER INTERACTION AREA: DIALOGUE OR COMPACT PANELS        */}
         {/* ────────────────────────────────────────────────────────── */}
         {isDialogueActive && npcState === 'idle' && (
-          <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 w-full max-w-lg px-4 z-30 animate-in fade-in zoom-in-95 duration-500">
+          <div className="absolute top-2 sm:top-5 left-1/2 -translate-x-1/2 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl px-3 sm:px-6 z-30 animate-in fade-in zoom-in-95 duration-500">
             <GuardianDialogueBox
               guardian={guardian}
               dialogueNode={dialogueNode}

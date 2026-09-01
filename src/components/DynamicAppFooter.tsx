@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy,
+  Compass,
+  Award,
   Radio,
   Disc,
   Play,
@@ -27,7 +29,9 @@ import {
 } from 'lucide-react';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { GuardianData } from '../types';
-import { MapStateCarousel } from './map/MapStateCarousel';
+import { StateSearchPopover } from './map/StateSearchPopover';
+import { GUARDIANS_DATA } from '../data/guardiansData';
+import { getStateFlagUrl } from '../data/brazilStatesRegistry';
 import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
@@ -37,6 +41,8 @@ import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityDat
 import { biodiversityService } from '../services/biodiversityService';
 import { apiTracker } from '../services/apiTracker';
 import { perfEngine, FpsTelemetry } from '../lib/performanceEngine';
+import { GeopoliticaMetricKey } from '../types/geopolitica';
+import { getGeopoliticsLegendData } from './map/GeopoliticsLegendOverlay';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -78,6 +84,12 @@ interface DynamicAppFooterProps {
 
   // Music context
   onToggleRadio?: () => void;
+
+  // Geopolitics context
+  geopoliticaMetric?: GeopoliticaMetricKey;
+
+  // BrQuest context
+  onOpenBrQuestHub?: () => void;
 }
 
 export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
@@ -113,6 +125,8 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   timeOverride = 'auto',
   onTimeOverrideChange,
   onToggleRadio,
+  geopoliticaMetric = 'miscigenacao',
+  onOpenBrQuestHub,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
   const formattedTimeOnly = useMemo(() => {
@@ -170,31 +184,78 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
         {/* ========================================================================= */}
         <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
           
-          {/* CASO A: Modo Aventura no Mapa (Carrossel Compacto de 5 Estados) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
-            <div className="container-carrossel-compacto-wrapper w-full max-w-[420px] sm:max-w-[480px] flex items-center justify-center">
-              <MapStateCarousel
-                completedStateIds={completedSet}
-                hoveredStateId={hoveredStateId}
-                selectedStateId={selectedStateId}
-                onStateHover={(id) => onStateHover(id)}
-                onStateClick={onStateClick}
-              />
-            </div>
-          )}
+          {/* CASO A & B: Modo Aventura / Cartografia ou Globo 3D (Busca + Ganchos Resumidos) */}
+          {!activeGuardian && activeTab === 'map' && (mainMode === 'aventura' || mainMode === 'globo3d') && (() => {
+            const hGuardian = hoveredStateId ? GUARDIANS_DATA.find((g) => g.id === hoveredStateId) : null;
+            const flagUrl = hoveredStateId ? getStateFlagUrl(hoveredStateId) : null;
 
-          {/* CASO B: Modo Globo 3D no Mapa (Carrossel Compacto de Navegação Orbital) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'globo3d' && (
-            <div className="container-carrossel-globo3d-wrapper w-full max-w-[420px] sm:max-w-[480px] flex items-center justify-center">
-              <MapStateCarousel
-                completedStateIds={completedSet}
-                hoveredStateId={hoveredStateId}
-                selectedStateId={selectedStateId}
-                onStateHover={(id) => onStateHover(id)}
-                onStateClick={onStateClick}
-              />
-            </div>
-          )}
+            return (
+              <div
+                id="painel-aventura-ticker-rodape"
+                className="painel-aventura-ticker-rodape flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-150 max-w-[95vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
+              >
+                {/* 1. Lupa de Pesquisa de Estados com Popover */}
+                <StateSearchPopover
+                  completedStateIds={completedSet}
+                  onStateClick={onStateClick}
+                />
+
+                <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
+
+                {/* 2. Texto Dinâmico Super Resumido (Ganchos de Navegação) */}
+                {hGuardian ? (
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0 animate-in fade-in duration-100">
+                    {flagUrl && (
+                      <img
+                        src={flagUrl}
+                        alt={`Bandeira de ${hGuardian.stateNamePt}`}
+                        className="w-5 h-3.5 object-cover rounded border border-slate-700 shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono text-[11px] font-black border border-amber-400/40 shrink-0">
+                      {hGuardian.id}
+                    </span>
+                    <span className="font-serif font-bold text-slate-100 text-xs truncate">
+                      {hGuardian.stateNamePt}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono truncate">
+                      • Cap: {hGuardian.capitalPt}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0 shrink-0">
+                    <div className="flex items-center gap-1.5 text-amber-300 font-serif font-bold text-xs truncate">
+                      <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">
+                        {mainMode === 'globo3d' ? 'Globo 3D' : 'Cartografia'}
+                      </span>
+                    </div>
+
+                    <span className="text-[11px] font-mono text-slate-400 hidden sm:inline truncate">
+                      27 Estados • Passe o mouse para explorar
+                    </span>
+
+                    {onOpenBrQuestHub && (
+                      <button
+                        id="btn-rodape-abrir-brquest"
+                        type="button"
+                        onClick={() => {
+                          audioEngine.playSfx('click');
+                          onOpenBrQuestHub();
+                        }}
+                        className="btn-iniciar-brquest-rodape flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-slate-950 font-serif font-black text-[10px] shadow-sm transition cursor-pointer shrink-0"
+                        title="Abrir a Grande Prova do Brasil & Desafios Regionais"
+                      >
+                        <Award className="w-3 h-3 text-slate-950 shrink-0" />
+                        <span>BrQuest</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real com Destaque Máx/Mín + Timestamp Atualizado) */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (() => {
@@ -404,6 +465,44 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
               )}
             </div>
           )}
+
+          {/* CASO: Modo Geopolítica no Mapa (Legenda Coroplética Integrada ao Rodapé) */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'geopolitica' && (() => {
+            const legend = getGeopoliticsLegendData(geopoliticaMetric);
+            return (
+              <div
+                id="painel-geopolitica-legenda-rodape"
+                className="painel-geopolitica-legenda-rodape painel-legenda-coropletica flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/95 border border-indigo-500/50 text-xs shadow-lg animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0 max-w-[92vw] sm:max-w-max"
+              >
+                {/* Badge da Métrica Ativa com Ícone */}
+                <div
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-400/60 text-[10px] sm:text-[11px] font-serif text-indigo-200 font-bold shrink-0 shadow-sm"
+                  title={legend.title}
+                >
+                  {legend.icon}
+                  <span className="truncate max-w-[130px] sm:max-w-none">{legend.title}</span>
+                </div>
+
+                <div className="h-3.5 w-px bg-indigo-500/30 shrink-0" />
+
+                {/* Lista de Categorias / Gradientes com Bullets Coloridos */}
+                <div className="secao-itens-legenda-geopolitica flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  {legend.items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-900/90 border border-slate-800 text-[10px] text-slate-200 font-medium shadow-inner shrink-0"
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-black/40"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="whitespace-nowrap text-[9px] sm:text-[10px] font-sans">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* CASO D: Cena do Guardião do Estado Ativo */}
           {activeGuardian && (

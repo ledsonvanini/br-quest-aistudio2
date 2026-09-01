@@ -21,6 +21,7 @@ import {
   Flag,
   Landmark,
   Radio,
+  Music,
   Flame,
   Award,
   Globe,
@@ -36,6 +37,7 @@ import {
 import { ClimateMode } from '../map/ClimatePhenomenaLayer';
 import { TerrainTileProvider, MapVisualStyle, BiodiversityKingdom } from '../../types';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
+import { QuestThemePillar } from '../../data/brQuestQuestionsData';
 import { AppMainMode, MenuTooltipInfo } from '../TopGlobalNavMenu';
 
 interface NavFlyoutMenuProps {
@@ -80,7 +82,7 @@ interface NavFlyoutMenuProps {
   globePinMode?: 'all' | 'compact' | 'none';
   onGlobePinModeChange?: (mode: 'all' | 'compact' | 'none') => void;
   onResetGlobeCamera?: () => void;
-  // Aventura
+  // Aventura & Desafios BrQuest
   visualStyle?: MapVisualStyle;
   onVisualStyleChange?: (style: MapVisualStyle) => void;
   terrainProvider?: TerrainTileProvider;
@@ -90,6 +92,7 @@ interface NavFlyoutMenuProps {
   onHoverRegionFilter?: (regionId: string | null) => void;
   setHoveredMenuTooltip: React.Dispatch<React.SetStateAction<MenuTooltipInfo | null>>;
   onNavigateToSanctuary?: () => void;
+  onOpenBrQuestHub?: (pillar?: QuestThemePillar | 'nacional') => void;
   playerLevel?: number;
   playerXp?: number;
 }
@@ -140,6 +143,7 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
   onHoverRegionFilter,
   setHoveredMenuTooltip,
   onNavigateToSanctuary,
+  onOpenBrQuestHub,
   playerLevel = 1,
   playerXp = 0,
 }) => {
@@ -207,7 +211,7 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
         return { title: 'Globo 3D Orbital', subtitle: 'Satélites NASA & Fronteiras' };
       case 'aventura':
       default:
-        return { title: 'Cartografia & Aventura', subtitle: 'Relevo, Biomas & Histórico' };
+        return { title: 'BrQuest • Avaliação', subtitle: 'Clima, Biomas, Geopolítica & Arte' };
     }
   };
 
@@ -1187,122 +1191,116 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
       )}
 
       {/* ===================================================================== */}
-      {/* 6. MODO AVENTURA & MAPA                                               */}
+      {/* 6. MODO AVENTURA & MAPA (BrQuest & Cartografia)                       */}
       {/* ===================================================================== */}
       {openFlyoutMode === 'aventura' && (
         <>
-          {onTerrainProviderChange && onVisualStyleChange && (
+          {onOpenBrQuestHub && (
             <>
+              {/* Prova Geral / Hub */}
               <button
-                id="btn-subitem-aventura-relevo"
-                onClick={() =>
-                  handleSelectSubitem(() => {
-                    onVisualStyleChange('tiles');
-                    onTerrainProviderChange('shaded_relief');
-                  })
-                }
+                id="btn-subitem-aventura-brquest-geral"
+                onClick={() => handleSelectSubitem(() => onOpenBrQuestHub('nacional'))}
                 {...bindTooltip({
-                  title: 'Relevo Sombreado Altimétrico',
-                  badge: 'Padrão',
-                  description: 'Relevo topográfico sombreado com profundidade geomorfológica do Brasil.',
+                  title: 'Grande Prova do Brasil',
+                  badge: '+300 XP • Geral',
+                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                  description: 'Avaliação multidisciplinar com 10 questões sorteadas de todas as regiões e temas do Brasil.',
                 })}
-                className={`btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
-                  visualStyle === 'tiles' && terrainProvider === 'shaded_relief'
-                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-md scale-[1.02] ring-1 ring-emerald-300'
-                    : 'text-teal-200/80 hover:text-teal-50 hover:bg-teal-950/40'
-                }`}
+                className="btn-subitem-aventura btn-iniciar-brquest w-full flex items-center justify-between gap-2 px-2.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 font-serif font-black text-xs shadow-lg shadow-amber-500/20 hover:brightness-110 transition cursor-pointer scale-[1.02] border border-amber-300"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Mountain className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Relevo Sombreado</span>
+                  <Award className="w-4 h-4 text-slate-950 shrink-0" />
+                  <span className="truncate">⚔️ Grande Prova do Brasil</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 shrink-0">
-                  Altimetria
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-black/30 text-amber-100 shrink-0">
+                  Jogar
                 </span>
               </button>
 
+              <div className={`w-full h-[1px] ${theme.divider} my-0.5`} />
+
+              {/* 1. Prova Clima & Atmosfera */}
               <button
-                id="btn-subitem-aventura-biomas"
-                onClick={() =>
-                  handleSelectSubitem(() => {
-                    onVisualStyleChange('tiles');
-                    onTerrainProviderChange('natural_earth');
-                  })
-                }
+                id="btn-subitem-aventura-prova-clima"
+                onClick={() => handleSelectSubitem(() => onOpenBrQuestHub('clima'))}
                 {...bindTooltip({
-                  title: 'Cores Naturais da Terra',
-                  badge: 'Biomas',
-                  description: 'Coloração verdejante da Amazônia, Mata Atlântica, Cerrado, Caatinga, Pantanal e Pampa.',
+                  title: 'Prova: Clima & Atmosfera',
+                  badge: 'Módulo Clima',
+                  badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40',
+                  description: 'Avalie seus conhecimentos sobre telemetria ECMWF, frentes frias, Rios Voadores e ZCAS.',
                 })}
-                className={`btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
-                  visualStyle === 'tiles' && terrainProvider === 'natural_earth'
-                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-md scale-[1.02] ring-1 ring-emerald-300'
-                    : 'text-teal-200/80 hover:text-teal-50 hover:bg-teal-950/40'
-                }`}
+                className="btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-teal-200/90 hover:text-cyan-100 hover:bg-cyan-950/40 font-medium text-xs transition cursor-pointer border border-transparent hover:border-cyan-500/30"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Sun className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Cores Naturais</span>
+                  <Thermometer className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="truncate">Prova: Clima & Atmosfera</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 shrink-0">
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 shrink-0">
+                  Clima
+                </span>
+              </button>
+
+              {/* 2. Prova Biodiversidade & Biomas */}
+              <button
+                id="btn-subitem-aventura-prova-bio"
+                onClick={() => handleSelectSubitem(() => onOpenBrQuestHub('biodiversidade'))}
+                {...bindTooltip({
+                  title: 'Prova: Biodiversidade & Biomas',
+                  badge: 'Módulo Bio',
+                  badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                  description: 'Teste seus conhecimentos sobre a fauna e flora dos 6 biomas brasileiros e espécies ameaçadas do Livro Vermelho.',
+                })}
+                className="btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-teal-200/90 hover:text-emerald-100 hover:bg-emerald-950/40 font-medium text-xs transition cursor-pointer border border-transparent hover:border-emerald-500/30"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Trees className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="truncate">Prova: Biodiversidade</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 shrink-0">
                   Biomas
                 </span>
               </button>
 
+              {/* 3. Prova Geopolítica & Território */}
               <button
-                id="btn-subitem-aventura-pergaminho"
-                onClick={() =>
-                  handleSelectSubitem(() => {
-                    onVisualStyleChange('tiles');
-                    onTerrainProviderChange('voyager_parchment');
-                  })
-                }
+                id="btn-subitem-aventura-prova-geopolitica"
+                onClick={() => handleSelectSubitem(() => onOpenBrQuestHub('geopolitica'))}
                 {...bindTooltip({
-                  title: 'Pergaminho das Grandes Navegações',
-                  badge: 'Vintage',
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description: 'Textura de papel envelhecido, tons sepia e estética das caravelas do século XVI.',
+                  title: 'Prova: Geopolítica & Território',
+                  badge: 'Módulo IBGE',
+                  badgeColor: 'bg-violet-500/20 text-violet-300 border-violet-400/40',
+                  description: 'Desafio sobre dados oficiais do Censo IBGE 2022, IDHM, densidade demográfica e capitais estaduais.',
                 })}
-                className={`btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
-                  visualStyle === 'tiles' && terrainProvider === 'voyager_parchment'
-                    ? 'bg-amber-600 text-amber-50 font-bold shadow-md scale-[1.02] ring-1 ring-amber-300'
-                    : 'text-teal-200/80 hover:text-teal-50 hover:bg-teal-950/40'
-                }`}
+                className="btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-teal-200/90 hover:text-violet-100 hover:bg-violet-950/40 font-medium text-xs transition cursor-pointer border border-transparent hover:border-violet-500/30"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Scroll className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Pergaminho Histórico</span>
+                  <Building2 className="w-4 h-4 text-violet-400 shrink-0" />
+                  <span className="truncate">Prova: Geopolítica</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 shrink-0">
-                  Séc. XVI
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-violet-500/20 text-violet-300 shrink-0">
+                  Censo
                 </span>
               </button>
 
+              {/* 4. Prova Arte, Cultura & Sabores */}
               <button
-                id="btn-subitem-aventura-coropletico"
-                onClick={() =>
-                  handleSelectSubitem(() => {
-                    onVisualStyleChange('choropleth');
-                    onTerrainProviderChange('muted_gray');
-                  })
-                }
+                id="btn-subitem-aventura-prova-cultura"
+                onClick={() => handleSelectSubitem(() => onOpenBrQuestHub('cultura_musica'))}
                 {...bindTooltip({
-                  title: 'Divisão Político-Administrativa',
-                  badge: 'Coroplético',
-                  description: 'Destaque vetorial nítido das fronteiras dos 27 estados e regiões.',
+                  title: 'Prova: Arte, Cultura & Sabores',
+                  badge: 'Módulo Cultura',
+                  badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-400/40',
+                  description: 'Perguntas sobre patrimônio material e imaterial tombado pelo IPHAN, culinária típica e ritmos musicais.',
                 })}
-                className={`btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
-                  visualStyle === 'choropleth'
-                    ? 'bg-teal-500 text-slate-950 font-bold shadow-md scale-[1.02] ring-1 ring-teal-300'
-                    : 'text-teal-200/80 hover:text-teal-50 hover:bg-teal-950/40'
-                }`}
+                className="btn-subitem-aventura w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-teal-200/90 hover:text-rose-100 hover:bg-rose-950/40 font-medium text-xs transition cursor-pointer border border-transparent hover:border-rose-500/30"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Layers className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Divisão Político-Adm.</span>
+                  <Music className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span className="truncate">Prova: Arte & Cultura</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 shrink-0">
-                  Político
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 shrink-0">
+                  Cultura
                 </span>
               </button>
             </>

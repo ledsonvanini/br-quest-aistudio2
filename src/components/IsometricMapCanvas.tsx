@@ -75,7 +75,6 @@ import { GeopoliticsControlPanel } from './map/GeopoliticsControlPanel';
 import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
-import { GeopoliticsLegendOverlay } from './map/GeopoliticsLegendOverlay';
 import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio } from 'lucide-react';
 
@@ -283,6 +282,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [isGeopoliticaPanelExpanded, setIsGeopoliticaPanelExpanded] = useState<boolean>(true);
   const [geopoliticaScope, setGeopoliticaScope] = useState<GeopoliticaScope>('nacional');
   const [selectedGeopoliticaStateId, setSelectedGeopoliticaStateId] = useState<string | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const geopoliticaMetric = propGeopoliticaMetric !== undefined ? propGeopoliticaMetric : internalGeopoliticaMetric;
   const isGeopoliticaPanelOpen = propIsGeopoliticaPanelOpen !== undefined ? propIsGeopoliticaPanelOpen : internalIsGeopoliticaPanelOpen;
@@ -681,6 +681,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     currentMousePosRef.current = { x: e.clientX, y: e.clientY };
+    setMousePos({ x: e.clientX, y: e.clientY });
 
     if (!isDragging) return;
     if (activeIsolatedStateId) return;
@@ -868,6 +869,28 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
   };
 
+  // Transição suave para a cena do Guardião RPG
+  const handleEnterGuardianScene = useCallback((stateId: string) => {
+    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
+    if (guardian) {
+      setEnteringGuardianName(guardian.stateNamePt);
+      setIsEnteringScene(true);
+      setTransitionMode('entry');
+
+      const centroid = centroids[stateId];
+      if (centroid) {
+        const targetZoom = 2.5;
+        const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
+        setPan(targetPan);
+        setZoom(targetZoom);
+      }
+
+      setTimeout(() => {
+        onSelectGuardian(guardian);
+      }, 1400);
+    }
+  }, [centroids, is3D, onSelectGuardian]);
+
   // State selection: Behavior is customized independently per mode
   const handleStateClick = useCallback((stateId: string) => {
     if (hasMovedRef.current || isDragging || isEnteringScene) return;
@@ -989,7 +1012,14 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 3. MODO AVENTURA / GERAL: Seleciona o estado com suavidade, mantendo navegação livre e cores ativas
+    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, navega diretamente ao Guardião RPG para enfrentar seus desafios
+    if (mainMode === 'aventura') {
+      setSelectedStateId(stateId);
+      handleEnterGuardianScene(stateId);
+      return;
+    }
+
+    // 4. MODO GERAL: Seleciona o estado com suavidade, mantendo navegação livre
     setSelectedStateId(stateId);
     audioEngine.playSfx('click');
 
@@ -1002,30 +1032,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserPanRef.current = targetPan;
       baseUserZoomRef.current = targetZoom;
     }
-  }, [centroids, getContainerWidth, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleRadio, stopInertia, zoom]);
-
-
-  // Transição suave para a cena do Guardião RPG
-  const handleEnterGuardianScene = useCallback((stateId: string) => {
-    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
-    if (guardian) {
-      setEnteringGuardianName(guardian.stateNamePt);
-      setIsEnteringScene(true);
-      setTransitionMode('entry');
-
-      const centroid = centroids[stateId];
-      if (centroid) {
-        const targetZoom = 2.5;
-        const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
-        setPan(targetPan);
-        setZoom(targetZoom);
-      }
-
-      setTimeout(() => {
-        onSelectGuardian(guardian);
-      }, 1400);
-    }
-  }, [centroids, is3D, onSelectGuardian]);
+  }, [activeIsolatedStateId, centroids, getContainerWidth, handleEnterGuardianScene, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleBiodiversityPanel, onToggleGeopoliticaPanel, onToggleObservatorio, onToggleRadio, propIsBiodiversityPanelOpen, propIsGeopoliticaPanelOpen, propIsObservatorioOpen, stopInertia, zoom]);
 
   // Close focus & return camera smoothly to centered full Brazil map
   const handleCloseInspection = useCallback(() => {
@@ -1544,19 +1551,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         />
       )}
 
-      {/* 6. Dedicated Right Side State Details Panel (Adventure Mode only) */}
-      {!showNeighbors && !isClimateActive && mainMode === 'aventura' && (
-        <StateDetailsSidebar
-          activeStateId={hoveredStateId}
-          completedStateIds={completedSet}
-          onSelectGuardian={onSelectGuardian}
-        />
-      )}
-
-      {/* 7. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only) */}
+      {/* 6. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only) */}
       {!showNeighbors && !isClimateActive && mainMode === 'aventura' && (
         <IsolatedLeftGuardianStandee
-          activeStateId={hoveredStateId || selectedStateId}
+          activeStateId={hoveredStateId || selectedStateId || 'DF'}
           completedStateIds={completedSet}
           onSelectGuardian={onSelectGuardian}
         />
@@ -1644,23 +1642,31 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           timeOverride={timeOverride}
           focusedStateId={focusedStateId}
         />
-      ) : (
-        <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
-          <div
-            className="quadro-canvas-camadas absolute left-1/2 top-1/2 pointer-events-auto shrink-0"
-            style={{
-              width: MAP_CANVAS_WIDTH,
-              height: MAP_CANVAS_HEIGHT,
-              transform: `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0px) rotateX(${sphericalAngles.rotateX}deg) rotateY(${sphericalAngles.rotateY}deg) rotateZ(${sphericalAngles.rotateZ}deg) scale(${zoom})`,
-              transformStyle: 'preserve-3d',
-              transformOrigin: '1280px 720px',
-              transition: stageTransition,
-            }}
-          >
+      ) : (() => {
+        const guardianShiftX =
+          !showNeighbors && !isClimateActive && mainMode === 'aventura'
+            ? 120
+            : 0;
+
+        return (
+          <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
+            <div
+              className="quadro-canvas-camadas absolute left-1/2 top-1/2 pointer-events-auto shrink-0"
+              style={{
+                width: MAP_CANVAS_WIDTH,
+                height: MAP_CANVAS_HEIGHT,
+                transform: `translate(-50%, -50%) translate3d(${pan.x + guardianShiftX}px, ${pan.y}px, 0px) rotateX(${sphericalAngles.rotateX}deg) rotateY(${sphericalAngles.rotateY}deg) rotateZ(${sphericalAngles.rotateZ}deg) scale(${zoom})`,
+                transformStyle: 'preserve-3d',
+                transformOrigin: '1280px 720px',
+                transition: stageTransition,
+              }}
+            >
             {/* Layer 0: Seamless Infinite Procedural Ocean with Linear Gradient & Overlay Noise */}
             <ProceduralOceanCanvas
               isPlayingAnimation={true}
-              isParchmentMode={!isClimateActive && terrainProvider === 'voyager_parchment'}
+              isParchmentMode={mainMode === 'aventura' || terrainProvider === 'voyager_parchment'}
+              isBiodiversityMode={mainMode === 'biodiversidade'}
+              isMusicalMode={mainMode === 'musicalidades'}
             />
 
             {/* Layer 0.1: Coastal Waves & Sea Foam Simulation */}
@@ -1902,7 +1908,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             })()}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* 9. Interactive 3D Antique Compass Rose Gizmo HUD (With Inclination & 3D Globe) */}
       {!isGlobe3DActive && !isClimateActive && (
@@ -2154,13 +2161,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         }}
       />
 
-      {/* 13.11. Legenda Coroplética Flutuante do Modo Geopolítica (Ocultada quando vizinhos ativos ou estado isolado) */}
-      {!showNeighbors && mainMode === 'geopolitica' && !selectedGeopoliticaStateId && !selectedStateId && (
-        <div className="absolute left-6 bottom-20 z-40 animate-in fade-in slide-in-from-bottom-2 duration-300 pointer-events-none">
-          <GeopoliticsLegendOverlay activeMetric={geopoliticaMetric} />
-        </div>
-      )}
-
       {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave */}
       <CustomCanvasCursor
         isDragging={isDragging}
@@ -2186,6 +2186,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         selectedStateId={selectedStateId || selectedGeopoliticaStateId || selectedBiodiversityStateId || selectedClimateStateId}
         showNeighbors={showNeighbors}
         selectedRadioEraId={selectedRadioEraId}
+        mousePos={mousePos}
       />
     </div>
   );

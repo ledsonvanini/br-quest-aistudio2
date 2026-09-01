@@ -36,6 +36,7 @@ import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from '../types';
 import { GeopoliticaMetricKey } from '../types/geopolitica';
+import { QuestThemePillar } from '../data/brQuestQuestionsData';
 import { NavFlyoutMenu } from './nav/NavFlyoutMenu';
 
 export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
@@ -139,6 +140,7 @@ interface Props {
   onResetView?: () => void;
   onResetViewIfNotCentered?: () => void;
   hoveredStateId?: string | null;
+  onOpenBrQuestHub?: (pillar?: QuestThemePillar | 'nacional') => void;
 }
 
 export const TopGlobalNavMenu: React.FC<Props> = ({
@@ -164,6 +166,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   showNeighbors = false,
   onToggleNeighbors,
   onNavigateToSanctuary,
+  onOpenBrQuestHub,
   playerLevel = 1,
   playerXp = 0,
   climateMode = 'temperaturas_frentes',
@@ -300,9 +303,17 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   const handleModeButtonClick = (mode: AppMainMode) => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
-    if (mainMode !== mode) {
+    const isChangingMode = mainMode !== mode;
+    if (isChangingMode) {
       onSelectMainMode(mode);
     }
+    
+    // No modo Aventura, ao entrar no modo mantemos o submenu escondido por padrão para valorizar o guardião
+    if (mode === 'aventura' && isChangingMode) {
+      setOpenFlyoutMode(null);
+      return;
+    }
+
     if (openFlyoutMode === mode) {
       setOpenFlyoutMode(null);
     } else {
@@ -483,23 +494,11 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   };
 
   const getAventuraActiveIcon = () => {
-    if (visualStyle === 'choropleth') {
-      return <Layers className="w-5 h-5 transition-transform" />;
-    }
-    if (terrainProvider === 'natural_earth') {
-      return <Sun className="w-5 h-5 transition-transform" />;
-    }
-    if (terrainProvider === 'voyager_parchment') {
-      return <Scroll className="w-5 h-5 transition-transform" />;
-    }
-    return <Mountain className="w-5 h-5 transition-transform" />;
+    return <Award className="w-5 h-5 transition-transform" />;
   };
 
   const getAventuraActiveLabel = () => {
-    if (visualStyle === 'choropleth') return 'Divisão Político-Administrativa';
-    if (terrainProvider === 'natural_earth') return 'Cores Naturais da Terra';
-    if (terrainProvider === 'voyager_parchment') return 'Pergaminho das Grandes Navegações';
-    return 'Relevo Sombreado Altimétrico';
+    return 'Desafios & Avaliação BrQuest';
   };
 
   const bindTooltip = (info: MenuTooltipInfo) => ({
@@ -725,10 +724,10 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 onClick={() => handleModeButtonClick('aventura')}
                 {...bindTooltip({
                   title: `Aventura: ${getAventuraActiveLabel()}`,
-                  badge: mainMode === 'aventura' ? 'Modo Ativo' : 'Jornada Cultural',
-                  badgeColor: 'bg-teal-500/20 text-teal-300 border-teal-400/40',
+                  badge: mainMode === 'aventura' ? 'Modo Ativo' : 'Avaliação BrQuest',
+                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
                   description:
-                    'Clique para abrir o menu flutuante de Aventura: Relevo Altimétrico, Cores Naturais, Pergaminho Vintage, Divisão Política, Filtros Regionais e Santuário.',
+                    'Clique para abrir o menu de Desafios BrQuest: Grande Prova do Brasil, Clima, Biodiversidade, Geopolítica, Arte & Cultura, Filtros Regionais e Santuário.',
                 })}
                 className={`btn-modo-aventura relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                   mainMode === 'aventura'
@@ -961,6 +960,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               }
             }}
             onNavigateToSanctuary={onNavigateToSanctuary}
+            onOpenBrQuestHub={onOpenBrQuestHub}
             playerLevel={playerLevel}
             playerXp={playerXp}
           />

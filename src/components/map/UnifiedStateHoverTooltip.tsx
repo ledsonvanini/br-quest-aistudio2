@@ -38,6 +38,10 @@ import {
   Disc,
   Music,
   Volume2,
+  Utensils,
+  Swords,
+  Award,
+  Compass,
 } from 'lucide-react';
 
 interface UnifiedStateHoverTooltipProps {
@@ -55,6 +59,7 @@ interface UnifiedStateHoverTooltipProps {
   selectedStateId?: string | null;
   showNeighbors?: boolean;
   selectedRadioEraId?: string;
+  mousePos?: { x: number; y: number };
 }
 
 export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> = ({
@@ -72,76 +77,68 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   selectedStateId,
   showNeighbors,
   selectedRadioEraId = 'catedral_1930_1940',
+  mousePos,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [screenPos, setScreenPos] = useState<{ x: number; y: number; isNearTop: boolean } | null>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number>(280);
 
-  // Se houver vizinhos abertos ou estado em isolamento/seleção ativa, desativa tooltip para evitar sobreposição
-  const shouldHide = !hoveredStateId || showNeighbors || Boolean(selectedStateId);
+  // Aparece nos modos Clima, Bio, Geopolítica e Musicalidade ao passar o mouse sobre o estado.
+  // No Modo Aventura, o Guardião à esquerda já exibe as informações, portanto o tooltip sobre o estado fica oculto.
+  const shouldHide = !hoveredStateId || showNeighbors || Boolean(selectedStateId) || mainMode === 'globo3d' || mainMode === 'aventura';
 
-  // Atualizar a posição do tooltip na tela com base no elemento DOM ou projeção analítica
-  useLayoutEffect(() => {
-    if (shouldHide || !hoveredStateId) {
+  useEffect(() => {
+    if (!hoveredStateId || shouldHide) {
       setScreenPos(null);
       return;
     }
 
-    const updatePosition = () => {
-      const stateId = hoveredStateId;
-      const winW = window.innerWidth;
-      const winH = window.innerHeight;
-
-      // 1. Tentar primeiro obter a posição real do Pin / Anchor no DOM
-      const anchorEl =
-        document.getElementById(`anchor-pin-${stateId}`) ||
-        document.getElementById(`pin-geo-${stateId}`) ||
-        document.getElementById(`pin-bio-${stateId}`) ||
-        document.getElementById(`pin-clima-${stateId}`);
-
-      let rawX = 0;
-      let rawY = 0;
-
-      if (anchorEl) {
-        const rect = anchorEl.getBoundingClientRect();
-        rawX = rect.left + rect.width / 2;
-        rawY = rect.top + rect.height / 2;
-      } else {
-        // 2. Projeção analítica do canvas Mercator (2560 x 1440, centro 1280 x 720)
-        const centroid = centroids[stateId];
-        if (!centroid) return;
-
-        const radX = (rotateX * Math.PI) / 180;
-        const dx = (centroid[0] - 1280) * zoom;
-        const dy = (centroid[1] - 720) * zoom * Math.cos(radX);
-
-        rawX = winW / 2 + pan.x + dx;
-        rawY = winH / 2 + pan.y + dy;
+    if (cardRef.current) {
+      const h = cardRef.current.offsetHeight;
+      if (h > 0 && h !== measuredHeight) {
+        setMeasuredHeight(h);
       }
+    }
 
-      // Identificar se o estado está perto do topo (< 280px do topo da tela)
-      const isNearTop = rawY < 280;
+    const cardWidth = typeof window !== 'undefined' && window.innerWidth < 640 ? 300 : 340;
+    const cardHeight = measuredHeight || 280;
 
-      if (cardRef.current) {
-        const h = cardRef.current.offsetHeight;
-        if (h > 50) {
-          setMeasuredHeight(h);
-        }
+    // 1. Se temos posição de mouse em tempo real
+    if (mousePos && mousePos.x > 0 && mousePos.y > 0) {
+      let x = mousePos.x + 20;
+      if (typeof window !== 'undefined' && x + cardWidth > window.innerWidth - 16) {
+        x = Math.max(16, mousePos.x - cardWidth - 20);
       }
+      let y = mousePos.y - 70;
+      if (typeof window !== 'undefined') {
+        y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
+      }
+      setScreenPos({ x, y, isNearTop: y < 130 });
+      return;
+    }
 
-      setScreenPos({ x: rawX, y: rawY, isNearTop });
-    };
+    // 2. Fallback por projeção do centróide do estado
+    const centroid = centroids[hoveredStateId];
+    if (centroid && typeof window !== 'undefined') {
+      const [cx, cy] = centroid;
+      const dx = cx - 1280;
+      const dy = cy - 720;
+      const rad = (rotateX * Math.PI) / 180;
+      const cosX = Math.cos(rad);
+      const projX = window.innerWidth / 2 + (dx * zoom + pan.x);
+      const projY = window.innerHeight / 2 + (dy * cosX * zoom + pan.y);
 
-    updatePosition();
-    const frameId = requestAnimationFrame(updatePosition);
-    window.addEventListener('resize', updatePosition, { passive: true });
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [hoveredStateId, shouldHide, centroids, pan, zoom, rotateX]);
+      let x = projX + 24;
+      if (x + cardWidth > window.innerWidth - 16) {
+        x = Math.max(16, projX - cardWidth - 24);
+      }
+      let y = projY - 70;
+      y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
+      setScreenPos({ x, y, isNearTop: y < 130 });
+    }
+  }, [hoveredStateId, mousePos, centroids, pan, zoom, rotateX, measuredHeight, shouldHide]);
 
-  if (shouldHide || !hoveredStateId || !screenPos) return null;
+  if (shouldHide || !hoveredStateId) return null;
 
   const stateId = hoveredStateId;
   const weather = stateWeather[stateId];
@@ -157,43 +154,17 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   const radioEra = VINTAGE_RADIO_ERAS.find((e) => e.id === selectedRadioEraId) || VINTAGE_RADIO_ERAS[0];
   const eraHighlights = getStateHighlightsForEra(stateId, selectedRadioEraId);
 
-  // Dimensões do card para cálculo de clamping
-  const winW = typeof window !== 'undefined' ? window.innerWidth : 1920;
-  const winH = typeof window !== 'undefined' ? window.innerHeight : 1080;
-  const cardW = isClimateActive && climateMode === 'previsao_tempo' ? Math.min(460, winW - 32) : Math.min(390, winW - 32);
-  const cardH = measuredHeight || (isClimateActive && climateMode === 'previsao_tempo' ? 360 : 260);
-
-  // Cálculo de Posição X com clamping (garante margem e não sobrepõe a sidebar lateral esquerda)
-  const minLeftMargin = winW >= 640 ? 84 : 12;
-  let finalLeft = screenPos.x - cardW / 2;
-  if (finalLeft < minLeftMargin) finalLeft = minLeftMargin;
-  if (finalLeft + cardW > winW - 16) finalLeft = winW - cardW - 16;
-
-  // Cálculo de Posição Y com ancoragem inteligente (topo / fundo) e clamping
-  let finalTop = 0;
-  if (screenPos.isNearTop) {
-    // Estado perto do topo (RR, AP, norte do AM, etc.): renderizar abaixo do pin
-    finalTop = screenPos.y + 20;
-  } else {
-    // Estado perto do centro ou rodapé (RS, SC, SP, etc.): renderizar acima do pin
-    finalTop = screenPos.y - cardH - 20;
-  }
-
-  // Clamping vertical estrito: nunca passar de 12px no topo nem ultrapassar o rodapé
-  if (finalTop < 12) finalTop = 12;
-  if (finalTop + cardH > winH - 16) finalTop = Math.max(12, winH - cardH - 16);
-
   return (
     <aside
       id="balao-universal-estado-hover"
       ref={cardRef}
       role="tooltip"
       aria-live="polite"
-      className="balao-universal-estado-hover fixed pointer-events-none select-none z-[99999] transition-all duration-150 ease-out max-h-[calc(100vh-28px)] overflow-y-auto custom-scrollbar-gold"
+      className="balao-universal-estado-hover fixed max-h-[calc(100vh-120px)] w-[300px] sm:w-[340px] pointer-events-none select-none z-[99999] transition-all duration-150 ease-out overflow-y-auto custom-scrollbar-gold animate-fadeIn"
       style={{
-        left: `${finalLeft}px`,
-        top: `${finalTop}px`,
-        width: `${cardW}px`,
+        left: screenPos ? `${screenPos.x}px` : undefined,
+        top: screenPos ? `${screenPos.y}px` : undefined,
+        opacity: screenPos ? 1 : 0,
         isolation: 'isolate',
         WebkitFontSmoothing: 'antialiased',
       }}
@@ -624,12 +595,13 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         )}
 
         {/* ========================================================================= */}
-        {/* MODO 5: AVENTURA / GERAL                                                  */}
+        {/* MODO 5: AVENTURA / CARTOGRAFIA / BRQUEST                                  */}
         {/* ========================================================================= */}
         {!isClimateActive && mainMode !== 'biodiversidade' && mainMode !== 'geopolitica' && mainMode !== 'musicalidades' && guardian && (
           <div className="balao-hover-aventura space-y-2">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <div className="flex items-center gap-2 min-w-0">
+            {/* Header: Bandeira + Brasão + UF + Nome + Capital + Badge Região */}
+            <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
                 {flagUrl && (
                   <img
                     src={flagUrl}
@@ -651,27 +623,69 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-400/50">
                       {stateId}
                     </span>
-                    <span className="truncate font-serif font-bold text-white">{stateName}</span>
+                    <span className="truncate font-serif font-bold text-amber-100">{stateName}</span>
                   </h4>
-                  <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">Capital: {capital}</p>
+                  <p className="text-[11px] text-amber-300/70 font-medium truncate mt-0.5">
+                    Capital: <strong className="text-slate-200">{capital}</strong>
+                  </p>
                 </div>
               </div>
 
-              <span className="px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold shrink-0">
-                Guardião
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/90 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold shrink-0 shadow-sm">
+                <Compass className="w-3 h-3 text-amber-400" />
+                <span className="capitalize">{guardian.regionId}</span>
+              </div>
+            </div>
+
+            {/* Resumo da Cultura & Culinária (Grade de 2 Colunas no Estilo Clima) */}
+            <div className="grid grid-cols-2 gap-1.5 text-xs font-sans">
+              <div className="flex items-start gap-1.5 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200 min-w-0">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <span className="text-[9.5px] text-amber-300/80 font-bold block uppercase tracking-wider">Cultura</span>
+                  <p className="text-[11px] text-slate-200 font-medium truncate leading-tight">
+                    {guardian.musicAndCulturePt || 'Tradições e Folclore'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-1.5 p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-200 min-w-0">
+                <Utensils className="w-3.5 h-3.5 text-orange-400 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <span className="text-[9.5px] text-orange-300/80 font-bold block uppercase tracking-wider">Gastronomia</span>
+                  <p className="text-[11px] text-slate-200 font-medium truncate leading-tight">
+                    {guardian.typicalDishPt || 'Pratos Típicos Regionais'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Card do Guardião do Estado */}
+            <div className="p-2 rounded-xl bg-slate-900/95 border border-amber-500/30 flex items-center justify-between gap-2 shadow-inner">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-300 shrink-0 shadow-sm">
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <strong className="text-amber-200 text-xs block truncate font-serif font-bold">
+                    {guardian.guardianName}
+                  </strong>
+                  <span className="text-[10px] text-slate-400 block truncate leading-tight">{guardian.guardianTitlePt}</span>
+                </div>
+              </div>
+
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-600/30 shrink-0 font-bold">
+                +100 XP
               </span>
             </div>
 
-            <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0">
-                <Shield className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <strong className="text-amber-200 text-xs sm:text-sm block truncate font-serif font-bold">
-                  {guardian.guardianName}
-                </strong>
-                <span className="text-[10px] text-slate-400 block truncate">{guardian.guardianTitlePt}</span>
-              </div>
+            {/* Rodapé com Convite / Call to Action */}
+            <div className="rodape-acao-aventura pt-0.5 flex items-center justify-between text-[10.5px] text-amber-300 font-medium border-t border-slate-800/80">
+              <span className="flex items-center gap-1.5 truncate">
+                <Swords className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="truncate">Clique para viajar e aceitar o Desafio</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             </div>
           </div>
         )}

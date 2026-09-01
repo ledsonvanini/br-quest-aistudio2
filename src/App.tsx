@@ -6,6 +6,7 @@ import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { AboutInfoModal } from './components/AboutInfoModal';
+import { BrQuestHubModal } from './components/quest/BrQuestHubModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
 import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from './types';
 import { GeopoliticaMetricKey } from './types/geopolitica';
@@ -17,6 +18,7 @@ import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
 import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFetchTimestamp } from './services/climateService';
 import { apiTracker } from './services/apiTracker';
+import { QuestThemePillar } from './data/brQuestQuestionsData';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -27,6 +29,8 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
   const [isAboutInfoOpen, setIsAboutInfoOpen] = useState<boolean>(false);
+  const [isBrQuestHubOpen, setIsBrQuestHubOpen] = useState<boolean>(false);
+  const [brQuestInitialPillar, setBrQuestInitialPillar] = useState<QuestThemePillar | 'nacional' | null>(null);
   const [showFps, setShowFps] = useState<boolean>(false);
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
@@ -126,13 +130,13 @@ export function App() {
     setCenterMapTrigger((prev) => prev + 1);
 
     if (newMode === 'aventura') {
-      // Modo Aventura Padrão: Apenas nuvens ativas; textura shaded_relief; sem vizinhos; astro em auto
-      setTerrainProvider('shaded_relief');
+      // Modo Aventura Padrão: Pergaminho histórico séc XVI, nuvens e ondas clássicas
+      setTerrainProvider('voyager_parchment');
       setVisualStyle('tiles');
       setChoroplethSubTheme('regions');
       setIsCloudsActive(true);
       setIsRainSimActive(false);
-      setIsWavesActive(false);
+      setIsWavesActive(true);
       setIsAtmosphereActive(true);
       setCelestialTimeOverride('auto');
     } else if (newMode === 'clima') {
@@ -278,6 +282,29 @@ export function App() {
         xp: newXp,
         level: newLevel,
         completedStateIds: updatedStates,
+        totalCorrectAnswers: prev.totalCorrectAnswers + correctCount,
+        totalQuestsPlayed: prev.totalQuestsPlayed + 1,
+      };
+    });
+  };
+
+  const handleBrQuestComplete = (xpEarned: number, correctCount: number) => {
+    setProgress((prev) => {
+      const newXp = prev.xp + xpEarned;
+      const oldLevel = calculateLevel(prev.xp).level;
+      const newLevel = calculateLevel(newXp).level;
+
+      if (newLevel > oldLevel) {
+        audioEngine.playSfx('levelUp');
+        showNotification(`🎉 Nível Superior! Você alcançou o Nível ${newLevel}!`);
+      } else if (xpEarned > 0) {
+        showNotification(`⚔️ Desafio BrQuest Concluído! +${xpEarned} XP (${correctCount} acertos)`);
+      }
+
+      return {
+        ...prev,
+        xp: newXp,
+        level: newLevel,
         totalCorrectAnswers: prev.totalCorrectAnswers + correctCount,
         totalQuestsPlayed: prev.totalQuestsPlayed + 1,
       };
@@ -466,6 +493,10 @@ export function App() {
             setCenterMapTrigger((prev) => prev + 1);
           }}
           hoveredStateId={hoveredStateId}
+          onOpenBrQuestHub={(pillar) => {
+            setBrQuestInitialPillar(pillar || null);
+            setIsBrQuestHubOpen(true);
+          }}
         />
       )}
 
@@ -597,6 +628,24 @@ export function App() {
         onClose={() => setIsAboutInfoOpen(false)}
       />
 
+      {/* BrQuest Hub Modal: Grande Prova do Brasil & Desafios Multidisciplinares */}
+      <BrQuestHubModal
+        isOpen={isBrQuestHubOpen}
+        initialPillar={brQuestInitialPillar}
+        onClose={() => {
+          setIsBrQuestHubOpen(false);
+          setBrQuestInitialPillar(null);
+        }}
+        onSelectGuardian={(g) => {
+          setIsBrQuestHubOpen(false);
+          setBrQuestInitialPillar(null);
+          handleSelectGuardian(g);
+        }}
+        onGainXp={(xp) => handleBrQuestComplete(xp, Math.round(xp / 75))}
+        playerLevel={progress.level}
+        playerXp={progress.xp}
+      />
+
       {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS Swap | APIs ] */}
       <DynamicAppFooter
         mainMode={mainMode}
@@ -639,6 +688,8 @@ export function App() {
         timeOverride={celestialTimeOverride}
         onTimeOverrideChange={setCelestialTimeOverride}
         onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+        geopoliticaMetric={geopoliticaMetric}
+        onOpenBrQuestHub={() => setIsBrQuestHubOpen(true)}
       />
     </div>
   );

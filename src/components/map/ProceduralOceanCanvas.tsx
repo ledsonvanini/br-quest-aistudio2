@@ -3,6 +3,8 @@ import React, { useMemo } from 'react';
 interface ProceduralOceanCanvasProps {
   isPlayingAnimation?: boolean;
   isParchmentMode?: boolean;
+  isBiodiversityMode?: boolean;
+  isMusicalMode?: boolean;
 }
 
 // Procedural seamless fine paper grain noise (clean, neutral, non-distorting)
@@ -13,17 +15,27 @@ export const SEAMLESS_NOISE_SVG = FINE_PAPER_NOISE_SVG;
 /**
  * ProceduralOceanCanvas
  * South Atlantic ocean backdrop with radial gradient transition
- * and subtle, non-intrusive paper grain overlay.
+ * and subtle, non-intrusive paper grain overlay tailored to each mode.
  */
 export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
   isParchmentMode = false,
+  isBiodiversityMode = false,
+  isMusicalMode = false,
 }) => {
   const oceanGradient = useMemo(() => {
     if (isParchmentMode) {
       return 'radial-gradient(circle 2200px at 50% 50%, #fbf2df 0%, #eedbb8 25%, #dfc59b 50%, #b08f58 75%, #8c6a38 100%)';
     }
+    if (isBiodiversityMode) {
+      // Oceano com tons esmeralda-marinho e recifes costeiros profundos
+      return 'radial-gradient(circle 2400px at 50% 50%, #0d4a46 0%, #083b38 22%, #052c29 45%, #031d1b 70%, #010f0e 90%)';
+    }
+    if (isMusicalMode) {
+      // Atmosfera vintage acústica de auditório de rádio com madeira e veludo escuro
+      return 'radial-gradient(circle 2400px at 50% 50%, #2e1808 0%, #201004 22%, #170a02 45%, #0e0501 70%, #050200 90%)';
+    }
     return 'radial-gradient(circle 2400px at 50% 50%, #0e568e 0%, #0a3d68 22%, #062846 45%, #03172b 70%, #020d1c 90%)';
-  }, [isParchmentMode]);
+  }, [isBiodiversityMode, isMusicalMode, isParchmentMode]);
 
   return (
     <div
