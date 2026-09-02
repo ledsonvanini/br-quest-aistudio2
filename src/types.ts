@@ -70,12 +70,16 @@ export interface UserProgress {
   completedStateIds: string[];
   unlockedInsigniaIds: string[];
   readPergamentIds: string[];
+  exploredDialogueIds?: string[];
   unlockedCodexIds: string[];
   dailyStreak: number;
   lastDailyDate: string | null;
   totalCorrectAnswers: number;
   totalQuestsPlayed: number;
   soundEnabled: boolean;
+  stateScores?: Record<string, number>;
+  campaignsCompleted?: Record<string, boolean>;
+  quickDuelsWon?: Record<string, number>;
 }
 
 export type Language = 'pt' | 'en';

@@ -1,3 +1,5 @@
+import { shuffleQuestionOptions } from './questionShuffle';
+
 export type QuestThemePillar =
   | 'clima'
   | 'biodiversidade'
@@ -619,6 +621,238 @@ export const BR_QUEST_QUESTIONS: BrQuestQuestion[] = [
     explanationPt: 'A Floresta com Araucária cobria vastas áreas do Paraná, Santa Catarina e Rio Grande do Sul, produzindo o pinhão, alimento vital da fauna nativa como a gralha-azul.',
     explanationEn: 'The Araucaria Forest dominated the southern highlands, producing pine nuts (pinhão) that sustain wildlife such as the Azure Jay.',
     sourceRef: 'ICMBio'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - CLIMA
+  {
+    id: 'clima_03',
+    scope: 'nacional',
+    pillar: 'clima',
+    difficulty: 'aventureiro',
+    questionPt: 'Qual fenômeno meteorológico de inverno na Região Sul e Sudeste ocorre quando o ar frio e denso fica retido próximo ao solo, dificultando a dispersão de poluentes em grandes metrópoles?',
+    questionEn: 'Which winter meteorological phenomenon traps cool dense air near the ground in major cities, impeding pollutant dispersion?',
+    optionsPt: ['Inversão Térmica', 'Rios Voadores', 'El Niño Oscilação Sul', 'Ciclone Extratropical'],
+    optionsEn: ['Thermal Inversion', 'Flying Rivers', 'El Niño Southern Oscillation', 'Extratropical Cyclone'],
+    correctIndex: 0,
+    explanationPt: 'A inversão térmica ocorre em noites frias de inverno quando uma camada de ar quente se sobrepõe ao ar frio da superfície, bloqueando as correntes de convecção.',
+    explanationEn: 'Thermal inversion traps cold air beneath a warm layer, concentrating smog near urban surfaces.',
+    sourceRef: 'INMET / CPTEC'
+  },
+  {
+    id: 'clima_04',
+    scope: 'nacional',
+    pillar: 'clima',
+    difficulty: 'aventureiro',
+    questionPt: 'Como se denomina a incursão de massas de ar polar atlânticas que avançam pelas planícies do interior e derrubam bruscamente as temperaturas na Amazônia ocidental (Acre e Rondônia)?',
+    questionEn: 'What is the term for polar air masses that penetrate deep into the western Amazon, causing sharp temperature drops in Acre and Rondônia?',
+    optionsPt: ['Friagem', 'Geada Negra', 'Vento Minuano', 'Tromba d’Água'],
+    optionsEn: ['Friagem', 'Black Frost', 'Minuano Wind', 'Waterspout'],
+    correctIndex: 0,
+    explanationPt: 'A Friagem é a queda acentuada de temperatura nos estados do sudoeste amazônico provocada pelo avanço desimpedido da Massa Polar Atlântica pela Bacia do Prata.',
+    explanationEn: 'Friagem refers to abrupt cold snaps in the Amazon caused by polar air pushing north along the Andes.',
+    sourceRef: 'INMET'
+  },
+  {
+    id: 'clima_05',
+    scope: 'nacional',
+    pillar: 'clima',
+    difficulty: 'mestre',
+    questionPt: 'Durante eventos severos de "El Niño" (aquecimento anômalo das águas do Oceano Pacífico Equatorial), qual é o impacto pluviométrico típico no Brasil?',
+    questionEn: 'During intense El Niño events, what is the typical precipitation impact across Brazil?',
+    optionsPt: [
+      'Secas severas no Norte/Nordeste e chuvas volumosas acima da média no Sul',
+      'Neve generalizada no Nordeste e seca extrema no Sul',
+      'Chuvas torrenciais diárias na Caatinga e seca no Rio Grande do Sul',
+      'Neutralidade completa sem alteração pluviométrica'
+    ],
+    optionsEn: [
+      'Severe drought in North/Northeast and above-average torrential rains in the South',
+      'Widespread snow in Northeast and extreme drought in South',
+      'Daily rain in Caatinga and drought in South',
+      'Complete neutrality with no precipitation anomaly'
+    ],
+    correctIndex: 0,
+    explanationPt: 'O El Niño intensifica frentes frias estacionárias no Sul (provocando enchentes) e enfraquece a convecção tropical no Norte e Nordeste (causando estiagens severas).',
+    explanationEn: 'El Niño causes severe rainfall deficits in North/Northeast and triggers extreme precipitation in southern Brazil.',
+    sourceRef: 'CPTEC / INPE'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - BIODIVERSIDADE
+  {
+    id: 'bio_03',
+    scope: 'nacional',
+    pillar: 'biodiversidade',
+    difficulty: 'iniciante',
+    questionPt: 'Qual o maior felino das Américas e terceiro maior do mundo, predador de topo com mordida capaz de perfurar carapaças de tartarugas e jacarés no Pantanal e na Amazônia?',
+    questionEn: 'Which is the largest feline in the Americas and third largest globally, a top predator able to crush turtle shells in the Pantanal and Amazon?',
+    optionsPt: ['Onça-pintada (Panthera onca)', 'Jaguatirica', 'Lobo-guará', 'Suçuarana'],
+    optionsEn: ['Jaguar (Panthera onca)', 'Ocelot', 'Maned Wolf', 'Cougar'],
+    correctIndex: 0,
+    explanationPt: 'A onça-pintada é o maior predador terrestre do Brasil, essencial para o equilíbrio ecológico das populações de herbívoros nos biomas neotropicais.',
+    explanationEn: 'The jaguar is the apex predator of South American forests and wetlands, pivotal for trophic balance.',
+    sourceRef: 'ICMBio'
+  },
+  {
+    id: 'bio_04',
+    scope: 'nacional',
+    pillar: 'biodiversidade',
+    difficulty: 'aventureiro',
+    questionPt: 'Qual primata endêmico da Mata Atlântica fluminense, com pelos dourados e juba marcante, tornou-se símbolo nacional de esforços bem-sucedidos de conservação contra a extinção?',
+    questionEn: 'Which golden-furred primate endemic to Rio de Janeiro’s Atlantic Forest became a national icon of successful conservation?',
+    optionsPt: ['Mico-leão-dourado (Leontopithecus rosalia)', 'Macaco-prego', 'Bugio-ruivo', 'Muriqui-do-sul'],
+    optionsEn: ['Golden Lion Tamarin', 'Capuchin Monkey', 'Brown Howler', 'Southern Muriqui'],
+    correctIndex: 0,
+    explanationPt: 'O mico-leão-dourado esteve à beira da extinção na década de 1970 e hoje conta com populações recuperadas em reservas biológicas como Poço das Antas (RJ).',
+    explanationEn: 'The Golden Lion Tamarin bounced back from critical endangerment thanks to decades of habitat corridor restoration.',
+    sourceRef: 'Associação Mico-Leão-Dourado / ICMBio'
+  },
+  {
+    id: 'bio_05',
+    scope: 'nacional',
+    pillar: 'biodiversidade',
+    difficulty: 'aventureiro',
+    questionPt: 'O Tuiuiú (Jabiru mycteria), com mais de 1,40 m de altura, bico comprido e pescoço preto com faixa vermelha, é a ave símbolo de qual ecossistema brasileiro?',
+    questionEn: 'The Jabiru stork (Tuiuiú), standing over 1.40 m tall with a black neck and red collar, is the symbolic bird of which Brazilian wetland?',
+    optionsPt: ['Pantanal', 'Manguezais de Santos', 'Restingas de Maricá', 'Campos de Cima da Serra'],
+    optionsEn: ['Pantanal', 'Santos Mangroves', 'Maricá Sandbanks', 'Highland Grasslands'],
+    correctIndex: 0,
+    explanationPt: 'O Tuiuiú constrói ninhos gigantescos no topo de árvores pantaneiras (como piúvas) e alimenta-se de peixes nas lagoas sazonais da planície pantaneira.',
+    explanationEn: 'The Jabiru is the emblem of the Pantanal wetlands, building massive nests atop tall trees.',
+    sourceRef: 'Embrapa Pantanal'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - DEMOGRAFIA & IBGE
+  {
+    id: 'demo_03',
+    scope: 'nacional',
+    pillar: 'demografia',
+    difficulty: 'aventureiro',
+    questionPt: 'De acordo com o Censo Demográfico do IBGE 2022, qual foi a população total recenseada do Brasil e qual tendência demográfica foi evidenciada?',
+    questionEn: 'According to the 2022 IBGE Census, what was Brazil’s total recorded population and dominant demographic shift?',
+    optionsPt: [
+      'Aproximadamente 203 milhões de habitantes, com desaceleração do crescimento e envelhecimento populacional',
+      'Exatos 350 milhões de habitantes, com explosão de nascimentos rurais',
+      '120 milhões de habitantes, com redução pela metade da população urbana',
+      '500 milhões de habitantes, tornando o Brasil o país mais populoso da Terra'
+    ],
+    optionsEn: [
+      'Approx. 203 million residents, featuring growth deceleration and rapid population aging',
+      '350 million residents with a rural birth boom',
+      '120 million residents with urban halving',
+      '500 million residents, making Brazil the most populous nation'
+    ],
+    correctIndex: 0,
+    explanationPt: 'O Censo 2022 registrou 203.062.512 habitantes, com a menor taxa de crescimento anual da história (0,52% ao ano) e aceleração do envelhecimento demográfico.',
+    explanationEn: 'The 2022 Census counted 203 million Brazilians, confirming fertility decline and an aging demographic pyramid.',
+    sourceRef: 'Censo Demográfico IBGE 2022'
+  },
+  {
+    id: 'demo_04',
+    scope: 'nacional',
+    pillar: 'demografia',
+    difficulty: 'mestre',
+    questionPt: 'No Censo 2022, pela primeira vez o IBGE divulgou dados detalhados da população quilombola em todo o país. Qual estado brasileiro concentra o maior número absoluto de quilombolas?',
+    questionEn: 'In the 2022 Census, IBGE published comprehensive data on Quilombola populations. Which Brazilian state has the largest absolute Quilombola population?',
+    optionsPt: ['Bahia', 'Rio Grande do Sul', 'Acre', 'Santa Catarina'],
+    optionsEn: ['Bahia', 'Rio Grande do Sul', 'Acre', 'Santa Catarina'],
+    correctIndex: 0,
+    explanationPt: 'A Bahia lidera o país com quase 400 mil quilombolas (quase 30% do total nacional de 1,32 milhão de quilombolas recenseados pelo IBGE).',
+    explanationEn: 'Bahia is home to the largest Quilombola community in Brazil, representing nearly 30% of the nationwide total.',
+    sourceRef: 'IBGE / Censo Quilombola 2022'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - GEOPOLÍTICA & FRONTEIRAS
+  {
+    id: 'geo_pol_02',
+    scope: 'nacional',
+    pillar: 'geopolitica',
+    difficulty: 'aventureiro',
+    questionPt: 'O Brasil possui mais de 16.800 km de fronteiras terrestres e faz limite com 10 dos 12 países da América do Sul. Quais são os únicos dois países sul-americanos que NÃO fazem fronteira com o Brasil?',
+    questionEn: 'Brazil borders 10 of the 12 South American nations along 16,800 km of frontiers. Which two South American countries DO NOT share borders with Brazil?',
+    optionsPt: ['Chile e Equador', 'Argentina e Uruguai', 'Colômbia e Venezuela', 'Peru e Bolívia'],
+    optionsEn: ['Chile and Ecuador', 'Argentina and Uruguay', 'Colombia and Venezuela', 'Peru and Bolivia'],
+    correctIndex: 0,
+    explanationPt: 'O Chile e o Equador são as únicas nações da América do Sul continental que não possuem limites territoriais diretos com o Brasil.',
+    explanationEn: 'Only Chile and Ecuador do not share land boundaries with Brazil in South America.',
+    sourceRef: 'Ministério das Relações Exteriores / IBGE'
+  },
+  {
+    id: 'geo_pol_03',
+    scope: 'nacional',
+    pillar: 'geopolitica',
+    difficulty: 'mestre',
+    questionPt: 'O conceito estratégico de "Amazônia Azul", cunhado pela Marinha do Brasil, refere-se a:',
+    questionEn: 'The strategic concept of "Blue Amazon" (Amazônia Azul), coined by the Brazilian Navy, designates:',
+    optionsPt: [
+      'A imensa Zona Econômica Exclusiva marítima de 4,5 milhões de km² rica em petróleo, biodiversidade e rotas comerciais',
+      'Uma rede de rios subterrâneos de água doce no Aquífero Guarani',
+      'Uma nova unidade de conservação no Rio Negro',
+      'Um tratado militar espacial entre países da OTAN'
+    ],
+    optionsEn: [
+      'The 4.5 million km² maritime Exclusive Economic Zone abundant in petroleum, biodiversity, and trade routes',
+      'Underground freshwater rivers in Guarani Aquifer',
+      'A new national park on the Rio Negro',
+      'A space treaty among NATO allies'
+    ],
+    correctIndex: 0,
+    explanationPt: 'A Amazônia Azul engloba a plataforma continental e águas jurisdicionais brasileiras, de onde provêm 95% do petróleo e 95% do comércio exterior marítimo do Brasil.',
+    explanationEn: 'The Blue Amazon is Brazil’s vast maritime territory, critical for energy security and international shipping lanes.',
+    sourceRef: 'Marinha do Brasil / SECIRM'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - CULTURA & MÚSICA
+  {
+    id: 'cult_03',
+    scope: 'nacional',
+    pillar: 'cultura_musica',
+    difficulty: 'iniciante',
+    questionPt: 'Em 1958, o lançamento da canção "Chega de Saudade", composta por Tom Jobim e Vinicius de Moraes e gravada por João Gilberto com sua batida sincopada no violão, inaugurou qual movimento da música brasileira?',
+    questionEn: 'In 1958, the song "Chega de Saudade" with João Gilberto’s syncopated guitar rhythm launched which world-renowned Brazilian music movement?',
+    optionsPt: ['Bossa Nova', 'Tropicália', 'Manguebeat', 'Samba-Enredo'],
+    optionsEn: ['Bossa Nova', 'Tropicália', 'Manguebeat', 'Samba-Enredo'],
+    correctIndex: 0,
+    explanationPt: 'A Bossa Nova combinou a sofisticação harmônica com a poesia urbana e a batida única de violão, tornando canções como "Garota de Ipanema" conhecidas mundialmente.',
+    explanationEn: 'Bossa Nova merged jazz harmonies with samba syncopation, revolutionizing global music aesthetics.',
+    sourceRef: 'Acervo Instituto Tom Jobim'
+  },
+  {
+    id: 'cult_04',
+    scope: 'nacional',
+    pillar: 'cultura_musica',
+    difficulty: 'aventureiro',
+    questionPt: 'Qual gênio do bandolim e flauta é considerado o pai do Choro moderno brasileiro, autor de clássicos instrumentais imortais como "Carinhoso" e "Lamentos"?',
+    questionEn: 'Which genius of the flute and sax is considered the father of modern Brazilian Choro, composer of "Carinhoso" and "Lamentos"?',
+    optionsPt: ['Pixinguinha (Alfredo da Rocha Vianna Filho)', 'Chiquinha Gonzaga', 'Cartola', 'Noel Rosa'],
+    optionsEn: ['Pixinguinha', 'Chiquinha Gonzaga', 'Cartola', 'Noel Rosa'],
+    correctIndex: 0,
+    explanationPt: 'Pixinguinha estruturou as linhas de contraponto do Choro brasileiro e regeu o conjunto Os Oito Batutas, sendo homenageado no Dia Nacional do Choro (23 de abril).',
+    explanationEn: 'Pixinguinha defined modern Choro arrangements, blending European ballroom melodies with Afro-Brazilian counterpoints.',
+    sourceRef: 'Fundação Nacional de Artes (Funarte)'
+  },
+  {
+    id: 'cult_05',
+    scope: 'nacional',
+    pillar: 'cultura_musica',
+    difficulty: 'aventureiro',
+    questionPt: 'Na década de 1930 a 1950, qual emissora estatal no Rio de Janeiro foi o epicentro irradiador da música e dos ídolos populares em todo o território nacional durante a "Era de Ouro"?',
+    questionEn: 'From the 1930s to the 1950s, which state broadcaster in Rio was the cultural powerhouse of Brazil’s "Golden Age of Radio"?',
+    optionsPt: ['Rádio Nacional do Rio de Janeiro', 'Rádio Guaíba', 'Rádio Tupi de São Paulo', 'Rádio Clube do Pará'],
+    optionsEn: ['Rádio Nacional do Rio de Janeiro', 'Rádio Guaíba', 'Rádio Tupi of São Paulo', 'Rádio Clube of Pará'],
+    correctIndex: 0,
+    explanationPt: 'A Rádio Nacional unificou o imaginário brasileiro com seus programas de auditório, radionovelas e orquestras ao vivo com Carmélia Alves, Orlando Silva e Emilinha Borba.',
+    explanationEn: 'Rádio Nacional connected the entire nation via shortwave, establishing standard cultural benchmarks.',
+    sourceRef: 'Empresa Brasil de Comunicação (EBC)'
+  },
+  // NOVAS QUESTÕES EXPANDIDAS - GEOGRAFIA & RELEVO
+  {
+    id: 'geo_relevo_02',
+    scope: 'nacional',
+    pillar: 'geografia',
+    difficulty: 'aventureiro',
+    questionPt: 'Qual rio 100% brasileiro, carinhosamente apelidado de "Velho Chico" e "Rio da Integração Nacional", nasce na Serra da Canastra (MG) e deságua no Oceano Atlântico entre AL e SE?',
+    questionEn: 'Which entirely domestic river, dubbed "Velho Chico" and "River of National Integration", originates in Minas Gerais and empties into the Atlantic between Alagoas and Sergipe?',
+    optionsPt: ['Rio São Francisco', 'Rio Amazonas', 'Rio Tocantins', 'Rio Paraná'],
+    optionsEn: ['São Francisco River', 'Amazon River', 'Tocantins River', 'Paraná River'],
+    correctIndex: 0,
+    explanationPt: 'O Rio São Francisco atravessa o semiárido nordestino com vazão perene e foi vital para o povoamento do interior e a transposição de águas.',
+    explanationEn: 'The São Francisco River is the lifeblood of the Brazilian interior, connecting the Southeast to the arid Northeast.',
+    sourceRef: 'ANA (Agência Nacional de Águas)'
   }
 ];
 
@@ -652,5 +886,5 @@ export function getRandomQuizBatch(count = 5, filter?: { scope?: QuestScope; pil
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   
-  return pool.slice(0, count);
+  return pool.slice(0, count).map((q) => shuffleQuestionOptions(q));
 }

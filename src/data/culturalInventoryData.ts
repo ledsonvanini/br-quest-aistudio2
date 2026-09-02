@@ -28,6 +28,8 @@ export interface CulturalItem {
   curiosity: string;
   guardianQuote: string;
   rarity: 'comum' | 'raro' | 'epico' | 'sagrado';
+  classificationLabel?: string;
+  xpReward?: number;
   archive: HistoricalArchiveData;
   references: ArchiveReference[];
 }
@@ -525,7 +527,21 @@ import { GUARDIANS_DATA } from './guardiansData';
 export function getCulturalItemsForState(stateId: string): CulturalItem[] {
   const custom = CULTURAL_INVENTORY_BY_STATE[stateId];
   if (custom && custom.length > 0) {
-    return custom;
+    return custom.map((item) => ({
+      ...item,
+      xpReward:
+        item.xpReward ||
+        (item.rarity === 'sagrado' ? 100 : item.rarity === 'epico' ? 75 : item.rarity === 'raro' ? 50 : 35),
+      classificationLabel:
+        item.classificationLabel ||
+        (item.rarity === 'sagrado'
+          ? 'Relíquia Sagrada'
+          : item.rarity === 'epico'
+          ? 'Patrimônio Épico'
+          : item.rarity === 'raro'
+          ? 'Tesouro Regional Raro'
+          : 'Costume Tradicional'),
+    }));
   }
 
   const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
@@ -541,6 +557,8 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
       title: `Manuscrito: ${guardian.literaryPergament.title}`,
       category: 'historia',
       categoryLabel: 'Literatura & Memória Histórica',
+      classificationLabel: 'Manuscrito Sagrado',
+      xpReward: 100,
       icon: '📜',
       shortDesc: `Obra célebre de ${guardian.literaryPergament.author} que preserva a identidade de ${guardian.stateNamePt}.`,
       fullDesc: `“${guardian.literaryPergament.excerpt}” — Este fragmento histórico representa a alma do povo de ${guardian.stateNamePt}, resgatando a memória cívica e cultural preservada pelos guardiões.`,
@@ -578,7 +596,49 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
     });
   }
 
-  // 2. Gastronomia Tradicional
+  // 2. Heróis e Líderes Históricos
+  if (guardian.famousIcons && guardian.famousIcons.length > 0) {
+    const mainHero = guardian.famousIcons[0];
+    items.push({
+      id: `${guardian.id.toLowerCase()}_herois`,
+      stateId: guardian.id,
+      title: `Heróis da Pátria: ${mainHero}`,
+      category: 'personagens',
+      categoryLabel: 'Epopeia & Heróis da Pátria',
+      classificationLabel: 'Patrimônio da Honra',
+      xpReward: 75,
+      icon: '⚔️',
+      shortDesc: `A coragem e o pioneirismo de ${mainHero} e ícones históricos de ${guardian.stateNamePt}.`,
+      fullDesc: `Em solo de ${guardian.stateNamePt}, personalidades históricas como ${guardian.famousIcons.join(', ')} lutaram pela liberdade, cidadania e identidade brasileira. Suas ações ecoam nos manuais de história cívica nacional.`,
+      historicalContext: guardian.loreStoryPt,
+      culturalImpact: `Reverenciados em monumentos cívicos, praças públicas e livros de história de todo o país.`,
+      keyTakeaways: [
+        `Personalidades: ${guardian.famousIcons.slice(0, 3).join(', ')}`,
+        `Legado: Construção da cidadania e bravura histórica`,
+        `Status: Inscritos no Panteão da Pátria e da Liberdade`,
+      ],
+      curiosity: `Muitos dos heróis de ${guardian.stateNamePt} também inspiram canções, desfiles cívicos e poemas épicos.`,
+      guardianQuote: `“Honrar a coragem dos bravos do passado é o dever de todo guardião cívico!”`,
+      rarity: 'epico',
+      archive: {
+        archiveName: `Arquivo Histórico Estadual e Museu Cívico de ${guardian.stateNamePt}`,
+        imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop',
+        imageCaption: `Galeria cívica dos líderes e vultos históricos de ${guardian.stateNamePt}.`,
+        period: 'Séculos XVIII ao XX',
+        curatorNotes: 'Patrimônio da Memória Republicana e Cívica.',
+      },
+      references: [
+        {
+          title: `Panteão da Pátria - Livro dos Heróis e Heroínas da Pátria`,
+          institution: 'Governo Federal do Brasil',
+          url: 'http://www.planalto.gov.br/',
+          description: 'Registro oficial de vultos cívicos nacionais.',
+        },
+      ],
+    });
+  }
+
+  // 3. Gastronomia Tradicional
   if (guardian.typicalDishPt) {
     items.push({
       id: `${guardian.id.toLowerCase()}_culinaria`,
@@ -586,6 +646,8 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
       title: `Tradição Culinária: ${guardian.typicalDishPt}`,
       category: 'culinaria',
       categoryLabel: 'Gastronomia & Sabores',
+      classificationLabel: 'Patrimônio Gastronômico',
+      xpReward: 75,
       icon: '🍲',
       shortDesc: `Os sabores ancestrais e temperos tradicionais que definem a identidade de ${guardian.stateNamePt}.`,
       fullDesc: `A gastronomia típica de ${guardian.stateNamePt}, representada com destaque por ${guardian.typicalDishPt}, sintetiza influências indígenas, africanas e europeias em ricas panelas e fogões tradicionais.`,
@@ -617,7 +679,7 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
     });
   }
 
-  // 3. Fauna e Flora / Natureza Sagrada
+  // 4. Fauna e Flora / Natureza Sagrada
   if (guardian.faunaPt || guardian.floraPt) {
     items.push({
       id: `${guardian.id.toLowerCase()}_natureza`,
@@ -625,6 +687,8 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
       title: `Natureza Sagrada: ${guardian.faunaPt || guardian.floraPt}`,
       category: 'fauna_flora',
       categoryLabel: 'Biodiversidade & Biomas',
+      classificationLabel: 'Tesouro Natural',
+      xpReward: 50,
       icon: '🌿',
       shortDesc: `A exuberância biológica de ${guardian.stateNamePt}: fauna (${guardian.faunaPt}) e flora (${guardian.floraPt}).`,
       fullDesc: `As paisagens naturais de ${guardian.stateNamePt} abrigam espécies nobres como ${guardian.faunaPt} e formações vegetais como ${guardian.floraPt}, fundamentais para o equilíbrio ecológico e mítico do Brasil.`,
@@ -656,7 +720,7 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
     });
   }
 
-  // 4. Música, Folclore & Manifestações
+  // 5. Música, Folclore & Manifestações
   if (guardian.musicAndCulturePt) {
     items.push({
       id: `${guardian.id.toLowerCase()}_cultura`,
@@ -664,6 +728,8 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
       title: `Celebração: ${guardian.musicAndCulturePt}`,
       category: 'tradicoes',
       categoryLabel: 'Música & Festividades Populares',
+      classificationLabel: 'Patrimônio Imaterial Festivo',
+      xpReward: 75,
       icon: '🎭',
       shortDesc: `A maior manifestação folclórica e festiva de ${guardian.stateNamePt}: ${guardian.musicAndCulturePt}.`,
       fullDesc: `Com ritmos vibrantes, cortejos e trajes suntuosos, a celebração de ${guardian.musicAndCulturePt} expressa a devoção, alegria e talento artístico do povo de ${guardian.stateNamePt}.`,
@@ -690,6 +756,47 @@ export function getCulturalItemsForState(stateId: string): CulturalItem[] {
           institution: 'Instituto do Patrimônio Histórico e Artístico Nacional',
           url: 'http://portal.iphan.gov.br/',
           description: 'Registro das grandes celebrações populares do Brasil.',
+        },
+      ],
+    });
+  }
+
+  // 6. Hino Sagrado & Lírica Cívica
+  if (guardian.anthemTitle && guardian.anthemLyricsPt) {
+    items.push({
+      id: `${guardian.id.toLowerCase()}_hino`,
+      stateId: guardian.id,
+      title: `Hino Sagrado: ${guardian.anthemTitle}`,
+      category: 'tradicoes',
+      categoryLabel: 'Lírica & Hino Estadual',
+      classificationLabel: 'Canto Cívico Sagrado',
+      xpReward: 50,
+      icon: '🎵',
+      shortDesc: `Os versos que inflamam o orgulho e honra do povo de ${guardian.stateNamePt}.`,
+      fullDesc: `“${guardian.anthemLyricsPt}” — O hino oficial de ${guardian.stateNamePt} condensa a memória de suas batalhas, a majestade de sua terra e o compromisso cívico com a pátria brasileira.`,
+      historicalContext: `Composto por mestres da música e da poesia regional, oficializado pelos poderes cívicos do estado.`,
+      culturalImpact: `Entoado em cerimônias cívicas solenes, escolas e eventos comunitários como reverência à história do estado.`,
+      keyTakeaways: [
+        `Título Oficial: ${guardian.anthemTitle}`,
+        `Significado: Glória cívica e reverência à pátria`,
+        `Trecho Épico: ${guardian.anthemLyricsPt.slice(0, 80)}...`,
+      ],
+      curiosity: `A partitura e a poesia são preservadas em acervos memoriais e executadas pelas bandas marciais de honra.`,
+      guardianQuote: `“Ao ouvir as notas do nosso hino, todo cidadão sente no coração a grandeza de ${guardian.stateNamePt}!”`,
+      rarity: 'raro',
+      archive: {
+        archiveName: `Arquivo Histórico e Musical de ${guardian.stateNamePt}`,
+        imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800&auto=format&fit=crop',
+        imageCaption: `Partituras e registros originais do hino cívico de ${guardian.stateNamePt}.`,
+        period: 'Século XIX ao XX',
+        curatorNotes: 'Patrimônio Musical e Cívico.',
+      },
+      references: [
+        {
+          title: `Biblioteca Nacional - Hinologia Cívica Brasileira`,
+          institution: 'Fundação Biblioteca Nacional',
+          url: 'https://bndigital.bn.gov.br/',
+          description: 'Hinos oficiais e partituras dos estados federados.',
         },
       ],
     });

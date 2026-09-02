@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { GuardianData } from '../../types';
+import { GuardianData, UserProgress } from '../../types';
 import { getCoatOfArmsUrl } from '../../data/coatOfArms';
 import { getStateFlagUrl } from '../../data/brazilStatesRegistry';
 import { STATE_CAPITAL_GEO_DATA } from '../../data/stateCapitalGeoData';
@@ -27,7 +27,14 @@ import {
   Sword,
   Users,
   Coffee,
+  CheckCircle2,
+  Trophy,
 } from 'lucide-react';
+import {
+  getStateDialogueTopics,
+  getStateDialogueXpSummary,
+  DialogueCuriosityTopic,
+} from '../../data/explorationXpRegistry';
 
 export type DialogueNode =
   | 'root'
@@ -59,6 +66,9 @@ export interface DialogueOption {
   id: string;
   label: string;
   desc?: string;
+  category?: string;
+  xpReward?: number;
+  isExplored?: boolean;
   icon: React.ElementType;
   action: () => void;
   highlight?: boolean;
@@ -74,6 +84,12 @@ interface Props {
   onStartQuiz: () => void;
   onSpeak: (text: string) => void;
   onCloseDialogue?: () => void;
+  exploredDialogueIds?: string[];
+  onExploreDialogueTopic?: (topicId: string, xpEarned: number) => void;
+  chestTotalXp?: number;
+  chestEarnedXp?: number;
+  userProgress?: UserProgress;
+  totalUserXp?: number;
 }
 
 export const GuardianDialogueBox: React.FC<Props> = ({
@@ -86,6 +102,12 @@ export const GuardianDialogueBox: React.FC<Props> = ({
   onStartQuiz,
   onSpeak,
   onCloseDialogue,
+  exploredDialogueIds = [],
+  onExploreDialogueTopic,
+  chestTotalXp,
+  chestEarnedXp,
+  userProgress,
+  totalUserXp,
 }) => {
   const [activeTab, setActiveTab] = useState<'geral' | 'historia' | 'cultura' | 'natureza'>('geral');
   const speech = useMemo(() => getGuardianSpeech(guardian.id), [guardian.id]);
@@ -106,6 +128,39 @@ export const GuardianDialogueBox: React.FC<Props> = ({
     return targetDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }, [guardian.id]);
 
+  // Curiosidades e XP individualizado de diálogo para o estado
+  const dialogueSummary = useMemo(() => {
+    return getStateDialogueXpSummary(guardian, exploredDialogueIds);
+  }, [guardian, exploredDialogueIds]);
+
+  const allTopics = useMemo(() => {
+    return getStateDialogueTopics(guardian);
+  }, [guardian]);
+
+  const historyTopics = useMemo(() => allTopics.filter((t) => t.tabKey === 'historia'), [allTopics]);
+  const cultureTopics = useMemo(() => allTopics.filter((t) => t.tabKey === 'cultura'), [allTopics]);
+  const natureTopics = useMemo(() => allTopics.filter((t) => t.tabKey === 'natureza'), [allTopics]);
+
+  const getTopicIcon = (topic: DialogueCuriosityTopic) => {
+    if (topic.category.includes('Documento') || topic.category.includes('Memória')) return BookOpen;
+    if (topic.category.includes('Herói') || topic.category.includes('Pioneiro') || topic.category.includes('Epopeia')) return Sword;
+    if (topic.category.includes('Traje') || topic.category.includes('Insígnia') || topic.category.includes('Identidade')) return Shield;
+    if (topic.category.includes('Culinária') || topic.category.includes('Gastronomia')) return Utensils;
+    if (topic.category.includes('Festa') || topic.category.includes('Patrimônio') || topic.category.includes('Celebração')) return Sparkles;
+    if (topic.category.includes('Hino') || topic.category.includes('Símbolo')) return Feather;
+    if (topic.category.includes('Fauna')) return Leaf;
+    if (topic.category.includes('Flora') || topic.category.includes('Botânica')) return Leaf;
+    if (topic.category.includes('Bioma') || topic.category.includes('Território') || topic.category.includes('Geografia')) return Compass;
+    return BookOpen;
+  };
+
+  const handleSelectTopic = (topic: DialogueCuriosityTopic) => {
+    if (onExploreDialogueTopic && !exploredDialogueIds.includes(topic.id)) {
+      onExploreDialogueTopic(topic.id, topic.xpReward);
+    }
+    onSpeak(topic.speechText);
+  };
+
   const handleTabChange = (tab: 'geral' | 'historia' | 'cultura' | 'natureza') => {
     audioEngine.playSfx('click');
     setActiveTab(tab);
@@ -124,45 +179,26 @@ export const GuardianDialogueBox: React.FC<Props> = ({
     }
   };
 
-  // Opções interativas dinâmicas de acordo com o nó atual de diálogo para TODOS os estados
+  // Opções interativas dinâmicas com classificação e XP individualizados
   const contextualOptions: DialogueOption[] = useMemo(() => {
+    const chestLabel =
+      chestEarnedXp !== undefined && chestTotalXp !== undefined
+        ? `📖 Abrir Baú de Relíquias de ${guardian.stateNamePt} (XP ${chestEarnedXp}/${chestTotalXp})`
+        : `📖 Abrir Baú de Relíquias de ${guardian.stateNamePt} (+50 XP)`;
+
     switch (dialogueNode) {
       case 'historia':
         return [
-          {
-            id: 'opt_hist_doc',
-            label: `📜 O que revela o manuscrito "${guardian.literaryPergament?.title || 'Memória Cívica'}"?`,
-            desc: `Obra de ${guardian.literaryPergament?.author || 'autores célebres'} preservada no acervo`,
-            icon: BookOpen,
-            action: () => {
-              setDialogueNode('historia_doc');
-              onSpeak(
-                `“${guardian.literaryPergament?.excerpt || guardian.loreStoryPt} — ${guardian.literaryPergament?.contextPt || ''}”`
-              );
-            },
-          },
-          {
-            id: 'opt_hist_heroes',
-            label: `⚔️ Quem foram os grandes heróis e ícones de ${guardian.stateNamePt}?`,
-            desc: `Legado de ${guardian.famousIcons?.slice(0, 2).join(' e ') || 'líderes históricos'}`,
-            icon: Sword,
-            action: () => {
-              setDialogueNode('historia_heroes');
-              onSpeak(
-                `“Em nosso solo floresceu o talento e a coragem de ${guardian.famousIcons?.join(', ')}. ${guardian.loreStoryPt}”`
-              );
-            },
-          },
-          {
-            id: 'opt_hist_garb',
-            label: `🛡️ Qual é o significado dos trajes e símbolos do Guardião?`,
-            desc: guardian.garbDescriptionPt,
-            icon: Shield,
-            action: () => {
-              setDialogueNode('historia_garb');
-              onSpeak(`“${guardian.garbDescriptionPt} Cada adorno representa um elo sagrado com nossa história!”`);
-            },
-          },
+          ...historyTopics.map((topic) => ({
+            id: topic.id,
+            label: topic.title,
+            desc: topic.desc,
+            category: topic.category,
+            xpReward: topic.xpReward,
+            isExplored: exploredDialogueIds.includes(topic.id),
+            icon: getTopicIcon(topic),
+            action: () => handleSelectTopic(topic),
+          })),
           {
             id: 'opt_back_hist_root',
             label: '← Voltar às Boas-Vindas',
@@ -185,7 +221,7 @@ export const GuardianDialogueBox: React.FC<Props> = ({
         return [
           {
             id: 'opt_study_item_h',
-            label: `📖 Abrir Baú de Relíquias de ${guardian.stateNamePt} (+50 XP)`,
+            label: chestLabel,
             desc: 'Ver documentos, acervo oficial e fontes históricas',
             icon: BookOpen,
             highlight: true,
@@ -215,43 +251,20 @@ export const GuardianDialogueBox: React.FC<Props> = ({
 
       case 'cultura':
         return [
-          {
-            id: 'opt_cult_prato',
-            label: `🍲 Qual o segredo da culinária típica (${guardian.typicalDishPt})?`,
-            desc: 'Ingredientes, técnicas ancestrais e sabor tradicional',
-            icon: Utensils,
-            action: () => {
-              setDialogueNode('cultura_prato');
-              onSpeak(
-                `“Nossa mesa é consagrada por ${guardian.typicalDishPt}! Uma fusão inigualável de saberes dos povos originários e colonizadores!”`
-              );
-            },
-          },
-          {
-            id: 'opt_cult_festa',
-            label: `🎭 Como se celebra "${guardian.musicAndCulturePt}"?`,
-            desc: 'Ritmos, vestimentas, autos populares e patrimônio imaterial',
-            icon: Sparkles,
-            action: () => {
-              setDialogueNode('cultura_festa');
-              onSpeak(
-                `“A celebração de ${guardian.musicAndCulturePt} é onde a alma de ${guardian.stateNamePt} pulsa com mais vigor e alegria!”`
-              );
-            },
-          },
-          {
-            id: 'opt_cult_hino',
-            label: `🎵 O que cantam os versos do Hino Estadual?`,
-            desc: guardian.anthemTitle,
-            icon: Feather,
-            action: () => {
-              setDialogueNode('cultura_hino');
-              onSpeak(`“‘${guardian.anthemLyricsPt}’ — Cantamos com o peito aberto em reverência à nossa terra!”`);
-            },
-          },
+          ...cultureTopics.map((topic) => ({
+            id: topic.id,
+            label: topic.title,
+            desc: topic.desc,
+            category: topic.category,
+            xpReward: topic.xpReward,
+            isExplored: exploredDialogueIds.includes(topic.id),
+            icon: getTopicIcon(topic),
+            action: () => handleSelectTopic(topic),
+          })),
           {
             id: 'opt_back_cult_root',
             label: '← Voltar às Boas-Vindas',
+            desc: 'Retornar ao diálogo principal',
             icon: RotateCcw,
             action: () => {
               setDialogueNode('root');
@@ -270,7 +283,7 @@ export const GuardianDialogueBox: React.FC<Props> = ({
         return [
           {
             id: 'opt_study_item_c',
-            label: `📖 Abrir Baú e Estudar Acervo Cultural (+50 XP)`,
+            label: chestLabel,
             desc: 'Consulte registros culturais e históricos com fotos e fichas',
             icon: BookOpen,
             highlight: true,
@@ -299,43 +312,20 @@ export const GuardianDialogueBox: React.FC<Props> = ({
 
       case 'natureza':
         return [
-          {
-            id: 'opt_nat_fauna',
-            label: `🐾 Quais as espécies emblemáticas da fauna (${guardian.faunaPt})?`,
-            desc: 'Mamíferos, aves nobres e animais guardiões dos biomas',
-            icon: Leaf,
-            action: () => {
-              setDialogueNode('natureza_fauna');
-              onSpeak(
-                `“Em nossas matas e rios vivem ${guardian.faunaPt}. São seres sagrados protegidos pela sabedoria dos guardiões!”`
-              );
-            },
-          },
-          {
-            id: 'opt_nat_flora',
-            label: `🌿 Quais os tesouros da flora nativa (${guardian.floraPt})?`,
-            desc: 'Árvores monumentais, flores raras e plantas medicinais',
-            icon: Leaf,
-            action: () => {
-              setDialogueNode('natureza_flora');
-              onSpeak(
-                `“Nossa flora é abençoada por ${guardian.floraPt}, moldando paisagens que encantam o mundo!”`
-              );
-            },
-          },
-          {
-            id: 'opt_nat_bioma',
-            label: `🏞️ Como é a geografia e o bioma de ${guardian.stateNamePt}?`,
-            desc: speech.welcomeDetails.natureTitle,
-            icon: Compass,
-            action: () => {
-              setDialogueNode('natureza_bioma');
-              onSpeak(`“${speech.welcomeDetails.natureText}”`);
-            },
-          },
+          ...natureTopics.map((topic) => ({
+            id: topic.id,
+            label: topic.title,
+            desc: topic.desc,
+            category: topic.category,
+            xpReward: topic.xpReward,
+            isExplored: exploredDialogueIds.includes(topic.id),
+            icon: getTopicIcon(topic),
+            action: () => handleSelectTopic(topic),
+          })),
           {
             id: 'opt_back_nat_root',
             label: '← Voltar às Boas-Vindas',
+            desc: 'Retornar ao diálogo principal',
             icon: RotateCcw,
             action: () => {
               setDialogueNode('root');
@@ -348,10 +338,13 @@ export const GuardianDialogueBox: React.FC<Props> = ({
       case 'natureza_fauna':
       case 'natureza_flora':
       case 'natureza_bioma':
+      case 'natureza_quero':
+      case 'natureza_araucaria':
+      case 'natureza_cavalo':
         return [
           {
             id: 'opt_study_item_n',
-            label: `📖 Abrir Baú e Estudar a Biodiversidade (+50 XP)`,
+            label: chestLabel,
             desc: 'Consultar fichas da fauna, flora e unidades de conservação',
             icon: BookOpen,
             highlight: true,
@@ -381,7 +374,21 @@ export const GuardianDialogueBox: React.FC<Props> = ({
       default:
         return [];
     }
-  }, [dialogueNode, guardian, onOpenChest, onSpeak, setDialogueNode, speech]);
+  }, [
+    dialogueNode,
+    guardian,
+    onOpenChest,
+    onSpeak,
+    setDialogueNode,
+    speech,
+    historyTopics,
+    cultureTopics,
+    natureTopics,
+    exploredDialogueIds,
+    onExploreDialogueTopic,
+    chestEarnedXp,
+    chestTotalXp,
+  ]);
 
   return (
     <div
@@ -394,9 +401,10 @@ export const GuardianDialogueBox: React.FC<Props> = ({
       <div className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow" />
       <div className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow" />
 
-      {/* 1. CABEÇALHO DO DIÁLOGO: Brasão, Estado, Capital, Horário e Guardião */}
+      {/* 1. CABEÇALHO DO DIÁLOGO: Brasão, Estado, Capital, Horário, Guardião e Destaque Padronizado de XP */}
       <div className="cabecalho-dialogo-guardiao flex items-center justify-between gap-3 pb-3 border-b border-amber-500/30 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-3">
-        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        {/* Coluna Esquerda: Brasão + Informações em linhas (com quebra natural para a próxima linha) */}
+        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
           <div className="w-12 h-14 sm:w-14 sm:h-16 rounded-xl bg-slate-900 border-2 border-amber-400 p-1 flex items-center justify-center shadow-lg shrink-0 overflow-hidden relative">
             <img
               src={coatUrl || flagUrl}
@@ -409,41 +417,82 @@ export const GuardianDialogueBox: React.FC<Props> = ({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/50">
+            {/* Linha Superior: [UF] • Região/Capital • Hora Local */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1 text-xs leading-tight">
+              <span className="font-mono font-black text-[11px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/50 shrink-0">
                 {guardian.id}
               </span>
-              <span className="text-xs text-slate-300 flex items-center gap-1 font-serif">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-slate-300 flex items-center gap-1 font-serif">
+                <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 Região {guardian.regionId.toUpperCase()} • Capital {guardian.capitalPt}
               </span>
-              <span className="text-xs text-amber-300/90 flex items-center gap-1 font-mono ml-auto">
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-amber-300/90 flex items-center gap-1 font-mono">
+                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 {localTimeString} (Hora Local)
               </span>
             </div>
-            <div className="flex flex-wrap items-baseline gap-2.5">
-              <h2 className="font-serif font-black text-lg sm:text-2xl text-amber-200 truncate">
+
+            {/* Linha Inferior: Nome do Estado e Título do Guardião (quebra para próxima linha) */}
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 leading-snug">
+              <h2 className="font-serif font-black text-base sm:text-xl md:text-2xl text-amber-200">
                 {guardian.stateNamePt}
               </h2>
               <span className="text-slate-500 text-xs hidden sm:inline">•</span>
-              <p className="font-serif text-xs sm:text-sm text-amber-400/90 font-semibold truncate flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+              <p className="font-serif text-xs sm:text-sm text-amber-400/90 font-semibold flex items-center gap-1.5 break-words">
+                <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 {guardian.guardianTitlePt}
               </p>
             </div>
           </div>
         </div>
 
-        {onCloseDialogue && (
-          <button
-            onClick={onCloseDialogue}
-            className="btn-fechar-painel text-slate-400 hover:text-amber-300 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-400 transition cursor-pointer shrink-0 ml-2"
-            title="Recolher Caixa de Diálogo"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        {/* Coluna Direita: PAINEL DE SOMA TOTAL DE XP + BOTÃO FECHAR (Fixos na mesma linha) */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="painel-destaque-soma-xp flex items-center gap-2 sm:gap-2.5 bg-gradient-to-r from-amber-950/90 via-slate-900 to-amber-950/90 px-2.5 sm:px-3.5 py-1.5 rounded-2xl border-2 border-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.3)] shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+              <Sparkles className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-300 animate-pulse" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] uppercase font-mono font-bold tracking-wider text-amber-300/90 flex items-center gap-1 leading-none">
+                <Trophy className="w-2.5 h-2.5 text-amber-400" />
+                Soma Total de XP
+              </span>
+              <span className="text-xs sm:text-sm md:text-base font-mono font-black text-amber-200 tracking-tight leading-tight mt-0.5">
+                {(userProgress?.xp ?? totalUserXp ?? 0).toLocaleString('pt-BR')}{' '}
+                <span className="text-[10px] text-amber-400 font-bold">XP</span>
+              </span>
+            </div>
+
+            <div className="h-6 w-px bg-amber-500/40 mx-0.5 hidden sm:block" />
+
+            <div className="hidden sm:flex flex-col text-right">
+              <span className="text-[9px] uppercase font-mono font-bold text-slate-400 leading-none">
+                Curiosidades ({dialogueSummary.exploredCount}/{dialogueSummary.totalTopics})
+              </span>
+              <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                <span className="text-xs font-mono font-black text-amber-300">
+                  XP {dialogueSummary.earnedXp}/{dialogueSummary.totalXp}
+                </span>
+                <div className="w-10 sm:w-12 h-1.5 bg-slate-800 rounded-full overflow-hidden shrink-0">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-300"
+                    style={{ width: `${dialogueSummary.percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {onCloseDialogue && (
+            <button
+              onClick={onCloseDialogue}
+              className="btn-fechar-painel text-slate-400 hover:text-amber-300 p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-400 transition cursor-pointer shrink-0"
+              title="Recolher Caixa de Diálogo"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 2. ABAS DE TÓPICOS DO DIÁLOGO (Boas-Vindas, História & Heróis, Cultura & Sabores, Natureza & Bioma) */}
@@ -550,6 +599,29 @@ export const GuardianDialogueBox: React.FC<Props> = ({
                         {opt.desc}
                       </div>
                     )}
+                    {opt.category && opt.xpReward !== undefined && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="badge-classificacao-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-400/30 font-bold">
+                          [{opt.category}]
+                        </span>
+                        <span
+                          className={`badge-xp-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold flex items-center gap-1 ${
+                            opt.isExplored
+                              ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+                              : 'bg-amber-400 text-slate-950 border-yellow-200 shadow-sm'
+                          }`}
+                        >
+                          {opt.isExplored ? (
+                            <>
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <span>Conhecido (+{opt.xpReward} XP)</span>
+                            </>
+                          ) : (
+                            <span>+{opt.xpReward} XP</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <ChevronRight
@@ -601,7 +673,9 @@ export const GuardianDialogueBox: React.FC<Props> = ({
                 Baú de Relíquias
               </div>
               <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full font-mono font-bold">
-                +50 XP / Doc
+                {chestEarnedXp !== undefined && chestTotalXp !== undefined
+                  ? `XP ${chestEarnedXp}/${chestTotalXp}`
+                  : '+50 XP / Doc'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 font-medium leading-snug">

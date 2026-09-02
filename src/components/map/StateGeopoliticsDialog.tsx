@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { GeopoliticaMetricKey, StateGeopoliticsProfile } from '../../types/geopolitica';
 import { BRAZIL_STATES_GEOPOLITICS } from '../../data/geopoliticaData';
-import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
+import { BRAZIL_STATES_REGISTRY, getStateFlagUrl } from '../../data/brazilStatesRegistry';
 import { audioEngine } from '../../lib/audioSynth';
 
 interface StateGeopoliticsDialogProps {
@@ -91,18 +91,26 @@ export const StateGeopoliticsDialog: React.FC<StateGeopoliticsDialogProps> = ({
       {/* CABEÇALHO COM BRASÃO, NOME E POLÍTICA */}
       <div className="px-3.5 sm:px-4 py-3 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border-b border-cyan-500/30 flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900 border border-cyan-500/40 p-1 flex items-center justify-center shrink-0 shadow-md">
-            {registry?.coatOfArmsUrl ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {getStateFlagUrl(profile.stateId) && (
               <img
-                src={registry.coatOfArmsUrl}
-                alt={profile.stateName}
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
+                src={getStateFlagUrl(profile.stateId)}
+                alt={`Bandeira ${profile.stateName}`}
+                referrerPolicy="no-referrer"
+                className="w-9 h-6 sm:w-10 sm:h-7 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
               />
-            ) : (
-              <span className="text-xs font-bold font-mono text-cyan-300">{profile.stateId}</span>
+            )}
+            {registry?.coatOfArmsUrl && (
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-900 border border-cyan-500/40 p-1 flex items-center justify-center shrink-0 shadow-md hidden sm:flex">
+                <img
+                  src={registry.coatOfArmsUrl}
+                  alt={profile.stateName}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
             )}
           </div>
 

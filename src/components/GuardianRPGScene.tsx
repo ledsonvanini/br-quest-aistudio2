@@ -8,6 +8,7 @@ import {
   CulturalItem,
   getCulturalItemsForState,
 } from '../data/culturalInventoryData';
+import { getStateChestXpSummary } from '../data/explorationXpRegistry';
 import { CompassBadgeIcon } from './guardian/GuardianCommon';
 import { GuardianDialogueBox, DialogueNode } from './guardian/GuardianDialogueBox';
 import { GuardianInventoryModal } from './guardian/GuardianInventoryModal';
@@ -37,9 +38,10 @@ interface Props {
   isCompleted: boolean;
   hasInsignia: boolean;
   onBackToMap: () => void;
-  onCompleteQuiz: (xpEarned: number, correctCount: number) => void;
+  onCompleteQuiz: (xpEarned: number, correctCount: number, mode?: 'quick' | 'campaign') => void;
   onUnlockInsignia: (insigniaId: string) => void;
   onReadRelic?: (relicId: string, xpEarned: number) => void;
+  onExploreDialogueTopic?: (stateId: string, topicId: string, xpEarned: number) => void;
   lang: Language;
   userProgress?: UserProgress;
   onOpenSettings?: () => void;
@@ -55,6 +57,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
   onCompleteQuiz,
   onUnlockInsignia,
   onReadRelic,
+  onExploreDialogueTopic,
   userProgress,
   onOpenSettings,
   onNavigateToSanctuary,
@@ -144,6 +147,11 @@ export const GuardianRPGScene: React.FC<Props> = ({
   const inventoryItems: CulturalItem[] = useMemo(() => {
     return getCulturalItemsForState(guardian.id);
   }, [guardian.id]);
+
+  // Chest XP summary calculation
+  const chestSummary = useMemo(() => {
+    return getStateChestXpSummary(inventoryItems, userProgress?.readPergamentIds || []);
+  }, [inventoryItems, userProgress?.readPergamentIds]);
 
   // Speech function with smooth typewriter effect
   const speak = (text: string) => {
@@ -658,6 +666,13 @@ export const GuardianRPGScene: React.FC<Props> = ({
               }}
               onSpeak={speak}
               onCloseDialogue={() => setIsDialogueActive(false)}
+              exploredDialogueIds={userProgress?.exploredDialogueIds || []}
+              onExploreDialogueTopic={(topicId, xpReward) =>
+                onExploreDialogueTopic?.(guardian.id, topicId, xpReward)
+              }
+              chestTotalXp={chestSummary.totalXp}
+              chestEarnedXp={chestSummary.earnedXp}
+              userProgress={userProgress}
             />
           </div>
         )}
@@ -798,6 +813,7 @@ export const GuardianRPGScene: React.FC<Props> = ({
         {npcState === 'quiz' && (
           <GuardianQuizModal
             guardian={guardian}
+            userProgress={userProgress}
             onClose={() => {
               setNpcState('idle');
               setIsDialogueActive(true);

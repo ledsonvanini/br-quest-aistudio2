@@ -86,7 +86,7 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
           title="Centralizar no Brasil"
           badge="Pivô GO-TO-MT"
           badgeColor="bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
-          description="Restaura a visão centralizada no pivô da fronteira GO • TO • MT com zoom ampliado."
+          description="Restaura o enquadramento centralizado no pivô da fronteira GO • TO • MT no zoom padrão panorâmico."
           align="right"
         />
       </div>

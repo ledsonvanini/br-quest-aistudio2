@@ -151,6 +151,122 @@ class AudioEngine {
   }
 
   /**
+   * Sons Dedicados para Quests e Desafios (diferentes da navegação e passos do Mapa)
+   */
+  public playQuestOptionSelect() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(784, this.ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.09, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.05);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  public playQuestCorrect() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Dois tons harmônicos nítidos e curtos: D5 -> A5 (marcante e cristalino)
+      const freqs = [587.33, 880];
+      freqs.forEach((freq, i) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+        gain.gain.setValueAtTime(0.12, now + i * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.06 + 0.16);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + i * 0.06);
+        osc.stop(now + i * 0.06 + 0.16);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  public playQuestWrong() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(180, this.ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.09, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.15);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  public playQuestNext() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, this.ctx.currentTime + 0.07);
+      gain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.07);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.07);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  public playQuestNewQuestion() {
+    if (!this.soundEnabled) return;
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Arpejo cintilante e rápido ao gerar novo enigma
+      const freqs = [440, 554.37, 659.25];
+      freqs.forEach((freq, i) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.04);
+        gain.gain.setValueAtTime(0.07, now + i * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.04 + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + i * 0.04);
+        osc.stop(now + i * 0.04 + 0.12);
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  /**
    * Discreet, low-volume wooden/parchment menu hover tick
    */
   public playMenuHover() {

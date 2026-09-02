@@ -2,6 +2,7 @@ import { UserProgress } from '../types';
 import confetti from 'canvas-confetti';
 
 const STORAGE_KEY = 'simbolos_br_progress_rpg_v2';
+const BACKUP_KEY = 'simbolos_br_progress_rpg_backup_v2';
 
 export const INITIAL_PROGRESS: UserProgress = {
   xp: 0,
@@ -9,31 +10,53 @@ export const INITIAL_PROGRESS: UserProgress = {
   completedStateIds: [],
   unlockedInsigniaIds: [],
   readPergamentIds: [],
+  exploredDialogueIds: [],
   unlockedCodexIds: ['saci', 'curupira', 'feijoada', 'pao_de_queijo', 'samba', 'amazonia'],
   dailyStreak: 1,
   lastDailyDate: null,
   totalCorrectAnswers: 0,
   totalQuestsPlayed: 0,
   soundEnabled: true,
+  stateScores: {},
+  campaignsCompleted: {},
+  quickDuelsWon: {},
 };
 
 export function loadUserProgress(): UserProgress {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL_PROGRESS;
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(BACKUP_KEY);
+    }
+    if (!raw) return { ...INITIAL_PROGRESS };
     const parsed = JSON.parse(raw);
-    return { ...INITIAL_PROGRESS, ...parsed };
+    return {
+      ...INITIAL_PROGRESS,
+      ...parsed,
+      stateScores: parsed.stateScores || {},
+      campaignsCompleted: parsed.campaignsCompleted || {},
+      quickDuelsWon: parsed.quickDuelsWon || {},
+    };
   } catch (e) {
-    console.error('Error loading progress:', e);
-    return INITIAL_PROGRESS;
+    console.error('Error loading progress, attempting fallback:', e);
+    try {
+      const backupRaw = localStorage.getItem(BACKUP_KEY);
+      if (backupRaw) {
+        return { ...INITIAL_PROGRESS, ...JSON.parse(backupRaw) };
+      }
+    } catch {}
+    return { ...INITIAL_PROGRESS };
   }
 }
 
 export function saveUserProgress(progress: UserProgress): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    const payload = JSON.stringify(progress);
+    localStorage.setItem(STORAGE_KEY, payload);
+    // Persist redundant backup copy
+    localStorage.setItem(BACKUP_KEY, payload);
   } catch (e) {
-    console.error('Error saving progress:', e);
+    console.error('Error saving progress to localStorage:', e);
   }
 }
 

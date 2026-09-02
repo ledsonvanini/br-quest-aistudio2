@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { STATE_CLIMATOLOGY_DATABASE, StateClimatologyDetail } from '../../data/stateClimatologyData';
 import { StateWeatherData, formatFullDayTime, getEcmwfTempColor } from '../../services/climateService';
-import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
+import { BRAZIL_STATES_REGISTRY, getStateFlagUrl } from '../../data/brazilStatesRegistry';
 import { audioEngine } from '../../lib/audioSynth';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 
@@ -111,18 +111,24 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
       {/* 1. Header do Diálogo com Brasão e Identidade do Estado */}
       <div className="flex items-center justify-between p-2.5 sm:p-3 md:p-3.5 border-b border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-950 shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          {registryInfo?.coatOfArmsUrl ? (
-            <img
-              src={registryInfo.coatOfArmsUrl}
-              alt={`Brasão ${stateName}`}
-              referrerPolicy="no-referrer"
-              className="w-8 h-9 sm:w-9 sm:h-10 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] shrink-0"
-            />
-          ) : (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-cyan-950 border border-cyan-500/50 flex items-center justify-center font-black text-cyan-300 text-xs sm:text-sm shadow-inner shrink-0 font-mono">
-              {stateId}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {getStateFlagUrl(stateId) && (
+              <img
+                src={getStateFlagUrl(stateId)}
+                alt={`Bandeira ${stateName}`}
+                referrerPolicy="no-referrer"
+                className="w-9 h-6 sm:w-10 sm:h-7 object-cover rounded shadow-md border border-slate-700/80 shrink-0"
+              />
+            )}
+            {registryInfo?.coatOfArmsUrl ? (
+              <img
+                src={registryInfo.coatOfArmsUrl}
+                alt={`Brasão ${stateName}`}
+                referrerPolicy="no-referrer"
+                className="w-7 h-8 sm:w-8 sm:h-9 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] shrink-0 hidden sm:block"
+              />
+            ) : null}
+          </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="px-1.5 py-0.2 rounded-md bg-cyan-500/20 border border-cyan-400/50 text-cyan-300 font-mono text-[11px] font-black tracking-wider shrink-0">

@@ -6,6 +6,9 @@ import {
   clampPanZoom,
   MAP_CANVAS_WIDTH,
   MAP_CANVAS_HEIGHT,
+  DEFAULT_BRAZIL_ZOOM,
+  NEIGHBORS_CONTINENT_ZOOM,
+  getParameterizedMapCentering,
 } from '../lib/mapProjections';
 import { geoPath } from 'd3-geo';
 
@@ -87,5 +90,32 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
     // Tentativa de zoom acima do máximo suportado
     const result3 = clampPanZoom({ x: 0, y: 0 }, 10.0, container, 0.85, 3.5);
     expect(result3.zoom).toBe(3.5); // Clamped to maxZoom 3.5
+  });
+
+  it('deve reconhecer o novo padrão de zoom out aumentado em 20% na função Centralizar Mapa', () => {
+    expect(DEFAULT_BRAZIL_ZOOM).toBe(0.95);
+    expect(NEIGHBORS_CONTINENT_ZOOM).toBe(0.57);
+
+    // Cenário padrão: Centralizar Mapa
+    const centerDefault = getParameterizedMapCentering({
+      scenario: 'Centralizar Mapa',
+      containerWidth: 1920,
+      containerHeight: 1080,
+      is3D: true,
+    });
+    expect(centerDefault.targetZoom).toBe(0.95);
+    expect(isNaN(centerDefault.targetPan.x)).toBe(false);
+    expect(isNaN(centerDefault.targetPan.y)).toBe(false);
+
+    // Cenário: Centralizar Mapa mostrar Vizinhos
+    const centerNeighbors = getParameterizedMapCentering({
+      scenario: 'Centralizar Mapa mostrar Vizinhos',
+      containerWidth: 1920,
+      containerHeight: 1080,
+      is3D: true,
+    });
+    expect(centerNeighbors.targetZoom).toBe(0.57);
+    expect(isNaN(centerNeighbors.targetPan.x)).toBe(false);
+    expect(isNaN(centerNeighbors.targetPan.y)).toBe(false);
   });
 });

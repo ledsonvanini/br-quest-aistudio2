@@ -58,7 +58,7 @@ import { MapStateCarousel } from './map/MapStateCarousel';
 import { TerrainTileProvider } from './map/ClippedMapTilesLayer';
 import { StateDetailsSidebar } from './map/StateDetailsSidebar';
 import { BrazilGlobeR3F } from './map/BrazilGlobeR3F';
-import { IsolatedLeftGuardianStandee } from './map/IsolatedLeftGuardianStandee';
+import { IsolatedRightGuardianStandee } from './map/IsolatedRightGuardianStandee';
 import { CompassLoadingScreen } from './map/CompassLoadingScreen';
 import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
@@ -403,7 +403,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
   };
 
-  // Camera Pan & Zoom States (Centered mathematically on Brazil with 30% wider zoom out: DEFAULT_BRAZIL_ZOOM = 0.56)
+  // Camera Pan & Zoom States (Centered mathematically on Brazil with 20% increased default zoom out: DEFAULT_BRAZIL_ZOOM = 0.95)
   const baseUserZoomRef = useRef<number>(DEFAULT_BRAZIL_ZOOM);
   const baseUserPanRef = useRef<{ x: number; y: number }>(getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, true));
   const [pan, setPan] = useState<{ x: number; y: number }>(() => getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, true));
@@ -1551,9 +1551,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         />
       )}
 
-      {/* 6. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only) */}
+      {/* 6. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only - Fixed on Right Side) */}
       {!showNeighbors && !isClimateActive && mainMode === 'aventura' && (
-        <IsolatedLeftGuardianStandee
+        <IsolatedRightGuardianStandee
           activeStateId={hoveredStateId || selectedStateId || 'DF'}
           completedStateIds={completedSet}
           onSelectGuardian={onSelectGuardian}
@@ -1641,13 +1641,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           pinDisplayMode={globePinMode}
           timeOverride={timeOverride}
           focusedStateId={focusedStateId}
+          centerTrigger={centerTrigger}
         />
       ) : (() => {
-        const guardianShiftX =
-          !showNeighbors && !isClimateActive && mainMode === 'aventura'
-            ? 120
-            : 0;
-
         return (
           <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
             <div
@@ -1655,7 +1651,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               style={{
                 width: MAP_CANVAS_WIDTH,
                 height: MAP_CANVAS_HEIGHT,
-                transform: `translate(-50%, -50%) translate3d(${pan.x + guardianShiftX}px, ${pan.y}px, 0px) rotateX(${sphericalAngles.rotateX}deg) rotateY(${sphericalAngles.rotateY}deg) rotateZ(${sphericalAngles.rotateZ}deg) scale(${zoom})`,
+                transform: `translate(-50%, -50%) translate3d(${pan.x}px, ${pan.y}px, 0px) rotateX(${sphericalAngles.rotateX}deg) rotateY(${sphericalAngles.rotateY}deg) rotateZ(${sphericalAngles.rotateZ}deg) scale(${zoom})`,
                 transformStyle: 'preserve-3d',
                 transformOrigin: '1280px 720px',
                 transition: stageTransition,

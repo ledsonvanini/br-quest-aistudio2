@@ -30,7 +30,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Norte',
     coatOfArmsUrl: '/brasao_br/brasao-do-acre-300x295.png',
     flagSymbol: '⭐',
-    flagUrl: 'https://flagcdn.com/w80/br-ac.png',
+    flagUrl: '/flags/ac.svg',
     centroid: [814, 582],
   },
   AP: {
@@ -40,7 +40,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Norte',
     coatOfArmsUrl: '/brasao_br/brasao-do-amapa-260x300.png',
     flagSymbol: '☀️',
-    flagUrl: 'https://flagcdn.com/w80/br-ap.png',
+    flagUrl: '/flags/ap.svg',
     centroid: [1306, 321],
   },
   AM: {
@@ -50,7 +50,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Norte',
     coatOfArmsUrl: '/brasao_br/brasao-do-amazonas-712x1024.png',
     flagSymbol: '🌿',
-    flagUrl: 'https://flagcdn.com/w80/br-am.png',
+    flagUrl: '/flags/am.svg',
     centroid: [944, 435],
   },
   PA: {
@@ -58,10 +58,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Pará',
     capital: 'Belém',
     region: 'Norte',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Bras%C3%A3o_do_Par%C3%A1.svg/300px-Bras%C3%A3o_do_Par%C3%A1.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '⭐',
-    flagUrl: 'https://flagcdn.com/w80/br-pa.png',
+    flagUrl: '/flags/pa.svg',
     centroid: [1230, 397],
   },
   RO: {
@@ -69,10 +68,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Rondônia',
     capital: 'Porto Velho',
     region: 'Norte',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bras%C3%A3o_de_Rond%C3%B4nia.svg/300px-Bras%C3%A3o_de_Rond%C3%B4nia.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🌟',
-    flagUrl: 'https://flagcdn.com/w80/br-ro.png',
+    flagUrl: '/flags/ro.svg',
     centroid: [1003, 648],
   },
   RR: {
@@ -80,10 +78,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Roraima',
     capital: 'Boa Vista',
     region: 'Norte',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Bras%C3%A3o_de_Roraima.svg/300px-Bras%C3%A3o_de_Roraima.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '⛰️',
-    flagUrl: 'https://flagcdn.com/w80/br-rr.png',
+    flagUrl: '/flags/rr.svg',
     centroid: [1043, 273],
   },
   TO: {
@@ -91,10 +88,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Tocantins',
     capital: 'Palmas',
     region: 'Norte',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Bras%C3%A3o_do_Tocantins.svg/300px-Bras%C3%A3o_do_Tocantins.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '☀️',
-    flagUrl: 'https://flagcdn.com/w80/br-to.png',
+    flagUrl: '/flags/to.svg',
     centroid: [1403, 613],
   },
 
@@ -108,7 +104,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Nordeste',
     coatOfArmsUrl: '/brasao_br/brasao-de-alagoas-272x300.png',
     flagSymbol: '🌊',
-    flagUrl: 'https://flagcdn.com/w80/br-al.png',
+    flagUrl: '/flags/al.svg',
     centroid: [1706, 597],
   },
   BA: {
@@ -118,7 +114,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Nordeste',
     coatOfArmsUrl: '/brasao_br/brasao-da-bahia-256x300.png',
     flagSymbol: '⚓',
-    flagUrl: 'https://flagcdn.com/w80/br-ba.png',
+    flagUrl: '/flags/ba.svg',
     centroid: [1576, 677],
   },
   CE: {
@@ -128,7 +124,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Nordeste',
     coatOfArmsUrl: '/brasao_br/brasao-do-ceara-753x1024.png',
     flagSymbol: '☀️',
-    flagUrl: 'https://flagcdn.com/w80/br-ce.png',
+    flagUrl: '/flags/ce.svg',
     centroid: [1638, 490],
   },
   MA: {
@@ -138,7 +134,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Nordeste',
     coatOfArmsUrl: '/brasao_br/brasao-maranhao-estado-768x768.png',
     flagSymbol: '🌴',
-    flagUrl: 'https://flagcdn.com/w80/br-ma.png',
+    flagUrl: '/flags/ma.svg',
     centroid: [1482, 476],
   },
   PB: {
@@ -146,10 +142,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Paraíba',
     capital: 'João Pessoa',
     region: 'Nordeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Bras%C3%A3o_da_Para%C3%ADba.svg/300px-Bras%C3%A3o_da_Para%C3%ADba.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '☀️',
-    flagUrl: 'https://flagcdn.com/w80/br-pb.png',
+    flagUrl: '/flags/pb.svg',
     centroid: [1706, 536],
   },
   PE: {
@@ -157,10 +152,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Pernambuco',
     capital: 'Recife',
     region: 'Nordeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Bras%C3%A3o_de_Pernambuco.svg/300px-Bras%C3%A3o_de_Pernambuco.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🌈',
-    flagUrl: 'https://flagcdn.com/w80/br-pe.png',
+    flagUrl: '/flags/pe.svg',
     centroid: [1701, 577],
   },
   PI: {
@@ -168,10 +162,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Piauí',
     capital: 'Teresina',
     region: 'Nordeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Bras%C3%A3o_do_Piau%C3%AD.svg/300px-Bras%C3%A3o_do_Piau%C3%AD.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🌾',
-    flagUrl: 'https://flagcdn.com/w80/br-pi.png',
+    flagUrl: '/flags/pi.svg',
     centroid: [1549, 548],
   },
   RN: {
@@ -179,10 +172,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Rio Grande do Norte',
     capital: 'Natal',
     region: 'Nordeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Bras%C3%A3o_do_Rio_Grande_do_Norte.svg/300px-Bras%C3%A3o_do_Rio_Grande_do_Norte.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🥥',
-    flagUrl: 'https://flagcdn.com/w80/br-rn.png',
+    flagUrl: '/flags/rn.svg',
     centroid: [1711, 498],
   },
   SE: {
@@ -190,10 +182,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Sergipe',
     capital: 'Aracaju',
     region: 'Nordeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Bras%C3%A3o_de_Sergipe.svg/300px-Bras%C3%A3o_de_Sergipe.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '⭐',
-    flagUrl: 'https://flagcdn.com/w80/br-se.png',
+    flagUrl: '/flags/se.svg',
     centroid: [1690, 623],
   },
 
@@ -207,7 +198,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Centro-Oeste',
     coatOfArmsUrl: '/brasao_br/brasao-do-distrito-federal-768x901.png',
     flagSymbol: '🏛️',
-    flagUrl: 'https://flagcdn.com/w80/br-df.png',
+    flagUrl: '/flags/df.svg',
     centroid: [1414, 762],
   },
   GO: {
@@ -217,7 +208,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Centro-Oeste',
     coatOfArmsUrl: '/brasao_br/brasao-de-goias-765x1024.png',
     flagSymbol: '🌾',
-    flagUrl: 'https://flagcdn.com/w80/br-go.png',
+    flagUrl: '/flags/go.svg',
     centroid: [1363, 763],
   },
   MT: {
@@ -225,10 +216,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Mato Grosso',
     capital: 'Cuiabá',
     region: 'Centro-Oeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Bras%C3%A3o_de_Mato_Grosso.svg/300px-Bras%C3%A3o_de_Mato_Grosso.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🐆',
-    flagUrl: 'https://flagcdn.com/w80/br-mt.png',
+    flagUrl: '/flags/mt.svg',
     centroid: [1204, 680],
   },
   MS: {
@@ -236,10 +226,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Mato Grosso do Sul',
     capital: 'Campo Grande',
     region: 'Centro-Oeste',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Bras%C3%A3o_de_Mato_Grosso_do_Sul.svg/300px-Bras%C3%A3o_de_Mato_Grosso_do_Sul.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🌾',
-    flagUrl: 'https://flagcdn.com/w80/br-ms.png',
+    flagUrl: '/flags/ms.svg',
     centroid: [1233, 895],
   },
 
@@ -253,7 +242,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Sudeste',
     coatOfArmsUrl: '/brasao_br/brasao-espirito-santo-768x846.png',
     flagSymbol: '🕊️',
-    flagUrl: 'https://flagcdn.com/w80/br-es.png',
+    flagUrl: '/flags/es.svg',
     centroid: [1613, 852],
   },
   MG: {
@@ -263,7 +252,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Sudeste',
     coatOfArmsUrl: '/brasao_br/brasao-estado-minas-gerais-768x734.png',
     flagSymbol: '🔺',
-    flagUrl: 'https://flagcdn.com/w80/br-mg.png',
+    flagUrl: '/flags/mg.svg',
     centroid: [1501, 834],
   },
   RJ: {
@@ -273,7 +262,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Sudeste',
     coatOfArmsUrl: '/brasao_br/brasao-estado-rio-de-janeiro-768x977.png',
     flagSymbol: '⛰️',
-    flagUrl: 'https://flagcdn.com/w80/br-rj.png',
+    flagUrl: '/flags/rj.svg',
     centroid: [1538, 951],
   },
   SP: {
@@ -283,7 +272,7 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     region: 'Sudeste',
     coatOfArmsUrl: '/brasao_br/brasao-estado-de-sao-paulo-768x892.png',
     flagSymbol: '⚙️',
-    flagUrl: 'https://flagcdn.com/w80/br-sp.png',
+    flagUrl: '/flags/sp.svg',
     centroid: [1447, 969],
   },
 
@@ -295,10 +284,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Paraná',
     capital: 'Curitiba',
     region: 'Sul',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Bras%C3%A3o_do_Paran%C3%A1.svg/300px-Bras%C3%A3o_do_Paran%C3%A1.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🌲',
-    flagUrl: 'https://flagcdn.com/w80/br-pr.png',
+    flagUrl: '/flags/pr.svg',
     centroid: [1306, 1015],
   },
   RS: {
@@ -306,10 +294,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Rio Grande do Sul',
     capital: 'Porto Alegre',
     region: 'Sul',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Bras%C3%A3o_do_Rio_Grande_do_Sul.svg/300px-Bras%C3%A3o_do_Rio_Grande_do_Sul.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🧉',
-    flagUrl: 'https://flagcdn.com/w80/br-rs.png',
+    flagUrl: '/flags/rs.svg',
     centroid: [1327, 1145],
   },
   SC: {
@@ -317,10 +304,9 @@ export const BRAZIL_STATES_REGISTRY: Record<string, BrazilStateInfo> = {
     name: 'Santa Catarina',
     capital: 'Florianópolis',
     region: 'Sul',
-    coatOfArmsUrl:
-      'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Bras%C3%A3o_de_Santa_Catarina.svg/300px-Bras%C3%A3o_de_Santa_Catarina.svg.png',
+    coatOfArmsUrl: '',
     flagSymbol: '🦅',
-    flagUrl: 'https://flagcdn.com/w80/br-sc.png',
+    flagUrl: '/flags/sc.svg',
     centroid: [1353, 1069],
   },
 };
@@ -348,5 +334,5 @@ export function getStateCoatOfArmsUrl(id: string): string {
 export function getStateFlagUrl(id: string): string {
   const state = BRAZIL_STATES_REGISTRY[id.toUpperCase()];
   if (state?.flagUrl) return state.flagUrl;
-  return `https://flagcdn.com/w80/br-${id.toLowerCase()}.png`;
+  return `/flags/${id.toLowerCase()}.svg`;
 }

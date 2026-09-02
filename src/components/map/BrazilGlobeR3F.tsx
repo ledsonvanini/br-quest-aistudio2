@@ -39,6 +39,7 @@ interface BrazilGlobeR3FProps {
   pinDisplayMode?: 'all' | 'compact' | 'none';
   timeOverride?: 'auto' | 'day' | 'night';
   focusedStateId?: string | null;
+  centerTrigger?: number;
 }
 
 interface ProjectedPin {
@@ -196,6 +197,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   pinDisplayMode: propPinMode,
   timeOverride = 'auto',
   focusedStateId,
+  centerTrigger,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [projectedPins, setProjectedPins] = useState<ProjectedPin[]>([]);
@@ -343,8 +345,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 150);
-    // Initial angle centered on South America & Brazil
-    camera.position.set(0, -0.6, 4.8);
+    // Initial angle centered on South America & Brazil with 20% increased zoom out
+    camera.position.set(0, -0.72, 5.76);
     cameraRef.current = camera;
 
     // 2. High-Performance WebGL Renderer
@@ -697,10 +699,19 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   // Quick reset / zoom controls
   const handleResetView = () => {
     if (!cameraRef.current || !controlsRef.current) return;
-    cameraRef.current.position.set(0, -0.6, 4.8);
+    cameraRef.current.position.set(0, -0.72, 5.76);
     controlsRef.current.target.set(0, 0, 0);
     controlsRef.current.update();
   };
+
+  // Re-align whenever the central "Centralizar Mapa" / "Centralizar Brasil" trigger increments
+  const lastCenterTriggerRef = useRef<number>(centerTrigger || 0);
+  useEffect(() => {
+    if (centerTrigger !== undefined && centerTrigger > 0 && centerTrigger !== lastCenterTriggerRef.current) {
+      lastCenterTriggerRef.current = centerTrigger;
+      handleResetView();
+    }
+  }, [centerTrigger]);
 
   const handleZoomIn = () => {
     if (!cameraRef.current || !controlsRef.current) return;

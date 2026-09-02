@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 
 const PORT = 3000;
@@ -402,6 +403,39 @@ async function startServer() {
         ? Math.round((serverTotalHits / (serverTotalHits + serverTotalUpstreamCalls)) * 100)
         : 100,
     });
+  });
+
+  // 6. Dados e Bundles Estruturados dos Estados Brasileiros
+  app.get(['/api/states', '/data/states', '/data/states/all.json'], (_req, res) => {
+    try {
+      const filePath = path.join(process.cwd(), 'public', 'states', 'all_states.json');
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/json');
+        return res.sendFile(filePath);
+      }
+      res.status(404).json({ error: 'Arquivo all_states.json não encontrado' });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao carregar dados dos estados', message: e?.message });
+    }
+  });
+
+  app.get(['/api/states/:uf', '/data/states/:uf'], (req, res) => {
+    try {
+      const uf = req.params.uf.toLowerCase();
+      const filePath = path.join(process.cwd(), 'public', 'states', 'all_states.json');
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf-8');
+        const all = JSON.parse(raw);
+        const stateData = all[uf.toUpperCase()];
+        if (stateData) {
+          res.setHeader('Content-Type', 'application/json');
+          return res.json(stateData);
+        }
+      }
+      res.status(404).json({ error: `Estado ${uf.toUpperCase()} não encontrado` });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao carregar estado', message: e?.message });
+    }
   });
 
   // Vite middleware for development vs static build in production

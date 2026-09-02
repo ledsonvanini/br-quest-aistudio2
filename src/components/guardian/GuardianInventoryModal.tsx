@@ -28,6 +28,11 @@ import {
   Layers,
   Search,
 } from 'lucide-react';
+import {
+  getItemXpReward,
+  getItemClassificationLabel,
+  getStateChestXpSummary,
+} from '../../data/explorationXpRegistry';
 
 interface Props {
   stateId: string;
@@ -68,8 +73,6 @@ export const GuardianInventoryModal: React.FC<Props> = ({
   // Internal scroll tracker for reading pane
   const readingPaneRef = useRef<HTMLDivElement | null>(null);
   const [readingProgress, setReadingProgress] = useState<number>(0);
-
-  const XP_PER_ITEM = 50;
 
   // Categories list for quick filtering
   const categories = [
@@ -128,11 +131,18 @@ export const GuardianInventoryModal: React.FC<Props> = ({
     }
   }, [activeItem?.id, activeReadingTab]);
 
-  // Stats calculation
-  const readCount = items.filter((it) => readItemIds.includes(it.id)).length;
-  const progressPercent = Math.round((readCount / (items.length || 1)) * 100);
-  const totalAvailableXp = items.length * XP_PER_ITEM;
-  const earnedXp = readCount * XP_PER_ITEM;
+  // Stats calculation using centralized XP registry
+  const chestSummary = useMemo(() => {
+    return getStateChestXpSummary(items, readItemIds);
+  }, [items, readItemIds]);
+
+  const readCount = chestSummary.readCount;
+  const progressPercent = chestSummary.percentage;
+  const totalAvailableXp = chestSummary.totalXp;
+  const earnedXp = chestSummary.earnedXp;
+
+  const currentItemXp = activeItem ? getItemXpReward(activeItem) : 50;
+  const currentItemClassification = activeItem ? getItemClassificationLabel(activeItem) : 'Relíquia Cultural';
 
   const isCurrentItemRead = activeItem ? readItemIds.includes(activeItem.id) : false;
 
@@ -148,12 +158,12 @@ export const GuardianInventoryModal: React.FC<Props> = ({
     triggerConfetti();
 
     if (onCompleteReading) {
-      onCompleteReading(activeItem.id, XP_PER_ITEM);
+      onCompleteReading(activeItem.id, currentItemXp);
     }
 
     if (onSpeak) {
       onSpeak(
-        `“Magnífico estudo! Desvendaste os mistérios de ${activeItem.title}. +${XP_PER_ITEM} XP de sabedoria cívica adquiridos!”`
+        `“Magnífico estudo! Desvendaste os mistérios de ${activeItem.title} [${currentItemClassification}]. +${currentItemXp} XP de sabedoria cívica adquiridos!”`
       );
     }
   };
@@ -268,7 +278,7 @@ export const GuardianInventoryModal: React.FC<Props> = ({
               </span>
               <span className="text-xs sm:text-sm font-serif font-bold text-amber-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                +{earnedXp} / +{totalAvailableXp} XP ({progressPercent}%)
+                XP {earnedXp}/{totalAvailableXp} ({progressPercent}%)
               </span>
             </div>
           </div>
@@ -355,6 +365,11 @@ export const GuardianInventoryModal: React.FC<Props> = ({
                           className={`absolute -top-2.5 -right-1 text-[7px] sm:text-[8px] font-mono font-black px-1.5 py-0.5 rounded border shadow-md z-20 ${rStyle.badge}`}
                         >
                           {rStyle.tag}
+                        </span>
+
+                        {/* Badge de Recompensa XP Individual no Slot */}
+                        <span className="badge-xp-slot-item absolute -bottom-2 -right-1 text-[7px] font-mono font-black text-amber-300 bg-slate-950 px-1 py-0.2 rounded border border-amber-500/50 shadow z-20">
+                          +{getItemXpReward(item)} XP
                         </span>
 
                         {/* Ícone Vetorial Central */}
@@ -567,7 +582,7 @@ export const GuardianInventoryModal: React.FC<Props> = ({
                   <div className="space-y-1.5 pb-2 border-b border-amber-500/20">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="badge-cat-label text-[10px] font-serif font-black uppercase tracking-wider text-slate-950 bg-amber-400 px-2 py-0.5 rounded border border-yellow-200">
-                        {activeItem.categoryLabel}
+                        {currentItemClassification}
                       </span>
                       <span
                         className={`text-[10px] font-serif font-bold uppercase px-2 py-0.5 rounded border ${
@@ -575,6 +590,9 @@ export const GuardianInventoryModal: React.FC<Props> = ({
                         }`}
                       >
                         {rarityStyles[activeItem.rarity]?.label || activeItem.rarity}
+                      </span>
+                      <span className="badge-xp-individual text-[10px] font-mono font-black text-amber-300 bg-slate-900 px-2 py-0.5 rounded border border-amber-500/40 shadow-sm">
+                        +{currentItemXp} XP
                       </span>
                       <span className="text-xs font-mono text-slate-400">
                         • Unidade Federativa: {activeItem.stateId}
@@ -769,14 +787,14 @@ export const GuardianInventoryModal: React.FC<Props> = ({
                     {isCurrentItemRead ? (
                       <div className="badge-estudado flex items-center gap-1.5 text-emerald-400 text-xs font-serif font-bold bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/40 shadow">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Sabedoria Registrada (+{XP_PER_ITEM} XP)</span>
+                        <span>Sabedoria Registrada (+{currentItemXp} XP)</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-amber-300 text-xs font-serif bg-slate-950 px-3 py-1.5 rounded-xl border border-amber-500/30">
                         <Award className="w-4 h-4 text-amber-400" />
                         <span>
                           Estude este verbete para absorver o saber e ganhar{' '}
-                          <strong>+{XP_PER_ITEM} XP</strong>
+                          <strong>+{currentItemXp} XP</strong>
                         </span>
                       </div>
                     )}
@@ -823,7 +841,7 @@ export const GuardianInventoryModal: React.FC<Props> = ({
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 text-slate-950 animate-spin" />
-                          <span>Estudar Verbete (+{XP_PER_ITEM} XP)</span>
+                          <span>Estudar Verbete (+{currentItemXp} XP)</span>
                         </>
                       )}
                     </button>

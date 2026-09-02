@@ -217,9 +217,9 @@ export function clampPanZoom(
 /**
  * Mathematical center of Brazil based on the calibrated border between GO, TO, and MT
  * (Rio Araguaia / Ilha do Bananal region, slightly above the geographic center of Goiás).
- * Centers the entire territorial mass of Brazil in the viewport with 20% increased default zoom (1.14).
+ * Centers the entire territorial mass of Brazil in the viewport with 20% increased default zoom out (0.95).
  */
-export const DEFAULT_BRAZIL_ZOOM = 1.14;
+export const DEFAULT_BRAZIL_ZOOM = 0.95;
 
 /**
  * Calculates responsive default zoom dynamically based on container/screen dimensions.
@@ -237,7 +237,7 @@ export function calculateResponsiveDefaultZoom(containerWidth = 1920, containerH
   }
   // Adaptive exponential scaling that prevents extreme shrinking on ultra-small screens
   const adaptedZoom = DEFAULT_BRAZIL_ZOOM * Math.pow(scaleFactor, 0.62);
-  return Number(Math.max(0.55, Math.min(1.14, adaptedZoom)).toFixed(2));
+  return Number(Math.max(0.45, Math.min(DEFAULT_BRAZIL_ZOOM, adaptedZoom)).toFixed(2));
 }
 
 /**
@@ -249,7 +249,7 @@ export const BRAZIL_MAP_PIVOT_CENTER: [number, number] = [1235, 640];
 export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   const offsetX = BRAZIL_MAP_PIVOT_CENTER[0] - MAP_CANVAS_WIDTH / 2; // 1235 - 1280 = -45
   const offsetY = BRAZIL_MAP_PIVOT_CENTER[1] - MAP_CANVAS_HEIGHT / 2; // 640 - 720 = -80
-  const sidebarCompensationX = 28; // visual compensation for left navigation sidebar
+  const sidebarCompensationX = 0; // Centro matemático e visual exato da tela (Centro do Mapa -> No centro da Tela)
 
   return {
     x: Math.round((-offsetX + sidebarCompensationX) * zoom),
@@ -347,10 +347,10 @@ export function getParameterizedMapCentering(
 
 /**
  * Zoom level for viewing South American neighboring countries:
- * Increased zoom out by 20% from 0.81 (0.81 / 1.20 = 0.68) using the exact same 'Centralizar Mapa' centering anchor
+ * Calibrated with 20% increased zoom out (0.68 / 1.20 = 0.57) using the exact same 'Centralizar Mapa' centering anchor
  * to display all 10 neighbor countries and territories cleanly centered in the viewport.
  */
-export const NEIGHBORS_CONTINENT_ZOOM = Number((0.81 / 1.20).toFixed(2)); // 0.68
+export const NEIGHBORS_CONTINENT_ZOOM = Number((0.68 / 1.20).toFixed(2)); // 0.57
 
 /**
  * Calculates the exact pan & zoom to center the entire South American continent in the viewport

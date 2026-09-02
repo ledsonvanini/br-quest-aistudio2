@@ -257,7 +257,7 @@ export function App() {
     window.location.hash = '#/mapa';
   };
 
-  const handleCompleteQuiz = (xpEarned: number, correctCount: number) => {
+  const handleCompleteQuiz = (xpEarned: number, correctCount: number, mode?: 'quick' | 'campaign') => {
     if (!activeGuardian) return;
 
     setProgress((prev) => {
@@ -270,6 +270,19 @@ export function App() {
       const oldLevel = calculateLevel(prev.xp).level;
       const newLevel = calculateLevel(newXp).level;
 
+      const updatedScores = { ...(prev.stateScores || {}) };
+      updatedScores[activeGuardian.id] = (updatedScores[activeGuardian.id] || 0) + xpEarned;
+
+      const updatedCampaigns = { ...(prev.campaignsCompleted || {}) };
+      if (mode === 'campaign') {
+        updatedCampaigns[activeGuardian.id] = true;
+      }
+
+      const updatedQuickDuels = { ...(prev.quickDuelsWon || {}) };
+      if (mode === 'quick' && correctCount > 0) {
+        updatedQuickDuels[activeGuardian.id] = (updatedQuickDuels[activeGuardian.id] || 0) + 1;
+      }
+
       if (newLevel > oldLevel) {
         audioEngine.playSfx('levelUp');
         showNotification(`🎉 Nível Superior! Você alcançou o Nível ${newLevel}!`);
@@ -277,14 +290,20 @@ export function App() {
         showNotification(`✨ Desafio de ${activeGuardian.stateNamePt} concluído! +${xpEarned} XP`);
       }
 
-      return {
+      const updated: UserProgress = {
         ...prev,
         xp: newXp,
         level: newLevel,
         completedStateIds: updatedStates,
         totalCorrectAnswers: prev.totalCorrectAnswers + correctCount,
         totalQuestsPlayed: prev.totalQuestsPlayed + 1,
+        stateScores: updatedScores,
+        campaignsCompleted: updatedCampaigns,
+        quickDuelsWon: updatedQuickDuels,
       };
+
+      saveUserProgress(updated);
+      return updated;
     });
   };
 
@@ -328,12 +347,49 @@ export function App() {
         }
       }
 
-      return {
+      const updated: UserProgress = {
         ...prev,
         xp: newXp,
         level: newLevelData.level,
         readPergamentIds: updatedRead,
       };
+
+      saveUserProgress(updated);
+      return updated;
+    });
+  };
+
+  const handleExploreDialogueTopic = (stateId: string, topicId: string, xpEarned: number) => {
+    setProgress((prev) => {
+      const explored = prev.exploredDialogueIds || [];
+      if (explored.includes(topicId)) return prev;
+
+      const updatedExplored = [...explored, topicId];
+      const newXp = prev.xp + xpEarned;
+      const oldLevelData = calculateLevel(prev.xp);
+      const newLevelData = calculateLevel(newXp);
+
+      const updatedScores = { ...(prev.stateScores || {}) };
+      updatedScores[stateId] = (updatedScores[stateId] || 0) + xpEarned;
+
+      if (newLevelData.level > oldLevelData.level) {
+        audioEngine.playSfx('levelUp');
+        showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
+      } else {
+        audioEngine.playSfx('badge');
+        showNotification(`✨ Curiosidade Descoberta! +${xpEarned} XP`);
+      }
+
+      const updated: UserProgress = {
+        ...prev,
+        xp: newXp,
+        level: newLevelData.level,
+        exploredDialogueIds: updatedExplored,
+        stateScores: updatedScores,
+      };
+
+      saveUserProgress(updated);
+      return updated;
     });
   };
 
@@ -519,6 +575,7 @@ export function App() {
             onCompleteQuiz={handleCompleteQuiz}
             onUnlockInsignia={handleUnlockInsignia}
             onReadRelic={handleReadRelic}
+            onExploreDialogueTopic={handleExploreDialogueTopic}
             lang={lang}
             userProgress={progress}
             onOpenSettings={() => setIsSettingsOpen(true)}
