@@ -33,40 +33,51 @@ function tile2lat(y: number, zoom: number): number {
 }
 
 // Tile URL providers with high-reliability global endpoints (100% free and open, no watermarks, no API keys)
+// Uses ESRI ArcGIS MapServer public REST endpoints: {z}/{y}/{x} where z=zoom, y=row(lat), x=col(lon)
 const TILE_URL_PROVIDERS: Record<TerrainTileProvider, (x: number, y: number, z: number) => string> = {
-  // 1. High-Definition Topographic Elevation & Shaded Relief (CartoDB Voyager Relief)
+  // 1. High-Definition Topographic Elevation & Shaded Relief (ESRI World Shaded Relief - 100% Free, No Watermarks, No API Key)
   shaded_relief: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/${z}/${y}/${x}`,
 
-  // 2. Physical Land Cover Atlas (Forests, Savannahs, Basins & Mountain Ridges)
+  // 2. Physical Land Cover Atlas (Forests, Savannahs, Basins & Mountain Ridges - ESRI World Physical Map)
   physical_atlas: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${z}/${y}/${x}`,
 
-  // 3. High-Resolution True-Color Satellite/Dark Imagery (Amazon, Pantanal, Atlantic Coast)
+  // 3. High-Resolution True-Color Satellite Imagery (Amazon, Pantanal, Atlantic Coast - ESRI World Imagery)
   satellite_earth: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
 
-  // 4. Antique Voyager Parchment (Historical Cartographic Style)
+  // 4. Antique Voyager Parchment (Historical Cartographic Style over Shaded Relief)
   voyager_parchment: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/${z}/${y}/${x}`,
 
-  // 5. Clean Muted Light Grey (High-definition Gray Carto Canvas for Demography & Geopolitics)
+  // 5. Clean Muted Light Grey (High-definition Terrain Base for Demography & Geopolitics)
   muted_gray: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/light_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/${z}/${y}/${x}`,
 
-  // 6. Natural Earth Land Cover
+  // 6. Natural Earth Land Cover (Tropical Biomes, Amazon, Cerrado & Atlantic Forest - ESRI World Physical Map)
   natural_earth: (x, y, z) =>
-    `https://basemaps.cartocdn.com/rastertiles/voyager_nolabels/${z}/${x}/${y}.png`,
+    `https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/${z}/${y}/${x}`,
 };
 
-// CSS Filter Profiles to make each terrain mode visually striking and premium
+// CSS Filter Profiles to make each terrain mode visually striking, clean, and watermark-free
 const PROVIDER_FILTER_STYLES: Record<TerrainTileProvider, string> = {
-  shaded_relief: 'contrast(1.2) saturate(1.15) brightness(0.97)',
-  physical_atlas: 'contrast(1.28) saturate(1.35) brightness(1.02)',
-  satellite_earth: 'contrast(1.25) saturate(1.28) brightness(0.96)',
-  voyager_parchment: 'sepia(0.65) contrast(1.25) saturate(1.1) brightness(0.92) hue-rotate(-5deg)',
-  muted_gray: 'grayscale(0.65) contrast(1.15) brightness(0.95)',
-  natural_earth: 'contrast(1.22) saturate(1.35) brightness(1.04) hue-rotate(-3deg)',
+  shaded_relief: 'contrast(1.22) saturate(1.1) brightness(0.98)',
+  physical_atlas: 'contrast(1.25) saturate(1.35) brightness(1.0)',
+  satellite_earth: 'contrast(1.2) saturate(1.25) brightness(0.98)',
+  voyager_parchment: 'sepia(0.72) contrast(1.25) saturate(1.2) brightness(0.94) hue-rotate(-5deg)',
+  muted_gray: 'grayscale(0.75) contrast(1.15) brightness(1.02)',
+  natural_earth: 'contrast(1.18) saturate(1.3) brightness(1.02)',
+};
+
+// Fallback solid/neutral tones while tiles load or during offline operation
+const PROVIDER_FALLBACK_FILLS: Record<TerrainTileProvider, string> = {
+  shaded_relief: '#1e293b',
+  physical_atlas: '#254e38',
+  satellite_earth: '#0f1f2e',
+  voyager_parchment: '#eedbb8',
+  muted_gray: '#334155',
+  natural_earth: '#1b4332',
 };
 
 export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({
@@ -127,6 +138,7 @@ export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({
 
   const getTileUrl = TILE_URL_PROVIDERS[provider] || TILE_URL_PROVIDERS.shaded_relief;
   const filterStyle = PROVIDER_FILTER_STYLES[provider] || PROVIDER_FILTER_STYLES.shaded_relief;
+  const fallbackFill = PROVIDER_FALLBACK_FILLS[provider] || PROVIDER_FALLBACK_FILLS.shaded_relief;
 
   return (
     <g
@@ -135,6 +147,17 @@ export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({
       className="camada-tiles-terreno pointer-events-none"
       opacity={opacity}
     >
+      {/* 0. Fallback base fill for smooth loading and offline resilience */}
+      <rect
+        id="base-fundo-terreno-fallback"
+        className="base-fundo-terreno pointer-events-none"
+        x="0"
+        y="0"
+        width="2560"
+        height="1440"
+        fill={fallbackFill}
+      />
+
       {/* Dynamic Tile Grid across all 27 States of Brazil */}
       {tiles.map(({ x, y, z, posX, posY, width, height }) => {
         const url = getTileUrl(x, y, z);
@@ -142,6 +165,8 @@ export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({
         return (
           <image
             key={`tile-hd-${provider}-${z}-${x}-${y}`}
+            id={`tile-ladrilho-${provider}-${z}-${x}-${y}`}
+            className="ladrilho-mapa-tile"
             href={url}
             x={posX}
             y={posY}
@@ -151,6 +176,10 @@ export const ClippedMapTilesLayer: React.FC<ClippedMapTilesLayerProps> = ({
             crossOrigin="anonymous"
             style={{
               filter: filterStyle,
+            }}
+            onError={(e) => {
+              // Hide failed tile cleanly so the background fill renders smoothly
+              (e.currentTarget as SVGImageElement).style.display = 'none';
             }}
           />
         );

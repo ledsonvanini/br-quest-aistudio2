@@ -527,7 +527,7 @@ export const ApiStatusModal: React.FC<ApiStatusModalProps> = ({
                   <option value="gbif-biodiversity">GBIF Biodiversidade</option>
                   <option value="ibama-siscites">IBAMA SisCITES</option>
                   <option value="wikipedia-commons">Wikimedia Commons</option>
-                  <option value="cartodb-tiles">CartoDB Tiles</option>
+                  <option value="cartodb-tiles">ESRI World Tiles</option>
                   <option value="satellite-orbital">Satélite Orbital</option>
                 </select>
               </div>

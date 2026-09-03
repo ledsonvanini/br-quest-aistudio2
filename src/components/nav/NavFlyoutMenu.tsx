@@ -38,6 +38,7 @@ import { ClimateMode } from '../map/ClimatePhenomenaLayer';
 import { TerrainTileProvider, MapVisualStyle, BiodiversityKingdom } from '../../types';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
 import { QuestThemePillar } from '../../data/brQuestQuestionsData';
+import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
 import { AppMainMode, MenuTooltipInfo } from '../TopGlobalNavMenu';
 
 interface NavFlyoutMenuProps {
@@ -70,6 +71,8 @@ interface NavFlyoutMenuProps {
   onSelectMusicCategory?: (category: 'state_anthems' | 'top5' | 'national') => void;
   isRadioOpen?: boolean;
   onToggleRadio?: () => void;
+  selectedStateId?: string | null;
+  onFocusState?: (stateId: string) => void;
   // Globo 3D
   globeTextureMode?: 'nasa_satellite' | 'night_lights' | 'natural_earth';
   onGlobeTextureModeChange?: (mode: 'nasa_satellite' | 'night_lights' | 'natural_earth') => void;
@@ -123,6 +126,8 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
   onSelectMusicCategory,
   isRadioOpen = true,
   onToggleRadio,
+  selectedStateId,
+  onFocusState,
   globeTextureMode = 'nasa_satellite',
   onGlobeTextureModeChange,
   isGlobeCloudsActive = true,
@@ -887,14 +892,16 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
             id="btn-subitem-musica-hinos"
             onClick={() =>
               handleSelectSubitem(() => {
-                if (!isRadioOpen) onToggleRadio?.();
                 onSelectMusicCategory?.('state_anthems');
+                const targetState = selectedStateId || 'DF';
+                if (!isRadioOpen) onToggleRadio?.();
+                onFocusState?.(targetState);
               })
             }
             {...bindTooltip({
               title: 'Hinos Oficiais do Estado',
               badge: 'Hinos Cívicos',
-              description: 'Hino Oficial do Estado e Hino da Capital Municipal.',
+              description: 'Abre o player lateral e foca no hino do estado selecionado no mapa.',
             })}
             className={`btn-subitem-musica w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
               activeMusicCategory === 'state_anthems'
@@ -903,7 +910,7 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
             }`}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <BookOpen className="w-4 h-4 shrink-0" />
+              <Music className="w-4 h-4 shrink-0" />
               <span className="truncate">Hinos do Estado</span>
             </div>
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 shrink-0">
@@ -915,15 +922,17 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
             id="btn-subitem-musica-top5"
             onClick={() =>
               handleSelectSubitem(() => {
-                if (!isRadioOpen) onToggleRadio?.();
                 onSelectMusicCategory?.('top5');
+                const targetState = selectedStateId || 'DF';
+                if (!isRadioOpen) onToggleRadio?.();
+                onFocusState?.(targetState);
               })
             }
             {...bindTooltip({
               title: 'Top 5 Clássicos Regionais',
               badge: 'Patrimônio Musical',
               badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-400/40',
-              description: 'As 5 canções e ritmos mais representativos da identidade do estado.',
+              description: 'As 5 canções e ritmos mais representativos do estado.',
             })}
             className={`btn-subitem-musica w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer ${
               activeMusicCategory === 'top5'
@@ -944,8 +953,9 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
             id="btn-subitem-musica-nacionais"
             onClick={() =>
               handleSelectSubitem(() => {
-                if (!isRadioOpen) onToggleRadio?.();
                 onSelectMusicCategory?.('national');
+                if (!isRadioOpen) onToggleRadio?.();
+                onFocusState?.('DF');
               })
             }
             {...bindTooltip({
@@ -969,16 +979,56 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
             </span>
           </button>
 
+          {/* Seletor Rápido de Estado para Foco Musical */}
+          <div className="pt-1 px-1">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-amber-300/80 mb-1 flex items-center justify-between">
+              <span>Focar Estado</span>
+              <span className="font-mono text-[9px] text-amber-400/60">50% tela</span>
+            </div>
+            <select
+              id="select-foco-estado-musicalidades"
+              value={selectedStateId || ''}
+              onChange={(e) => {
+                const targetState = e.target.value;
+                if (!targetState) return;
+                handleSelectSubitem(() => {
+                  if (!isRadioOpen) onToggleRadio?.();
+                  onFocusState?.(targetState);
+                });
+              }}
+              className="select-foco-estado-musicalidades w-full bg-slate-950/90 text-amber-200 border border-amber-500/40 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer"
+            >
+              <option value="" disabled>Escolha um Estado...</option>
+              {Object.values(BRAZIL_STATES_REGISTRY).map((st) => (
+                <option key={st.id} value={st.id} className="bg-slate-900 text-amber-100">
+                  {st.id} — {st.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {onToggleRadio && (
             <>
-              <div className={`w-full h-[1px] ${theme.divider} my-0.5`} />
+              <div className={`w-full h-[1px] ${theme.divider} my-1`} />
               <button
                 id="btn-subitem-musica-gabinete"
-                onClick={() => handleSelectSubitem(() => onToggleRadio())}
+                onClick={() =>
+                  handleSelectSubitem(() => {
+                    if (isRadioOpen) {
+                      onToggleRadio();
+                      onFocusState?.('RESET_CENTRAL_BRAZIL');
+                    } else {
+                      onToggleRadio();
+                      onFocusState?.(selectedStateId || 'DF');
+                    }
+                  })
+                }
                 {...bindTooltip({
                   title: 'Gabinete do Rádio Retrô',
                   badge: isRadioOpen ? 'Aberto' : 'Oculto',
-                  description: 'Exibe ou oculta o aparelho de rádio na tela.',
+                  description: isRadioOpen
+                    ? 'Fecha o gabinete e centraliza o mapa do Brasil na tela.'
+                    : 'Abre o gabinete e divide a tela em 50% para o mapa.',
                 })}
                 className={`btn-subitem-musica w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl font-medium text-xs transition cursor-pointer border ${
                   isRadioOpen
@@ -988,7 +1038,7 @@ export const NavFlyoutMenu: React.FC<NavFlyoutMenuProps> = ({
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <Radio className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Aparelho Rádio</span>
+                  <span className="truncate">Gabinete Lateral</span>
                 </div>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-black/30 shrink-0">
                   {isRadioOpen ? 'Aberto' : 'Oculto'}

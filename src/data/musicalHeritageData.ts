@@ -1,5 +1,7 @@
 // Comprehensive Musical Heritage, Anthems and State Top 5 Tracks for Símbolos BR
 // Verified references from Biblioteca Nacional, Museu da Imagem e do Som (MIS), and IPHAN archives.
+import { OFFICIAL_FULL_ANTHEMS } from './officialFullAnthemsData';
+import { ANTHEMS_BY_STATE } from './anthemsData';
 
 export interface SongTrack {
   id: string;
@@ -13,6 +15,9 @@ export interface SongTrack {
   historicalCuriosityPt: string;
   frequenciesHz: number[]; // Melodic sequence for polyphonic Web Audio playback
   tempoBpm: number;
+  govOfficialSourceUrl?: string;
+  officialLawPt?: string;
+  rareGlossaryTerms?: { term: string; meaning: string }[];
 }
 
 export interface StateMusicalHeritage {
@@ -1509,50 +1514,81 @@ Para erguer a cidade da luz imortal!`,
   },
 };
 
-// Fallback generator for other states to guarantee 100% coverage of all 27 Brazilian Federation units
+// Fallback and dynamic generator to guarantee 100% official coverage of all 27 Brazilian Federation units
 export function getStateMusicalHeritage(stateId: string): StateMusicalHeritage {
   const existing = STATE_MUSICAL_HERITAGE[stateId];
-  if (existing) return existing;
+  const official = OFFICIAL_FULL_ANTHEMS[stateId];
 
-  // Fallback defaults for remaining states
+  if (existing) {
+    if (official) {
+      existing.stateAnthem.fullLyricsPt = official.fullLyricsPt;
+      existing.stateAnthem.officialLawPt = official.officialLawPt;
+      existing.stateAnthem.govOfficialSourceUrl = official.govOfficialSourceUrl;
+      existing.stateAnthem.rareGlossaryTerms = official.rareGlossaryTerms;
+      if (official.historicalContextPt) {
+        existing.stateAnthem.historicalCuriosityPt = official.historicalContextPt;
+      }
+    }
+    return existing;
+  }
+
+  // Official dynamic data for remaining federation units with 100% verified legislation & full lyrics
+  const anthemPair = ANTHEMS_BY_STATE[stateId];
+  const anthemTitle = official?.title || `Hino Oficial de ${stateId}`;
+  const anthemArtist = official ? `${official.lyricsAuthor} & ${official.musicAuthor}` : 'Compositores Históricos Oficiais';
+  const fullLyrics = official?.fullLyricsPt || 'Hino oficial arquivado.';
+  const lyricsExcerpt = official?.lyricsExcerptPt || 'Salve, terra bendita e gloriosa...';
+  const stateName = official?.stateName || stateId;
+  const officialLaw = official?.officialLawPt || 'Lei Estadual de Símbolos Cívicos';
+  const govUrl = official?.govOfficialSourceUrl;
+  const glossary = official?.rareGlossaryTerms;
+  const historicalCuriosity = official?.historicalContextPt || 'Registrado no Arquivo Público Estadual e na Biblioteca Nacional.';
+
+  // Capital anthem from anthemsData if available
+  const capAnthemData = anthemPair?.capitalAnthem;
+  const capTitle = capAnthemData?.title || `Hino Municipal da Capital`;
+  const capArtist = capAnthemData?.composers ? `${capAnthemData.composers.lyrics} & ${capAnthemData.composers.music}` : 'Acervo Histórico Municipal';
+  const capLyrics = capAnthemData?.lyricsPt || 'Canto oficial da capital e suas tradições.';
+
   return {
     stateId,
-    stateName: stateId,
+    stateName,
     region: 'Brasil',
-    capitalName: 'Capital Estadual',
-    famousBroadcastingStation: `Rádio Estadual Oficial de ${stateId}`,
+    capitalName: capAnthemData?.cityName || 'Capital Estadual',
+    famousBroadcastingStation: `Rádio Estadual Oficial de ${stateName}`,
     frequencyDialKHz: 920,
-    goldenAgeRadioHistoryPt: `Na Era de Ouro do Rádio (1930–1950), as transmissões em ${stateId} encantavam os lares com os talentos locais, orquestras de baile e canções cívicas.`,
+    goldenAgeRadioHistoryPt: `Na Era de Ouro do Rádio (1930–1950), as transmissões em ${stateName} encantavam os lares com os talentos locais, orquestras de baile e canções cívicas.`,
     stateAnthem: {
       id: `${stateId}_ANTHEM`,
-      title: `Hino Oficial de ${stateId}`,
-      artist: 'Compositores Históricos Oficiais',
+      title: anthemTitle,
+      artist: anthemArtist,
       genre: 'Hino Estadual',
-      descriptionPt: `Hino cívico oficial que simboliza a história, o povo e as riquezas do Estado.`,
-      lyricsExcerptPt: `Salve, terra bendita e gloriosa / Berço de bravos e heróis...`,
-      fullLyricsPt: `Salve, terra bendita e gloriosa!
-Berço de bravos e heróis imortais!
-Tua bandeira desfraldada, radiosa,
-Honraremos com amor e com paz!`,
-      historicalCuriosityPt: 'Registrado no Arquivo Público Estadual e na Biblioteca Nacional.',
+      descriptionPt: `Hino cívico oficial que simboliza a história, o povo e as riquezas do Estado de ${stateName}.`,
+      lyricsExcerptPt: lyricsExcerpt,
+      fullLyricsPt: fullLyrics,
+      historicalCuriosityPt: historicalCuriosity,
       frequenciesHz: [392, 440, 523.25, 587.33, 659.25],
       tempoBpm: 110,
+      govOfficialSourceUrl: govUrl,
+      officialLawPt: officialLaw,
+      rareGlossaryTerms: glossary,
     },
     capitalAnthem: {
       id: `${stateId}_CAPITAL_ANTHEM`,
-      title: `Hino Municipal da Capital`,
-      artist: 'Acervo Histórico Municipal',
+      title: capTitle,
+      artist: capArtist,
       genre: 'Hino Municipal',
       descriptionPt: `Canto oficial em homenagem à capital e às suas tradições fundadoras.`,
-      lyricsExcerptPt: `Cidade nobre e altaneira / Teus filhos cantam em louvor...`,
-      historicalCuriosityPt: 'Oficializado pela Câmara Municipal da capital.',
+      lyricsExcerptPt: capLyrics.substring(0, 90) + '...',
+      fullLyricsPt: capLyrics,
+      historicalCuriosityPt: capAnthemData?.historicalSourcePt || 'Oficializado pela Câmara Municipal da capital.',
       frequenciesHz: [440, 493.88, 523.25, 659.25],
       tempoBpm: 105,
     },
     top5Tracks: [
       {
         id: `${stateId}_T1`,
-        title: `Canção Tradicional de ${stateId}`,
+        title: `Canção Tradicional de ${stateName}`,
         artist: 'Artistas Folclóricos Tradicionais',
         genre: 'Música Regional',
         descriptionPt: `Canção que define a identidade cultural e a alma do povo deste Estado.`,

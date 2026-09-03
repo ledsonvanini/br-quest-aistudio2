@@ -178,6 +178,8 @@ export function App() {
       setIsWavesActive(true);
       setIsRainSimActive(false);
       setActiveMusicCategory('state_anthems');
+      setIsRadioOpen(false);
+      setFocusedStateId('RESET_CENTRAL_BRAZIL');
     } else if (newMode === 'globo3d') {
       // Modo Globo 3D Padrão: NASA Satellite Blue Marble, nuvens orbitais, brasões 40% preto translúcidos e bordas douradas
       setGlobeTextureMode('nasa_satellite');

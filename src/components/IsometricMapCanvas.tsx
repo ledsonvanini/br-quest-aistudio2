@@ -76,7 +76,7 @@ import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
 import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
-import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio } from 'lucide-react';
+import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio, Music } from 'lucide-react';
 
 interface Props {
   completedStateIds: string[];
@@ -325,10 +325,17 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       setInternalIsClimatePanelOpen(false);
       if (mainMode === 'musicalidades') {
         setInternalShowNeighbors(false);
+        setSelectedStateId(null);
+        const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+        setTransitionMode('button');
+        setPan(defaultPan);
+        setZoom(DEFAULT_BRAZIL_ZOOM);
+        baseUserPanRef.current = defaultPan;
+        baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
       }
     }
     onClimateActiveChange?.(mainMode === 'clima');
-  }, [mainMode, onClimateActiveChange]);
+  }, [mainMode, is3D, onClimateActiveChange]);
 
   const [internalClimateMode, setInternalClimateMode] = useState<ClimateMode>('temperaturas_frentes');
   const currentClimateMode = climateMode || internalClimateMode;
@@ -500,12 +507,39 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     audioEngine.playSfx('click');
   }, [propOnVisualStyleChange, propOnTerrainProviderChange]);
 
-  // Focus and zoom smoothly on state if triggered by top menu telemetry pills
+  // Focus and zoom smoothly on state if triggered by top menu telemetry pills or submenus
   useEffect(() => {
+    if (focusedStateId === 'RESET_CENTRAL_BRAZIL') {
+      setSelectedStateId(null);
+      const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+      setTransitionMode('button');
+      setPan(defaultPan);
+      setZoom(DEFAULT_BRAZIL_ZOOM);
+      baseUserPanRef.current = defaultPan;
+      baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
+      onFocusStateHandled?.();
+      return;
+    }
+
     if (focusedStateId && centroids[focusedStateId]) {
       setSelectedStateId(focusedStateId);
       setTransitionMode('button');
-      if (isClimateActive || mainMode === 'clima') {
+      if (mainMode === 'musicalidades') {
+        if (!isRadioOpen && onToggleRadio) {
+          onToggleRadio();
+        }
+        const { targetZoom, targetPan } = getMusicalFocusZoomAndPan(
+          centroids[focusedStateId],
+          getContainerWidth(),
+          is3D,
+          true,
+          focusedStateId
+        );
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      } else if (isClimateActive || mainMode === 'clima') {
         if (propIsObservatorioOpen && onToggleObservatorio) {
           onToggleObservatorio();
         }
@@ -533,7 +567,24 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       }
       onFocusStateHandled?.();
     }
-  }, [focusedStateId, centroids, getContainerWidth, is3D, isClimateActive, mainMode, onFocusStateHandled, zoom]);
+  }, [focusedStateId, centroids, getContainerWidth, is3D, isClimateActive, isRadioOpen, mainMode, onFocusStateHandled, onToggleObservatorio, onToggleRadio, propIsObservatorioOpen, zoom]);
+
+  // Ao fechar o rádio no modo Musicalidades, retorna o comportamento inicial (mapa do Brasil no centro da tela)
+  const prevRadioOpenRef = useRef<boolean>(isRadioOpen);
+  useEffect(() => {
+    if (mainMode === 'musicalidades') {
+      if (prevRadioOpenRef.current && !isRadioOpen) {
+        setSelectedStateId(null);
+        const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+        setTransitionMode('button');
+        setPan(defaultPan);
+        setZoom(DEFAULT_BRAZIL_ZOOM);
+        baseUserPanRef.current = defaultPan;
+        baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
+      }
+    }
+    prevRadioOpenRef.current = isRadioOpen;
+  }, [isRadioOpen, mainMode, is3D]);
 
   // Spherical Globe Dynamic Angles
   const sphericalAngles = useMemo(() => {
@@ -580,12 +631,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         { width: containerW, height: containerH },
         0.35,
         3.20,
-        mainMode === 'musicalidades'
+        mainMode === 'musicalidades' && isRadioOpen
       );
       setPan(clamped.pan);
       setZoom(clamped.zoom);
     },
-    [mainMode]
+    [mainMode, isRadioOpen]
   );
 
   // Kinetic Inertial momentum loop
@@ -619,7 +670,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           { width: containerW, height: containerH },
           0.35,
           3.20,
-          mainMode === 'musicalidades'
+          mainMode === 'musicalidades' && isRadioOpen
         );
         return clamped.pan;
       });
@@ -800,7 +851,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         { width: containerW, height: containerH },
         0.35,
         3.20,
-        mainMode === 'musicalidades'
+        mainMode === 'musicalidades' && isRadioOpen
       );
       setPan(clamped.pan);
       baseUserPanRef.current = clamped.pan;
@@ -863,8 +914,17 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       if (onHoverStateChange) {
         onHoverStateChange(null);
       }
-      if (mainMode === 'musicalidades' && isRadioOpen && onToggleRadio) {
-        onToggleRadio();
+      if (mainMode === 'musicalidades') {
+        if (isRadioOpen && onToggleRadio) {
+          onToggleRadio();
+        }
+        const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+        setTransitionMode('button');
+        setPan(defaultPan);
+        setZoom(DEFAULT_BRAZIL_ZOOM);
+        baseUserPanRef.current = defaultPan;
+        baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
+        return;
       }
     }
   };
@@ -1000,7 +1060,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           centroid,
           getContainerWidth(),
           is3D,
-          true
+          true,
+          stateId
         );
         setTransitionMode('button');
         setPan(targetPan);
@@ -1041,6 +1102,19 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     setSelectedGeopoliticaStateId(null);
     setSelectedStateId(null);
     audioEngine.playMenuHover();
+
+    if (mainMode === 'musicalidades') {
+      if (isRadioOpen && onToggleRadio) {
+        onToggleRadio();
+      }
+      const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+      setTransitionMode('button');
+      setPan(defaultPan);
+      setZoom(DEFAULT_BRAZIL_ZOOM);
+      baseUserPanRef.current = defaultPan;
+      baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
+      return;
+    }
 
     if (mainMode === 'biodiversidade' && isBiodiversityPanelOpen) {
       const { targetZoom, targetPan } = getBrazilOverviewFocusZoomAndPan(
@@ -1490,14 +1564,14 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           if (hoveredCountryId) handleCountryLeave(hoveredCountryId);
         }
       }}
-      className={`container-canva-mapa-br container-mapa-br relative w-full h-full flex-1 overflow-hidden select-none ${
-        isGlobe3DActive ? 'cursor-default' : 'cursor-none'
-      }`}
+      className="container-canva-mapa-br container-mapa-br relative w-full h-full flex-1 overflow-hidden select-none cursor-default"
       style={{
         perspective: '1600px',
         background:
           !isClimateActive && terrainProvider === 'voyager_parchment'
             ? 'radial-gradient(circle at 50% 50%, #fbf2df 0%, #eedbb8 30%, #dfc59b 55%, #b08f58 85%, #8c6a38 100%)'
+            : mainMode === 'musicalidades'
+            ? 'radial-gradient(circle at 50% 50%, #091a2e 0%, #061220 25%, #030b14 55%, #02060b 80%, #010306 100%)'
             : 'radial-gradient(circle at 50% 50%, #0e568e 0%, #0a3d68 25%, #062846 50%, #03172b 75%, #020d1c 95%)',
       }}
     >
@@ -1564,7 +1638,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       {!showNeighbors && mainMode === 'musicalidades' && isRadioOpen && (
         <section
           id="coluna-radio-vintage-independente"
-          className="coluna-radio-vintage-independente painel-split-radio-esquerda fixed left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] top-14 sm:top-15 md:top-[58px] bottom-9 sm:bottom-10 md:bottom-[42px] max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] z-30 pointer-events-auto flex flex-col min-h-0 cursor-default"
+          className="coluna-radio-vintage-independente painel-split-radio-esquerda fixed left-2 right-2 sm:right-auto sm:left-[76px] md:left-[84px] lg:left-[88px] top-13 sm:top-15 md:top-[58px] bottom-8 sm:bottom-10 md:bottom-[42px] max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] z-30 pointer-events-auto flex flex-col min-h-0 cursor-default"
           aria-label="Aparelho e Reprodutor de Rádio Vintage do Brasil"
         >
           <VintageRadioPlayer
@@ -1574,6 +1648,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             onSelectRadioEra={onSelectRadioEra}
             onSelectState={(stateId) => {
               setSelectedStateId(stateId);
+              if (!isRadioOpen && onToggleRadio) {
+                onToggleRadio();
+              }
               const centroid = centroids[stateId];
               if (centroid) {
                 setTransitionMode('button');
@@ -1581,7 +1658,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                   centroid,
                   getContainerWidth(),
                   is3D,
-                  true
+                  true,
+                  stateId
                 );
                 setPan(targetPan);
                 setZoom(targetZoom);
@@ -1589,7 +1667,16 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 baseUserZoomRef.current = targetZoom;
               }
             }}
-            onClose={onToggleRadio}
+            onClose={() => {
+              if (onToggleRadio) onToggleRadio();
+              setSelectedStateId(null);
+              const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
+              setTransitionMode('button');
+              setPan(defaultPan);
+              setZoom(DEFAULT_BRAZIL_ZOOM);
+              baseUserPanRef.current = defaultPan;
+              baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
+            }}
           />
         </section>
       )}
@@ -1603,22 +1690,39 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               e.stopPropagation();
               audioEngine.playSfx('click');
               onToggleRadio();
+              const targetState = selectedStateId || 'DF';
+              setSelectedStateId(targetState);
+              const centroid = centroids[targetState];
+              if (centroid) {
+                setTransitionMode('button');
+                const { targetZoom, targetPan } = getMusicalFocusZoomAndPan(
+                  centroid,
+                  getContainerWidth(),
+                  is3D,
+                  true,
+                  targetState
+                );
+                setPan(targetPan);
+                setZoom(targetZoom);
+                baseUserPanRef.current = targetPan;
+                baseUserZoomRef.current = targetZoom;
+              }
             }}
             className="btn-reabrir-radio-flutuante flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-slate-950/90 backdrop-blur-md border border-amber-400/50 hover:border-amber-300 text-amber-300 hover:text-amber-200 shadow-[0_8px_30px_rgba(0,0,0,0.85)] cursor-pointer transition hover:scale-105 group active:scale-95"
-            title="Abrir Rádio Nacional"
+            title="Abrir Gabinete & Acervo Musical"
           >
-            {/* Ícone de Rádio Grande sem background */}
+            {/* Ícone de Música Grande sem background */}
             <div className="flex items-center justify-center text-amber-400 group-hover:text-amber-300 transition-transform group-hover:scale-110 drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]">
-              <Radio className="w-7 h-7 sm:w-8 sm:h-8" strokeWidth={1.8} />
+              <Music className="w-7 h-7 sm:w-8 sm:h-8" strokeWidth={1.8} />
             </div>
 
             <div className="text-left font-serif">
               <div className="text-sm font-bold text-amber-200 leading-tight flex items-center gap-1.5 drop-shadow">
-                <span>Rádio Nacional</span>
+                <span>Musicalidades</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
               </div>
               <div className="text-[11px] text-amber-300/80 font-sans tracking-wide">
-                Clique para abrir
+                Gabinete & Acervo
               </div>
             </div>
           </button>

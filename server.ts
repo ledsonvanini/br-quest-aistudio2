@@ -84,7 +84,13 @@ async function fetchUpstreamClimateTelemetry(): Promise<any> {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
 
-    const rawData: any = await res.json();
+    const text = await res.text();
+    let rawData: any;
+    try {
+      rawData = JSON.parse(text);
+    } catch {
+      throw new Error(`Open-Meteo retornou texto não-JSON: ${text.slice(0, 80)}...`);
+    }
     const dataList = Array.isArray(rawData) ? rawData : [rawData];
 
     BRAZIL_COORDS.forEach((state, idx) => {

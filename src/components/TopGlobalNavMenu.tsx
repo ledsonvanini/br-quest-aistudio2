@@ -15,6 +15,7 @@ import {
   Flame,
   Award,
   BookOpen,
+  Music,
   Layers,
   Mountain,
   Scroll,
@@ -188,6 +189,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   onToggleRadio,
   activeMusicCategory = 'state_anthems',
   onSelectMusicCategory,
+  selectedStateId,
+  onFocusState,
   globeTextureMode = 'nasa_satellite',
   onGlobeTextureModeChange,
   isGlobeCloudsActive = true,
@@ -459,16 +462,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   };
 
   const getMusicalidadesActiveIcon = () => {
-    switch (activeMusicCategory) {
-      case 'state_anthems':
-        return <BookOpen className="w-5 h-5 transition-transform" />;
-      case 'top5':
-        return <Flame className="w-5 h-5 transition-transform" />;
-      case 'national':
-        return <Award className="w-5 h-5 transition-transform" />;
-      default:
-        return <Radio className="w-5 h-5 transition-transform" />;
-    }
+    return <Radio className="w-5 h-5 transition-transform" />;
   };
 
   const getMusicalidadesActiveLabel = () => {
@@ -480,7 +474,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
       case 'national':
         return 'Hinos Cívicos Nacionais';
       default:
-        return 'Rádio Retrô';
+        return 'Hinos & Ritmos do Brasil';
     }
   };
 
@@ -929,6 +923,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
             onSelectMusicCategory={onSelectMusicCategory}
             isRadioOpen={isRadioOpen}
             onToggleRadio={onToggleRadio}
+            selectedStateId={selectedStateId}
+            onFocusState={onFocusState}
             globeTextureMode={globeTextureMode}
             onGlobeTextureModeChange={onGlobeTextureModeChange}
             isGlobeCloudsActive={isGlobeCloudsActive}

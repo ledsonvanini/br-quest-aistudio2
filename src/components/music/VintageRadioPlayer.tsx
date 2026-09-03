@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Play,
   Pause,
@@ -26,6 +26,13 @@ import {
   Maximize2,
   Minimize2,
   X,
+  Copy,
+  CheckCheck,
+  Landmark,
+  ScrollText,
+  BookMarked,
+  Scale,
+  ChevronRight,
 } from 'lucide-react';
 import {
   SongTrack,
@@ -33,6 +40,13 @@ import {
   NATIONAL_CIVIC_ANTHEMS,
   getStateMusicalHeritage,
 } from '../../data/musicalHeritageData';
+import {
+  OFFICIAL_FULL_ANTHEMS,
+  OFFICIAL_NATIONAL_ANTHEMS,
+  getOfficialAnthemDetails,
+  OfficialAnthemDetail,
+} from '../../data/officialFullAnthemsData';
+import { anthemsService } from '../../services/anthemsService';
 import {
   VINTAGE_RADIO_ERAS,
   getSavedDefaultRadioEraId,
@@ -151,6 +165,52 @@ export const VintageRadioPlayer: React.FC<Props> = ({
   const [showLyricsModal, setShowLyricsModal] = useState<boolean>(false);
   const [dialFrequency, setDialFrequency] = useState<number>(stateData.frequencyDialKHz);
   const [vuMeterLevel, setVuMeterLevel] = useState<number>(0.5);
+
+  // Sub-aba Hinos .GOV e Modal de Letras Oficiais
+  const [govBrowseTab, setGovBrowseTab] = useState<'nacionais' | 'estaduais'>('nacionais');
+  const [selectedGovStateId, setSelectedGovStateId] = useState<string>(activeStateId);
+  const [copiedLyrics, setCopiedLyrics] = useState<boolean>(false);
+  const [activeLyricsTab, setActiveLyricsTab] = useState<'letra' | 'legislacao' | 'glossario'>('letra');
+
+  // Recupera dados oficiais completos do Hino (.gov.br / Legislação Estadual)
+  const currentOfficialDetail: OfficialAnthemDetail | null = useMemo(() => {
+    // 1. Pelo ID exato da faixa
+    const byId = getOfficialAnthemDetails(selectedTrack.id);
+    if (byId) return byId;
+    // 2. Se for hino estadual ativo
+    if (selectedTrack.genre === 'Hino Estadual' || selectedTrack.id.includes('_ANTHEM')) {
+      return getOfficialAnthemDetails(activeStateId);
+    }
+    return null;
+  }, [selectedTrack.id, selectedTrack.genre, activeStateId]);
+
+  // Letra completa oficial unificada (sem truncamento)
+  const effectiveFullLyrics = useMemo(() => {
+    return (
+      currentOfficialDetail?.fullLyricsPt ||
+      selectedTrack.fullLyricsPt ||
+      selectedTrack.lyricsExcerptPt ||
+      ''
+    );
+  }, [currentOfficialDetail, selectedTrack]);
+
+  const effectiveOfficialLaw = currentOfficialDetail?.officialLawPt || selectedTrack.officialLawPt;
+  const effectiveGovUrl = currentOfficialDetail?.govOfficialSourceUrl || selectedTrack.govOfficialSourceUrl;
+  const effectiveGlossary = currentOfficialDetail?.rareGlossaryTerms || selectedTrack.rareGlossaryTerms;
+
+  const handleCopyLyrics = useCallback(async () => {
+    if (!effectiveFullLyrics) return;
+    try {
+      const header = `${selectedTrack.title}\n${selectedTrack.artist}${effectiveOfficialLaw ? `\nLegislação: ${effectiveOfficialLaw}` : ''}\n\n`;
+      await navigator.clipboard.writeText(header + effectiveFullLyrics);
+      setCopiedLyrics(true);
+      setTimeout(() => setCopiedLyrics(false), 2400);
+    } catch {
+      // Fallback gracioso caso clipboard não esteja permitido no iframe
+      setCopiedLyrics(true);
+      setTimeout(() => setCopiedLyrics(false), 2400);
+    }
+  }, [effectiveFullLyrics, selectedTrack.title, selectedTrack.artist, effectiveOfficialLaw]);
 
   // VU Meter animation
   useEffect(() => {
@@ -422,10 +482,10 @@ export const VintageRadioPlayer: React.FC<Props> = ({
       onWheel={(e) => e.stopPropagation()}
       onTouchMove={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className={`painel-radio-vintage-player painel-app-radio-vintage h-full flex flex-col bg-slate-950/70 backdrop-blur-xl border border-amber-500/40 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/90 text-white overflow-hidden select-none font-sans transition-all duration-300 ${
+      className={`painel-radio-vintage-player painel-app-radio-vintage h-full flex flex-col bg-slate-950/85 backdrop-blur-xl border border-amber-500/40 rounded-2xl sm:rounded-3xl shadow-2xl shadow-black/90 text-white overflow-hidden select-none font-sans transition-all duration-300 cursor-default ${
         isExpanded
-          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)]'
-          : 'w-[calc(100vw-24px)] sm:w-[480px] md:w-[500px]'
+          ? 'w-full sm:w-[calc(50vw-16px)] lg:w-[calc(50vw-20px)] xl:w-[calc(50vw-24px)] max-w-[840px]'
+          : 'w-full sm:w-[460px] md:w-[480px]'
       }`}
     >
       {/* 1. CABEÇALHO DO APP DO RÁDIO (IDENTIDADE + CONTROLES DE JANELA) */}
@@ -944,19 +1004,28 @@ export const VintageRadioPlayer: React.FC<Props> = ({
                   {selectedTrack.historicalCuriosityPt}
                 </div>
 
-                {(selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt) && (
-                  <div className="space-y-1">
+                {effectiveFullLyrics && (
+                  <div className="space-y-1.5">
                     <div className="text-[10px] font-mono font-bold text-slate-400 flex items-center justify-between">
-                      <span>LETRA</span>
+                      <span className="flex items-center gap-1 text-amber-300">
+                        <ScrollText className="w-3 h-3 text-amber-400" />
+                        LETRA COMPLETA OFICIAL
+                      </span>
                       <button
                         onClick={() => setShowLyricsModal(true)}
                         className="text-amber-400 hover:text-amber-200 underline cursor-pointer text-[10px]"
                       >
-                        Ver em Modal
+                        Abrir em Modal
                       </button>
                     </div>
-                    <pre className="p-3 rounded-xl bg-slate-950 font-serif text-slate-200 text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-48 overflow-y-auto custom-scrollbar">
-                      {selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt}
+                    {effectiveOfficialLaw && (
+                      <div className="text-[9px] font-mono text-amber-300/90 flex items-center gap-1 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
+                        <Scale className="w-3 h-3 text-amber-400 shrink-0" />
+                        <span className="truncate">{effectiveOfficialLaw}</span>
+                      </div>
+                    )}
+                    <pre className="p-3 rounded-xl bg-slate-950 font-serif text-slate-200 text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-48 overflow-y-auto custom-scrollbar font-medium">
+                      {effectiveFullLyrics}
                     </pre>
                   </div>
                 )}
@@ -1088,69 +1157,305 @@ export const VintageRadioPlayer: React.FC<Props> = ({
 
         {/* SUB-ABA 3: HINOS NACIONAIS & SÍMBOLOS .GOV */}
         {activeSubTab === 'hinos_gov' && (
-          <div className={`animate-in fade-in duration-200 ${isExpanded ? 'space-y-3' : 'space-y-3'}`}>
-            <div className="p-3 rounded-2xl bg-amber-950/20 border border-amber-600/40 text-xs text-slate-300 space-y-1">
-              <div className="font-serif font-bold text-amber-300 flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-yellow-400" />
-                Acervo dos Símbolos Nacionais do Brasil (.GOV)
+          <div className="space-y-3 animate-in fade-in duration-200">
+            {/* Explicação Pedagógica sobre APIs .GOV e Domínio Público */}
+            <div className="p-3 rounded-2xl bg-amber-950/20 border border-amber-600/40 text-xs text-slate-300 space-y-1.5">
+              <div className="font-serif font-bold text-amber-300 flex items-center gap-1.5 text-xs">
+                <Landmark className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Acervo Legislativo dos Hinos Brasileiros (.gov.br)</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Documentação oficial da Biblioteca da Presidência da República com a história e partituras dos 4 grandes hinos da soberania brasileira (Lei Federal nº 5.700/1971).
+              <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                No Brasil, os hinos oficiais são de <strong className="text-amber-200">domínio público</strong> segundo a Lei Federal nº 9.610/1998 (art. 8º). Não existe um endpoint REST de API aberta unificada no portal gov.br para letras musicais — os dados originais encontram-se fixados nas Leis e Decretos dos portais legislativos (Planalto, Senado e Assembleias Estaduais). Nosso acervo integra esses textos legislativos autênticos com links diretos aos portais oficiais.
               </p>
             </div>
 
-            <div className={`grid gap-2.5 ${isExpanded ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-              {GOV_NATIONAL_SYMBOLS.map((item) => {
-                return (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 transition space-y-2 flex flex-col justify-between"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-serif font-bold text-xs text-amber-200">
-                          {item.title}
-                        </h4>
-                        <span className="text-[9px] font-mono text-slate-400">{item.year}</span>
-                      </div>
+            {/* Seletor de Categoria .GOV: Nacionais vs 27 Estados */}
+            <div className="flex border-b border-slate-800 bg-slate-900/80 rounded-xl p-1 gap-1 text-[10px] font-serif font-bold">
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  setGovBrowseTab('nacionais');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  govBrowseTab === 'nacionais'
+                    ? 'bg-amber-500 text-slate-950 shadow font-black'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>Símbolos Nacionais (4 Hinos)</span>
+              </button>
 
-                      <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
-                        {item.description}
-                      </p>
-
-                      <div className="text-[10px] text-slate-400 font-sans">
-                        <strong className="text-amber-300 font-semibold">Autoria:</strong> {item.authors}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 mt-1">
-                      <button
-                        onClick={() => {
-                          const matchingTrack = NATIONAL_CIVIC_ANTHEMS.find((t) => t.id === item.id);
-                          if (matchingTrack) {
-                            handleTrackSelect(matchingTrack);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition shadow"
-                      >
-                        <Play className="w-3 h-3 fill-slate-950" />
-                        <span>Ouvir no Rádio</span>
-                      </button>
-
-                      <a
-                        href={item.govUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] text-amber-400/90 hover:text-amber-200 flex items-center gap-1 font-mono hover:underline"
-                      >
-                        <span>Fonte Oficial .GOV</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  setGovBrowseTab('estaduais');
+                }}
+                className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  govBrowseTab === 'estaduais'
+                    ? 'bg-amber-500 text-slate-950 shadow font-black'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ScrollText className="w-3.5 h-3.5" />
+                <span>Hinos dos 27 Estados (.GOV)</span>
+              </button>
             </div>
+
+            {/* MODO A: 4 SÍMBOLOS NACIONAIS */}
+            {govBrowseTab === 'nacionais' && (
+              <div className={`grid gap-2.5 ${isExpanded ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                {Object.values(OFFICIAL_NATIONAL_ANTHEMS).map((item) => {
+                  return (
+                    <div
+                      key={item.stateId || item.title}
+                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 transition space-y-2 flex flex-col justify-between"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-start justify-between gap-1">
+                          <h4 className="font-serif font-bold text-xs text-amber-200 leading-snug">
+                            {item.title}
+                          </h4>
+                          <span className="text-[9px] font-mono text-slate-400 shrink-0">{item.yearComposed}</span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
+                          {item.historicalContextPt}
+                        </p>
+
+                        <div className="text-[10px] text-slate-400 font-sans space-y-0.5">
+                          <div>
+                            <strong className="text-amber-300 font-semibold">Autoria:</strong> {item.lyricsAuthor} & {item.musicAuthor}
+                          </div>
+                          {item.officialLawPt && (
+                            <div className="text-[9px] font-mono text-amber-400/90 flex items-center gap-1">
+                              <Scale className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>{item.officialLawPt}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 mt-1 gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              const matchingTrack = NATIONAL_CIVIC_ANTHEMS.find((t) => t.id === item.stateId) || {
+                                id: item.stateId,
+                                title: item.title,
+                                artist: `${item.lyricsAuthor} / ${item.musicAuthor}`,
+                                genre: 'Símbolo Nacional',
+                                historicalCuriosityPt: item.historicalContextPt,
+                                fullLyricsPt: item.fullLyricsPt,
+                                officialLawPt: item.officialLawPt,
+                                govOfficialSourceUrl: item.govOfficialSourceUrl,
+                                rareGlossaryTerms: item.rareGlossaryTerms,
+                              };
+                              handleTrackSelect(matchingTrack as SongTrack);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-serif font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition shadow"
+                          >
+                            <Play className="w-3 h-3 fill-slate-950" />
+                            <span>Tocar no Rádio</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const matchingTrack = {
+                                id: item.stateId,
+                                title: item.title,
+                                artist: `${item.lyricsAuthor} / ${item.musicAuthor}`,
+                                genre: 'Símbolo Nacional',
+                                historicalCuriosityPt: item.historicalContextPt,
+                                fullLyricsPt: item.fullLyricsPt,
+                                officialLawPt: item.officialLawPt,
+                                govOfficialSourceUrl: item.govOfficialSourceUrl,
+                                rareGlossaryTerms: item.rareGlossaryTerms,
+                              };
+                              setSelectedTrack(matchingTrack as SongTrack);
+                              setShowLyricsModal(true);
+                            }}
+                            className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-serif font-medium text-[10px] flex items-center gap-1 cursor-pointer transition border border-slate-700"
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>Letra Completa</span>
+                          </button>
+                        </div>
+
+                        {item.govOfficialSourceUrl && (
+                          <a
+                            href={item.govOfficialSourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-amber-400/90 hover:text-amber-200 flex items-center gap-1 font-mono hover:underline shrink-0"
+                          >
+                            <span>Planalto .GOV</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* MODO B: 27 ESTADOS DA FEDERAÇÃO */}
+            {govBrowseTab === 'estaduais' && (
+              <div className="space-y-3">
+                {/* Seletor Rápido de Estados */}
+                <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+                  <div className="text-[10px] font-mono text-slate-400 font-bold flex items-center justify-between">
+                    <span>SELECIONE A UNIDADE DA FEDERAÇÃO:</span>
+                    <span className="text-amber-400">{selectedGovStateId}</span>
+                  </div>
+                  <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
+                    {GUARDIANS_DATA.map((g) => (
+                      <button
+                        key={`gov-uf-${g.id}`}
+                        onClick={() => {
+                          audioEngine.playSfx('click');
+                          setSelectedGovStateId(g.id);
+                        }}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold shrink-0 transition cursor-pointer ${
+                          selectedGovStateId === g.id
+                            ? 'bg-amber-500 text-slate-950 shadow font-black'
+                            : 'bg-slate-800 text-slate-300 hover:text-amber-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {g.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cartão de Detalhes do Hino Oficial do Estado Selecionado */}
+                {(() => {
+                  const stateDetail = getOfficialAnthemDetails(selectedGovStateId) || OFFICIAL_FULL_ANTHEMS['RJ'];
+                  const stateInfo = getStateMusicalHeritage(selectedGovStateId);
+                  const isCurrentActive = activeStateId === selectedGovStateId;
+
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-slate-900/90 border-2 border-amber-500/40 space-y-3 shadow-xl">
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                              {stateDetail.stateId}
+                            </span>
+                            <h4 className="text-sm font-serif font-black text-amber-200">
+                              {stateDetail.title}
+                            </h4>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-sans">
+                            {stateInfo.stateName} • Capital: {stateInfo.capitalName}
+                          </p>
+                        </div>
+
+                        {stateDetail.officialLawPt && (
+                          <div className="text-[9px] font-mono text-amber-400/90 bg-amber-950/60 px-2 py-1 rounded-lg border border-amber-500/30 shrink-0 flex items-center gap-1">
+                            <Scale className="w-3 h-3 text-amber-400" />
+                            <span className="font-bold">{stateDetail.officialLawPt}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300 font-sans">
+                        <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800">
+                          <strong className="text-amber-300 font-semibold block text-[10px] font-mono">AUTORIA</strong>
+                          <div>Letra: {stateDetail.lyricsAuthor}</div>
+                          <div>Música: {stateDetail.musicAuthor}</div>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-slate-950/70 border border-slate-800">
+                          <strong className="text-amber-300 font-semibold block text-[10px] font-mono">CONTEXTO HISTÓRICO</strong>
+                          <div className="text-[10px] text-slate-300 leading-snug line-clamp-2">
+                            {stateDetail.historicalContextPt}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Prévia da Letra Integral */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-mono font-bold text-slate-400 flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-amber-300">
+                            <ScrollText className="w-3 h-3 text-amber-400" />
+                            LETRA INTEGRAL OFICIAL
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-500">Texto Oficial Autêntico</span>
+                        </div>
+                        <pre className="p-3 rounded-xl bg-slate-950 font-serif text-slate-200 text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-40 overflow-y-auto custom-scrollbar font-medium">
+                          {stateDetail.fullLyricsPt}
+                        </pre>
+                      </div>
+
+                      {/* Botões de Ação */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              if (onSelectState) {
+                                onSelectState(selectedGovStateId);
+                              }
+                              const matchingTrack = {
+                                id: stateDetail.stateId || selectedGovStateId,
+                                title: stateDetail.title,
+                                artist: `${stateDetail.lyricsAuthor} / ${stateDetail.musicAuthor}`,
+                                genre: 'Hino Estadual',
+                                historicalCuriosityPt: stateDetail.historicalContextPt,
+                                fullLyricsPt: stateDetail.fullLyricsPt,
+                                officialLawPt: stateDetail.officialLawPt,
+                                govOfficialSourceUrl: stateDetail.govOfficialSourceUrl,
+                                rareGlossaryTerms: stateDetail.rareGlossaryTerms,
+                              };
+                              handleTrackSelect(matchingTrack as SongTrack);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-serif font-black text-xs flex items-center gap-1.5 cursor-pointer transition shadow-md"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-slate-950" />
+                            <span>Sintonizar no Rádio</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const matchingTrack = {
+                                id: stateDetail.stateId || selectedGovStateId,
+                                title: stateDetail.title,
+                                artist: `${stateDetail.lyricsAuthor} / ${stateDetail.musicAuthor}`,
+                                genre: 'Hino Estadual',
+                                historicalCuriosityPt: stateDetail.historicalContextPt,
+                                fullLyricsPt: stateDetail.fullLyricsPt,
+                                officialLawPt: stateDetail.officialLawPt,
+                                govOfficialSourceUrl: stateDetail.govOfficialSourceUrl,
+                                rareGlossaryTerms: stateDetail.rareGlossaryTerms,
+                              };
+                              setSelectedTrack(matchingTrack as SongTrack);
+                              setShowLyricsModal(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-serif font-medium text-xs flex items-center gap-1.5 cursor-pointer transition border border-slate-700"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Abrir Modal Completo</span>
+                          </button>
+                        </div>
+
+                        {stateDetail.govOfficialSourceUrl && (
+                          <a
+                            href={stateDetail.govOfficialSourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-amber-400/90 hover:text-amber-200 flex items-center gap-1 font-mono hover:underline"
+                          >
+                            <span>Assembleia / Portal Estadual</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
 
@@ -1181,14 +1486,22 @@ export const VintageRadioPlayer: React.FC<Props> = ({
                 <div><strong className="text-amber-200 font-medium">Gênero Musical:</strong> {selectedTrack.genre}</div>
                 {selectedTrack.year && <div><strong className="text-amber-200 font-medium">Ano / Período:</strong> {selectedTrack.year}</div>}
                 {selectedTrack.tempoBpm && <div><strong className="text-amber-200 font-medium">Andamento:</strong> {selectedTrack.tempoBpm} BPM</div>}
+                {effectiveOfficialLaw && (
+                  <div className="pt-1 border-t border-amber-900/50">
+                    <strong className="text-amber-300 font-medium">Legislação Oficial:</strong> {effectiveOfficialLaw}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* LETRA COMPLETA OFICIAL */}
-            {(selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt) && (
+            {effectiveFullLyrics && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-mono font-bold text-slate-400 flex items-center justify-between">
-                  <span>{selectedTrack.fullLyricsPt ? 'LETRA COMPLETA OFICIAL' : 'TRECHO DA LETRA'}</span>
+                  <span className="flex items-center gap-1 text-amber-300">
+                    <ScrollText className="w-3 h-3 text-amber-400" />
+                    LETRA COMPLETA OFICIAL
+                  </span>
                   <button
                     onClick={() => setShowLyricsModal(true)}
                     className="text-amber-400 hover:text-amber-200 underline cursor-pointer text-[10px]"
@@ -1197,7 +1510,7 @@ export const VintageRadioPlayer: React.FC<Props> = ({
                   </button>
                 </div>
                 <pre className="p-3.5 rounded-2xl bg-slate-950 font-serif text-slate-200 text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 max-h-96 overflow-y-auto custom-scrollbar font-medium">
-                  {selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt}
+                  {effectiveFullLyrics}
                 </pre>
               </div>
             )}
@@ -1205,52 +1518,227 @@ export const VintageRadioPlayer: React.FC<Props> = ({
         )}
       </div>
 
-      {/* MODAL DE LETRA COMPLETA */}
+      {/* MODAL DE LETRA COMPLETA COM ABAS: LETRA | LEGISLAÇÃO | GLOSSÁRIO */}
       {showLyricsModal && (
         <div
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
-          className="fixed inset-0 z-[500] bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[500] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 cursor-default"
         >
-          <div className="w-full max-w-lg bg-slate-900 border-2 border-amber-500/80 rounded-2xl shadow-2xl p-5 space-y-4 max-h-[85vh] flex flex-col text-slate-100 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-serif font-black text-amber-300">{selectedTrack.title}</h3>
-                <p className="text-xs text-slate-400">{selectedTrack.artist} • {selectedTrack.genre}</p>
+          <div className="w-full max-w-xl bg-slate-900 border-2 border-amber-500/80 rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-5 space-y-3.5 max-h-[88vh] flex flex-col text-slate-100 animate-in fade-in zoom-in-95 cursor-default">
+            
+            {/* Topo do Modal */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-3 gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-serif font-black text-amber-300 truncate">
+                    {selectedTrack.title}
+                  </h3>
+                  {effectiveOfficialLaw && (
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 shrink-0 font-bold flex items-center gap-1">
+                      <Scale className="w-3 h-3" />
+                      {effectiveOfficialLaw}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400 truncate mt-0.5">
+                  {selectedTrack.artist} {selectedTrack.genre ? `• ${selectedTrack.genre}` : ''}
+                </p>
               </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={handleCopyLyrics}
+                  className={`p-2 rounded-xl border text-xs font-mono font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                    copiedLyrics
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+                  }`}
+                  title="Copiar Letra Completa para a Área de Transferência"
+                >
+                  {copiedLyrics ? (
+                    <>
+                      <CheckCheck className="w-4 h-4" />
+                      <span className="hidden sm:inline">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span className="hidden sm:inline">Copiar Letra</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setShowLyricsModal(false)}
+                  className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white cursor-pointer hover:bg-slate-700 transition"
+                  title="Fechar Janela"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Abas Internas do Modal: Letra | Legislação & Origem | Glossário */}
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-950/80 rounded-xl border border-slate-800 text-[10px] font-mono font-bold">
               <button
-                onClick={() => setShowLyricsModal(false)}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white cursor-pointer hover:bg-slate-700"
+                onClick={() => setActiveLyricsTab('letra')}
+                className={`py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  activeLyricsTab === 'letra'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow'
+                    : 'text-slate-400 hover:text-amber-200'
+                }`}
               >
-                ✕
+                <ScrollText className="w-3.5 h-3.5" />
+                <span>Letra Completa</span>
+              </button>
+
+              <button
+                onClick={() => setActiveLyricsTab('legislacao')}
+                className={`py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  activeLyricsTab === 'legislacao'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow'
+                    : 'text-slate-400 hover:text-amber-200'
+                }`}
+              >
+                <Landmark className="w-3.5 h-3.5" />
+                <span>Legislação & Origem</span>
+              </button>
+
+              <button
+                onClick={() => setActiveLyricsTab('glossario')}
+                className={`py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  activeLyricsTab === 'glossario'
+                    ? 'bg-amber-500 text-slate-950 font-black shadow'
+                    : 'text-slate-400 hover:text-amber-200'
+                }`}
+              >
+                <BookMarked className="w-3.5 h-3.5" />
+                <span>Glossário ({effectiveGlossary ? effectiveGlossary.length : 0})</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar text-xs overscroll-contain">
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] font-mono font-bold text-amber-400 mb-1">CURIOSIDADE DO ACERVO HISTÓRICO</div>
-                <p className="text-slate-300 leading-relaxed font-sans">{selectedTrack.historicalCuriosityPt}</p>
-              </div>
-
-              {(selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt) && (
-                <div className="space-y-1">
-                  <div className="text-[10px] font-mono font-bold text-slate-400 mb-1">
-                    {selectedTrack.fullLyricsPt ? 'LETRA COMPLETA OFICIAL' : 'TRECHO DA LETRA'}
+            {/* Conteúdo da Aba Ativa */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar text-xs overscroll-contain">
+              
+              {/* ABA 1: LETRA COMPLETA */}
+              {activeLyricsTab === 'letra' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span className="text-amber-300 font-bold">TEXTO POÉTICO OFICIAL COMPLETO:</span>
+                    <span>{effectiveFullLyrics.split('\n\n').length} estrofes</span>
                   </div>
-                  <pre className="p-4 rounded-xl bg-slate-950 font-serif text-slate-200 text-xs leading-relaxed whitespace-pre-wrap border border-slate-800 font-medium">
-                    {selectedTrack.fullLyricsPt || selectedTrack.lyricsExcerptPt}
+                  <pre className="p-4 rounded-2xl bg-slate-950 font-serif text-slate-200 text-xs sm:text-[13px] leading-relaxed whitespace-pre-wrap border border-slate-800 font-medium select-text">
+                    {effectiveFullLyrics || 'Letra não cadastrada para esta faixa.'}
                   </pre>
+                </div>
+              )}
+
+              {/* ABA 2: LEGISLAÇÃO & ORIGEM */}
+              {activeLyricsTab === 'legislacao' && (
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-amber-950/25 border border-amber-500/30 space-y-2">
+                    <div className="font-serif font-bold text-amber-300 text-xs flex items-center gap-1.5">
+                      <Scale className="w-4 h-4 text-amber-400" />
+                      Status Jurídico & Domínio Público
+                    </div>
+                    <p className="text-slate-300 leading-relaxed font-sans text-xs">
+                      {effectiveOfficialLaw ? (
+                        <>Oficializado legalmente por: <strong className="text-amber-200 font-mono">{effectiveOfficialLaw}</strong>.</>
+                      ) : (
+                        <>Obra musical pertencente ao patrimônio cultural e histórico brasileiro.</>
+                      )}
+                      {' '}Nos termos do art. 8º da Lei Federal nº 9.610/1998, atos oficiais, leis e símbolos de soberania nacional não são objeto de proteção de direitos autorais privativos, pertencendo ao domínio público brasileiro.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                    <div className="text-[10px] font-mono font-bold text-amber-400">HISTÓRIA & SIGNIFICADO</div>
+                    <p className="text-slate-300 leading-relaxed font-sans text-xs">
+                      {selectedTrack.historicalCuriosityPt}
+                    </p>
+                  </div>
+
+                  {effectiveGovUrl && (
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                      <div className="text-xs text-slate-300">
+                        <strong className="text-amber-300 block">Fonte Oficial Governamental:</strong>
+                        <span className="text-[10px] text-slate-400 truncate block max-w-xs">{effectiveGovUrl}</span>
+                      </div>
+                      <a
+                        href={effectiveGovUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 text-xs font-mono font-bold flex items-center gap-1 transition"
+                      >
+                        <span>Acessar Portal</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ABA 3: GLOSSÁRIO DE TERMOS RAROS */}
+              {activeLyricsTab === 'glossario' && (
+                <div className="space-y-2.5">
+                  <div className="text-[11px] text-slate-400 font-sans leading-snug">
+                    Explicação dos termos arcaicos, parnasianos e poéticos presentes na letra oficial:
+                  </div>
+
+                  {effectiveGlossary && effectiveGlossary.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {effectiveGlossary.map((gItem) => (
+                        <div
+                          key={gItem.term}
+                          className="p-2.5 rounded-xl bg-slate-950 border border-amber-500/30 space-y-0.5"
+                        >
+                          <div className="font-serif font-black text-amber-300 text-xs capitalize flex items-center gap-1">
+                            <ChevronRight className="w-3 h-3 text-amber-400" />
+                            {gItem.term}
+                          </div>
+                          <p className="text-[11px] text-slate-300 font-sans leading-snug">
+                            {gItem.meaning}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-center text-slate-400 text-xs font-sans">
+                      Nenhum vocábulo arcaico específico catalogado para esta faixa.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <button
-              onClick={() => setShowLyricsModal(false)}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-serif font-black text-xs cursor-pointer shadow-md"
-            >
-              Fechar Letra
-            </button>
+            {/* Rodapé do Modal */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-800 gap-2">
+              <button
+                onClick={handleCopyLyrics}
+                className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-mono font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
+              >
+                {copiedLyrics ? (
+                  <>
+                    <CheckCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Letra Copiada!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copiar Letra</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowLyricsModal(false)}
+                className="py-2 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-serif font-black text-xs cursor-pointer shadow-md transition"
+              >
+                Fechar Janela
+              </button>
+            </div>
           </div>
         </div>
       )}

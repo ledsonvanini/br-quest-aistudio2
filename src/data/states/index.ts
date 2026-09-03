@@ -1,96 +1,88 @@
 // Unified States Architecture Index
-// Provides organized imports and access for all 26 states + Federal District
+// Provides organized access and single-source-of-truth for all 26 states + Federal District
 export * from './types';
+import type { StateDataBundle } from './types';
+import type { GuardianData } from '../../types';
 
-import { bundle as bundle_ac } from './ac';
-import { bundle as bundle_ap } from './ap';
-import { bundle as bundle_am } from './am';
-import { bundle as bundle_pa } from './pa';
-import { bundle as bundle_ro } from './ro';
-import { bundle as bundle_rr } from './rr';
-import { bundle as bundle_to } from './to';
-import { bundle as bundle_al } from './al';
-import { bundle as bundle_ba } from './ba';
-import { bundle as bundle_ce } from './ce';
-import { bundle as bundle_ma } from './ma';
-import { bundle as bundle_pb } from './pb';
-import { bundle as bundle_pe } from './pe';
-import { bundle as bundle_pi } from './pi';
-import { bundle as bundle_rn } from './rn';
-import { bundle as bundle_se } from './se';
-import { bundle as bundle_df } from './df';
-import { bundle as bundle_go } from './go';
-import { bundle as bundle_mt } from './mt';
-import { bundle as bundle_ms } from './ms';
-import { bundle as bundle_es } from './es';
-import { bundle as bundle_mg } from './mg';
-import { bundle as bundle_rj } from './rj';
-import { bundle as bundle_sp } from './sp';
-import { bundle as bundle_pr } from './pr';
-import { bundle as bundle_rs } from './rs';
-import { bundle as bundle_sc } from './sc';
+import { BRAZIL_STATES_REGISTRY } from '../brazilStatesRegistry';
+import { GUARDIANS_DATA } from '../guardiansData';
+import { ANTHEMS_BY_STATE } from '../anthemsData';
+import { CULTURAL_INVENTORY_BY_STATE } from '../culturalInventoryData';
+import { STATES_GEOPOLITICS_DATA } from '../geopoliticaData';
+import { STATE_CLIMATOLOGY_DATABASE } from '../stateClimatologyData';
+import { STATE_BIODIVERSITY_PROFILES } from '../brazilBiodiversityData';
+import { GUARDIAN_SPEECHES } from '../guardianPhrases';
 
-export * as ac from './ac';
-export * as ap from './ap';
-export * as am from './am';
-export * as pa from './pa';
-export * as ro from './ro';
-export * as rr from './rr';
-export * as to from './to';
-export * as al from './al';
-export * as ba from './ba';
-export * as ce from './ce';
-export * as ma from './ma';
-export * as pb from './pb';
-export * as pe from './pe';
-export * as pi from './pi';
-export * as rn from './rn';
-export * as se from './se';
-export * as df from './df';
-export * as go from './go';
-export * as mt from './mt';
-export * as ms from './ms';
-export * as es from './es';
-export * as mg from './mg';
-export * as rj from './rj';
-export * as sp from './sp';
-export * as pr from './pr';
-export * as rs from './rs';
-export * as sc from './sc';
+const UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
-export const ALL_STATE_BUNDLES: Record<string, import('./types').StateDataBundle> = {
-  AC: bundle_ac,
-  AP: bundle_ap,
-  AM: bundle_am,
-  PA: bundle_pa,
-  RO: bundle_ro,
-  RR: bundle_rr,
-  TO: bundle_to,
-  AL: bundle_al,
-  BA: bundle_ba,
-  CE: bundle_ce,
-  MA: bundle_ma,
-  PB: bundle_pb,
-  PE: bundle_pe,
-  PI: bundle_pi,
-  RN: bundle_rn,
-  SE: bundle_se,
-  DF: bundle_df,
-  GO: bundle_go,
-  MT: bundle_mt,
-  MS: bundle_ms,
-  ES: bundle_es,
-  MG: bundle_mg,
-  RJ: bundle_rj,
-  SP: bundle_sp,
-  PR: bundle_pr,
-  RS: bundle_rs,
-  SC: bundle_sc,
-};
+function buildBundle(uf: string): StateDataBundle {
+  const upperUf = uf.toUpperCase();
+  const info = BRAZIL_STATES_REGISTRY[upperUf] || {
+    id: upperUf,
+    name: upperUf,
+    capital: '',
+    region: 'Sudeste' as const,
+    coatOfArmsUrl: '',
+    flagSymbol: '🇧🇷',
+    flagUrl: `/flags/${upperUf.toLowerCase()}.svg`,
+    centroid: [0, 0] as [number, number],
+  };
 
-export const ALL_STATES_LIST = Object.values(ALL_STATE_BUNDLES);
+  const guardian = (GUARDIANS_DATA.find((g) => g.id.toUpperCase() === upperUf) || GUARDIANS_DATA[0]) as GuardianData;
 
-export function getStateBundle(uf: string): import('./types').StateDataBundle | undefined {
+  return {
+    uf: upperUf,
+    info,
+    guardian,
+    anthems: ANTHEMS_BY_STATE[upperUf],
+    culturalItems: CULTURAL_INVENTORY_BY_STATE[upperUf] || [],
+    geopolitics: STATES_GEOPOLITICS_DATA[upperUf],
+    climatology: STATE_CLIMATOLOGY_DATABASE[upperUf],
+    biodiversity: STATE_BIODIVERSITY_PROFILES[upperUf],
+    speech: GUARDIAN_SPEECHES[upperUf],
+  };
+}
+
+export const ALL_STATE_BUNDLES: Record<string, StateDataBundle> = Object.fromEntries(
+  UFS.map((uf) => [uf, buildBundle(uf)])
+);
+
+export const ALL_STATES_LIST: StateDataBundle[] = Object.values(ALL_STATE_BUNDLES);
+
+// Individual state bundles
+export const ac = ALL_STATE_BUNDLES['AC'];
+export const al = ALL_STATE_BUNDLES['AL'];
+export const ap = ALL_STATE_BUNDLES['AP'];
+export const am = ALL_STATE_BUNDLES['AM'];
+export const ba = ALL_STATE_BUNDLES['BA'];
+export const ce = ALL_STATE_BUNDLES['CE'];
+export const df = ALL_STATE_BUNDLES['DF'];
+export const es = ALL_STATE_BUNDLES['ES'];
+export const go = ALL_STATE_BUNDLES['GO'];
+export const ma = ALL_STATE_BUNDLES['MA'];
+export const mt = ALL_STATE_BUNDLES['MT'];
+export const ms = ALL_STATE_BUNDLES['MS'];
+export const mg = ALL_STATE_BUNDLES['MG'];
+export const pa = ALL_STATE_BUNDLES['PA'];
+export const pb = ALL_STATE_BUNDLES['PB'];
+export const pr = ALL_STATE_BUNDLES['PR'];
+export const pe = ALL_STATE_BUNDLES['PE'];
+export const pi = ALL_STATE_BUNDLES['PI'];
+export const rj = ALL_STATE_BUNDLES['RJ'];
+export const rn = ALL_STATE_BUNDLES['RN'];
+export const rs = ALL_STATE_BUNDLES['RS'];
+export const ro = ALL_STATE_BUNDLES['RO'];
+export const rr = ALL_STATE_BUNDLES['RR'];
+export const sc = ALL_STATE_BUNDLES['SC'];
+export const sp = ALL_STATE_BUNDLES['SP'];
+export const se = ALL_STATE_BUNDLES['SE'];
+export const to = ALL_STATE_BUNDLES['TO'];
+
+export function getStateBundle(uf: string): StateDataBundle | undefined {
   return ALL_STATE_BUNDLES[uf.toUpperCase()];
 }
 
