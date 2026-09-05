@@ -124,9 +124,13 @@ interface Props {
   isObservatorioOpen?: boolean;
   onToggleObservatorio?: () => void;
   atmosphereEnabled?: boolean;
+  isAtmosphereActive?: boolean;
   wavesEnabled?: boolean;
+  isWavesActive?: boolean;
   cloudsEnabled?: boolean;
+  isCloudsActive?: boolean;
   rainSimEnabled?: boolean;
+  isRainSimActive?: boolean;
   timeOverride?: 'auto' | 'day' | 'night';
   centerTrigger?: number;
   onHoverStateChange?: (stateId: string | null) => void;
@@ -180,9 +184,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   isObservatorioOpen: propIsObservatorioOpen,
   onToggleObservatorio,
   atmosphereEnabled: propAtmosphereEnabled,
+  isAtmosphereActive: propIsAtmosphereActive,
   wavesEnabled: propWavesEnabled,
+  isWavesActive: propIsWavesActive,
   cloudsEnabled: propCloudsEnabled,
+  isCloudsActive: propIsCloudsActive,
   rainSimEnabled: propRainSimEnabled,
+  isRainSimActive: propIsRainSimActive,
   timeOverride: propTimeOverride,
   centerTrigger,
   onHoverStateChange,
@@ -214,10 +222,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [internalCloudsEnabled, setCloudsEnabled] = useState<boolean>(true);
   const [internalRainSimEnabled, setRainSimEnabled] = useState<boolean>(false);
 
-  const atmosphereEnabled = propAtmosphereEnabled !== undefined ? propAtmosphereEnabled : internalAtmosphereEnabled;
-  const wavesEnabled = propWavesEnabled !== undefined ? propWavesEnabled : internalWavesEnabled;
-  const cloudsEnabled = propCloudsEnabled !== undefined ? propCloudsEnabled : internalCloudsEnabled;
-  const rainSimEnabled = propRainSimEnabled !== undefined ? propRainSimEnabled : internalRainSimEnabled;
+  const atmosphereEnabled = propAtmosphereEnabled !== undefined ? propAtmosphereEnabled : (propIsAtmosphereActive !== undefined ? propIsAtmosphereActive : internalAtmosphereEnabled);
+  const wavesEnabled = propWavesEnabled !== undefined ? propWavesEnabled : (propIsWavesActive !== undefined ? propIsWavesActive : internalWavesEnabled);
+  const cloudsEnabled = propCloudsEnabled !== undefined ? propCloudsEnabled : (propIsCloudsActive !== undefined ? propIsCloudsActive : internalCloudsEnabled);
+  const rainSimEnabled = propRainSimEnabled !== undefined ? propRainSimEnabled : (propIsRainSimActive !== undefined ? propIsRainSimActive : internalRainSimEnabled);
   const [internalShowNeighbors, setInternalShowNeighbors] = useState<boolean>(false);
   const showNeighbors = propShowNeighbors !== undefined ? propShowNeighbors : internalShowNeighbors;
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null);
@@ -1763,14 +1771,20 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             >
             {/* Layer 0: Seamless Infinite Procedural Ocean with Linear Gradient & Overlay Noise */}
             <ProceduralOceanCanvas
+              mode={mainMode}
               isPlayingAnimation={true}
-              isParchmentMode={mainMode === 'aventura' || terrainProvider === 'voyager_parchment'}
+              isParchmentMode={terrainProvider === 'voyager_parchment'}
               isBiodiversityMode={mainMode === 'biodiversidade'}
               isMusicalMode={mainMode === 'musicalidades'}
             />
 
-            {/* Layer 0.1: Coastal Waves & Sea Foam Simulation */}
-            <CoastalWavesCanvas enabled={wavesEnabled} />
+            {/* Layer 0.1: Coastal Waves, Bathymetric Gradient & Heterogeneous Swell Shader */}
+            <CoastalWavesCanvas
+              enabled={wavesEnabled}
+              mode={mainMode}
+              waveSpeed={0.6}
+              customBrazilGeo={geoData}
+            />
 
             {/* Layer 1 & 2: D3 Clipped Map Tiles & States Layer (Base Terrain Plan Z=0) */}
             <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>

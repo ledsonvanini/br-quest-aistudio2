@@ -10,7 +10,10 @@ import {
   Activity,
   Sun,
   SunMedium,
+  SunMoon,
   Moon,
+  ChevronDown,
+  ChevronUp,
   Settings,
   Flame,
   Award,
@@ -220,6 +223,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     info: MenuTooltipInfo;
     top: number;
   } | null>(null);
+
+  // Controle de expansão/retração dos controles ambientais da sidebar (recolhido por padrão)
+  const [isAtmosphereSectionExpanded, setIsAtmosphereSectionExpanded] = useState<boolean>(false);
 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
@@ -747,125 +753,168 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
           {/* ========================================================================= */}
           <div
             id="secao-controles-atmosfera-sidebar"
-            className="secao-controles-atmosfera-sidebar flex flex-col items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800/80 shrink-0"
+            className="secao-controles-atmosfera-sidebar flex flex-col items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800/80 shrink-0 transition-all duration-300"
           >
-            {/* 1. Simulador de Chuva */}
-            {onToggleRainSim && (
-              <button
-                id="btn-sidebar-chuva"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  onToggleRainSim();
-                }}
-                {...bindTooltip({
-                  title: 'Simulador de Chuva',
-                  badge: isRainSimActive ? 'Ativo' : 'Desativado',
-                  badgeColor: isRainSimActive ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
-                  description: 'Simula precipitação de chuvas convectivas e frontais com partículas dinâmicas em tempo real.',
-                })}
-                className={`btn-sidebar-chuva w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                  isRainSimActive
-                    ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
-                    : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-                aria-label="Simulador de Chuva"
-              >
-                <CloudRain className={`w-4 h-4 ${isRainSimActive ? 'animate-bounce' : ''}`} />
-              </button>
-            )}
+            {/* Interruptor / Seta para expandir e retrair a seção ambiental */}
+            <button
+              id="btn-toggle-expansao-atmosfera"
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                setIsAtmosphereSectionExpanded((prev) => !prev);
+              }}
+              {...bindTooltip({
+                title: 'Fenômenos Ambientais',
+                badge: isAtmosphereSectionExpanded ? 'Recolher' : 'Expandir',
+                badgeColor: isAtmosphereSectionExpanded
+                  ? 'bg-slate-700/50 text-slate-300 border-slate-600'
+                  : 'bg-sky-500/20 text-sky-300 border-sky-400/40',
+                description: isAtmosphereSectionExpanded
+                  ? 'Clique para recolher os controles de chuva, nuvens, ondas marinhas e ciclo solar/noturno.'
+                  : 'Clique para expandir os controles de chuva, nuvens, ondas marinhas e ciclo solar/noturno.',
+              })}
+              className="btn-toggle-expansao-atmosfera w-8.5 h-6 sm:w-9 sm:h-6 rounded-lg bg-slate-800/70 hover:bg-slate-700/90 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              aria-label={isAtmosphereSectionExpanded ? 'Recolher Controles Ambientais' : 'Expandir Controles Ambientais'}
+              aria-expanded={isAtmosphereSectionExpanded}
+            >
+              {isAtmosphereSectionExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-300 transition-transform" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-sky-300 animate-pulse transition-transform" />
+              )}
+            </button>
 
-            {/* 2. Nuvens Volumétricas */}
-            {onToggleClouds && (
-              <button
-                id="btn-sidebar-nuvens"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  onToggleClouds();
-                }}
-                {...bindTooltip({
-                  title: 'Nuvens Volumétricas',
-                  badge: isCloudsActive ? 'Visível' : 'Oculto',
-                  badgeColor: isCloudsActive ? 'bg-sky-500/20 text-sky-300 border-sky-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
-                  description: 'Camada de nuvens dinâmicas em alta altitude com turbulência e sombreamento atmosférico.',
-                })}
-                className={`btn-sidebar-nuvens w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                  isCloudsActive
-                    ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.5)]'
-                    : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-                aria-label="Nuvens Volumétricas"
-              >
-                <Cloud className={`w-4 h-4 ${isCloudsActive ? 'animate-pulse' : ''}`} />
-              </button>
-            )}
-
-            {/* 3. Ventos Alísios e Ondas */}
-            {onToggleWaves && (
-              <button
-                id="btn-sidebar-ventos-ondas"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  onToggleWaves();
-                }}
-                {...bindTooltip({
-                  title: 'Ventos Alísios & Ondas',
-                  badge: isWavesActive ? 'Ativo' : 'Desativado',
-                  badgeColor: isWavesActive ? 'bg-teal-500/20 text-teal-300 border-teal-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
-                  description: 'Circulação dos Ventos Alísios equatoriais e correntes de ondas marinhas na costa brasileira.',
-                })}
-                className={`btn-sidebar-ventos-ondas w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                  isWavesActive
-                    ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.5)]'
-                    : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-                aria-label="Ventos Alísios e Ondas"
-              >
-                <Waves className={`w-4 h-4 ${isWavesActive ? 'animate-pulse' : ''}`} />
-              </button>
-            )}
-
-            {/* 4. Astro e Ciclo Solar/Noturno */}
-            {(onToggleAtmosphere || onTimeOverrideChange) && (
-              <button
-                id="btn-sidebar-astro-atmosfera"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  if (onTimeOverrideChange) {
-                    const next = activeCelestialMode === 'auto' ? 'day' : activeCelestialMode === 'day' ? 'night' : 'auto';
-                    onTimeOverrideChange(next);
-                  } else if (onToggleAtmosphere) {
-                    onToggleAtmosphere();
-                  }
-                }}
-                {...bindTooltip({
-                  title: 'Astro & Ciclo Solar',
-                  badge: activeCelestialMode === 'day' ? 'Dia Fixado' : activeCelestialMode === 'night' ? 'Noite Fixada' : 'Tempo Real',
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description: 'Alterna entre iluminação solar diurna, abóbada celeste noturna e sincronização em tempo real com Brasília.',
-                })}
-                className={`btn-sidebar-astro-atmosfera w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                  isAtmosphereActive
-                    ? 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
-                    : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                }`}
-                aria-label="Astro e Atmosfera"
-              >
-                {activeCelestialMode === 'night' ? (
-                  <Moon className="w-4 h-4 text-indigo-300 animate-pulse" />
-                ) : activeCelestialMode === 'day' ? (
-                  <Sun className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '14s' }} />
-                ) : (
-                  <SunMedium className="w-4 h-4 text-amber-400" />
+            {/* Controles expansíveis */}
+            {isAtmosphereSectionExpanded && (
+              <div className="flex flex-col items-center gap-1 transition-all duration-200">
+                {/* 1. Simulador de Chuva */}
+                {onToggleRainSim && (
+                  <button
+                    id="btn-sidebar-chuva"
+                    type="button"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      setHoveredMenuTooltip(null);
+                      onToggleRainSim();
+                    }}
+                    {...bindTooltip({
+                      title: 'Simulador de Chuva',
+                      badge: isRainSimActive ? 'Ativo' : 'Desativado',
+                      badgeColor: isRainSimActive ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
+                      description: 'Simula precipitação de chuvas convectivas e frontais com partículas dinâmicas em tempo real.',
+                    })}
+                    className={`btn-sidebar-chuva w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                      isRainSimActive
+                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Simulador de Chuva"
+                  >
+                    <CloudRain className={`w-4 h-4 ${isRainSimActive ? 'animate-bounce' : ''}`} />
+                  </button>
                 )}
-              </button>
+
+                {/* 2. Nuvens Volumétricas */}
+                {onToggleClouds && (
+                  <button
+                    id="btn-sidebar-nuvens"
+                    type="button"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      setHoveredMenuTooltip(null);
+                      onToggleClouds();
+                    }}
+                    {...bindTooltip({
+                      title: 'Nuvens Volumétricas',
+                      badge: isCloudsActive ? 'Visível' : 'Oculto',
+                      badgeColor: isCloudsActive ? 'bg-sky-500/20 text-sky-300 border-sky-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
+                      description: 'Camada de nuvens dinâmicas em alta altitude com turbulência e sombreamento atmosférico.',
+                    })}
+                    className={`btn-sidebar-nuvens w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                      isCloudsActive
+                        ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.5)]'
+                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Nuvens Volumétricas"
+                  >
+                    <Cloud className={`w-4 h-4 ${isCloudsActive ? 'animate-pulse' : ''}`} />
+                  </button>
+                )}
+
+                {/* 3. Ventos Alísios e Ondas */}
+                {onToggleWaves && (
+                  <button
+                    id="btn-sidebar-ventos-ondas"
+                    type="button"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      setHoveredMenuTooltip(null);
+                      onToggleWaves();
+                    }}
+                    {...bindTooltip({
+                      title: 'Ventos Alísios & Ondas',
+                      badge: isWavesActive ? 'Ativo' : 'Desativado',
+                      badgeColor: isWavesActive ? 'bg-teal-500/20 text-teal-300 border-teal-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
+                      description: 'Circulação dos Ventos Alísios equatoriais e correntes de ondas marinhas no Atlântico e Pacífico.',
+                    })}
+                    className={`btn-sidebar-ventos-ondas w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                      isWavesActive
+                        ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.5)]'
+                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Ventos Alísios e Ondas"
+                  >
+                    <Waves className={`w-4 h-4 ${isWavesActive ? 'animate-pulse' : ''}`} />
+                  </button>
+                )}
+
+                {/* 4. Astro e Ciclo Solar/Noturno */}
+                {(onToggleAtmosphere || onTimeOverrideChange) && (
+                  <button
+                    id="btn-sidebar-astro-atmosfera"
+                    type="button"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      setHoveredMenuTooltip(null);
+                      if (onTimeOverrideChange) {
+                        const next = activeCelestialMode === 'auto' ? 'day' : activeCelestialMode === 'day' ? 'night' : 'auto';
+                        onTimeOverrideChange(next);
+                      } else if (onToggleAtmosphere) {
+                        onToggleAtmosphere();
+                      }
+                    }}
+                    {...bindTooltip({
+                      title: 'Astro & Ciclo Solar',
+                      badge: activeCelestialMode === 'day' ? 'Dia Fixado' : activeCelestialMode === 'night' ? 'Noite Fixada' : 'Tempo Real (Auto)',
+                      badgeColor: activeCelestialMode === 'auto'
+                        ? 'bg-sky-500/20 text-sky-300 border-sky-400/40'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                      description: 'Alterna entre iluminação solar diurna, abóbada celeste noturna e sincronização automática em tempo real com Brasília.',
+                    })}
+                    className={`btn-sidebar-astro-atmosfera w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                      isAtmosphereActive
+                        ? activeCelestialMode === 'auto'
+                          ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.5)]'
+                          : 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                    aria-label="Astro e Atmosfera"
+                  >
+                    {activeCelestialMode === 'night' ? (
+                      <Moon className="w-4 h-4 text-indigo-300 animate-pulse" />
+                    ) : activeCelestialMode === 'day' ? (
+                      <Sun className="w-4 h-4 text-amber-300 animate-spin" style={{ animationDuration: '14s' }} />
+                    ) : (
+                      <div className="relative flex items-center justify-center">
+                        <SunMedium className="w-4 h-4 text-sky-300" />
+                        <span className="absolute -bottom-1 -right-1 text-[7px] font-black bg-sky-400 text-slate-950 px-0.5 rounded leading-none shadow-sm">
+                          A
+                        </span>
+                      </div>
+                    )}
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

@@ -1,5 +1,7 @@
 export type RegionId = 'norte' | 'nordeste' | 'centro_oeste' | 'sudeste' | 'sul';
 
+export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
+
 export type GuardianPosture = 'idle' | 'guard' | 'presentation' | 'reading' | 'unlocked';
 
 export interface Question {

@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
+import { AppMainMode } from '../../types';
+import { OceanDeepFractalCanvas } from './OceanDeepFractalCanvas';
 
 interface ProceduralOceanCanvasProps {
   isPlayingAnimation?: boolean;
   isParchmentMode?: boolean;
   isBiodiversityMode?: boolean;
   isMusicalMode?: boolean;
+  mode?: AppMainMode;
 }
 
 // Procedural seamless fine paper grain noise (clean, neutral, non-distorting)
@@ -18,10 +21,19 @@ export const SEAMLESS_NOISE_SVG = FINE_PAPER_NOISE_SVG;
  * and subtle, non-intrusive paper grain overlay tailored to each mode.
  */
 export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
+  isPlayingAnimation = true,
   isParchmentMode = false,
   isBiodiversityMode = false,
   isMusicalMode = false,
+  mode,
 }) => {
+  const currentMode: AppMainMode = useMemo(() => {
+    if (mode) return mode;
+    if (isBiodiversityMode) return 'biodiversidade';
+    if (isMusicalMode) return 'musicalidades';
+    return 'aventura';
+  }, [mode, isBiodiversityMode, isMusicalMode]);
+
   const oceanGradient = useMemo(() => {
     if (isParchmentMode) {
       return 'radial-gradient(circle 2200px at 50% 50%, #fbf2df 0%, #eedbb8 25%, #dfc59b 50%, #b08f58 75%, #8c6a38 100%)';
@@ -34,15 +46,15 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
       // Oceano Atlântico Noturno / Safira Profunda com ressonância acústica suave
       return 'radial-gradient(circle 2600px at 55% 45%, #0e243d 0%, #091a2e 25%, #061120 52%, #030a14 78%, #010408 100%)';
     }
-    return 'radial-gradient(circle 2400px at 50% 50%, #0e568e 0%, #0a3d68 22%, #062846 45%, #03172b 70%, #020d1c 90%)';
+    return 'radial-gradient(circle 3800px at 50% 50%, #0c487c 0%, #072a4e 25%, #03172e 55%, #010d1c 85%)';
   }, [isBiodiversityMode, isMusicalMode, isParchmentMode]);
 
   return (
     <div
       className="container-oceano-game-engine absolute pointer-events-none overflow-visible select-none"
       style={{
-        width: 12000,
-        height: 9000,
+        width: 14000,
+        height: 10000,
         left: '50%',
         top: '50%',
         transform: 'translate(-50%, -50%) translateZ(-10px)',
@@ -50,6 +62,15 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
         background: oceanGradient,
       }}
     >
+      {/* 0. Camada Base: Shader Fractal do Oceano Profundo (14.000 x 10.000px, 100% da Área Navegável) */}
+      {!isParchmentMode && (
+        <OceanDeepFractalCanvas
+          mode={currentMode}
+          waveSpeed={0.72}
+          isPlayingAnimation={isPlayingAnimation}
+        />
+      )}
+
       {/* 1. Subtle Fine Paper Grain Noise (Overlay Blend, clean & neutral) */}
       <div
         className="camada-ruido-grao-oceano absolute inset-0 pointer-events-none mix-blend-overlay opacity-25"

@@ -586,10 +586,10 @@ export const MapControlsHUD: React.FC<MapControlsHUDProps> = ({
                   ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-sm'
                   : 'bg-slate-900 text-amber-200/80 border-amber-500/30 hover:bg-slate-800 hover:text-amber-200'
               }`}
-              title="Simular movimento natural das ondas oceânicas com espuma marítima costeira"
+              title="Simular ondas oceânicas, marolas, arrebentação costeira e efervescência de bolhas marinhas (clique no oceano para interagir)"
             >
               <Waves className="w-3.5 h-3.5" />
-              <span>Ondas & Espuma</span>
+              <span>Ondas & Marolas</span>
             </button>
           )}
         </div>

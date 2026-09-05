@@ -91,7 +91,7 @@ export function App() {
 
   const [isRainSimActive, setIsRainSimActive] = useState<boolean>(false);
   const [isCloudsActive, setIsCloudsActive] = useState<boolean>(true);
-  const [isWavesActive, setIsWavesActive] = useState<boolean>(false);
+  const [isWavesActive, setIsWavesActive] = useState<boolean>(true);
   const [isAtmosphereActive, setIsAtmosphereActive] = useState<boolean>(true);
   const [celestialTimeOverride, setCelestialTimeOverride] = useState<'day' | 'night' | 'auto'>('auto');
 
