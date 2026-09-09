@@ -61,6 +61,21 @@ export const REGION_STATES_MAP: Record<string, string[]> = {
   sul: ['PR', 'RS', 'SC'],
 };
 
+export const REGION_COLORS_MAP: Record<string, string> = {
+  norte: '#10b981',        // Verde esmeralda (Norte / Amazônia)
+  nordeste: '#f59e0b',     // Âmbar dourado (Nordeste)
+  centro_oeste: '#eab308', // Amarelo sol (Centro-Oeste)
+  sudeste: '#0284c7',      // Azul safira (Sudeste)
+  sul: '#a855f7',          // Púrpura nobre (Sul)
+};
+
+export function getStateRegion(stateId: string): string {
+  for (const [region, states] of Object.entries(REGION_STATES_MAP)) {
+    if (states.includes(stateId)) return region;
+  }
+  return 'sudeste';
+}
+
 export const STATE_NEIGHBORS_MAP: Record<string, string[]> = {
   AC: ['AM', 'RO'],
   AL: ['PE', 'SE', 'BA'],
@@ -792,67 +807,105 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
               />
 
               {/* State Base Polygon */}
-              <path
-                id={`state-path-${stateId}`}
-                d={pathD}
-                fill={
-                  activeIsolatedState
-                    ? visuals.stateFill
-                    : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
-                    ? '#10b981'
-                    : isNeighborOfSelected && visualStyle === 'tiles'
-                    ? '#0284c7'
-                    : visuals.stateFill
-                }
-                fillOpacity={
-                  activeIsolatedState
-                    ? visuals.stateFillOpacity
-                    : isRegionActive && belongsToActiveRegion && visualStyle === 'tiles'
-                    ? 0.40
-                    : isNeighborOfSelected && visualStyle === 'tiles'
-                    ? 0.30
-                    : visuals.stateFillOpacity
-                }
-                stroke={
-                  activeIsolatedState
-                    ? visuals.strokeColor
-                    : isRegionActive && belongsToActiveRegion
-                    ? '#34d399'
-                    : isNeighborOfSelected
+              {(() => {
+                const stateRegion = getStateRegion(stateId);
+                const regionColor = REGION_COLORS_MAP[stateRegion] || '#10b981';
+
+                let effectiveFill = visuals.stateFill;
+                let effectiveOpacity = visuals.stateFillOpacity;
+                let effectiveStroke = visuals.strokeColor;
+                let effectiveStrokeWidth = visuals.strokeWidth;
+
+                if (activeIsolatedState) {
+                  effectiveFill = visuals.stateFill;
+                  effectiveOpacity = visuals.stateFillOpacity;
+                  effectiveStroke = visuals.strokeColor;
+                  effectiveStrokeWidth = visuals.strokeWidth;
+                } else if (isRegionActive) {
+                  // Ao escolher/filtrar regiões no menu, agrupar por cor temática com alto contraste
+                  effectiveFill = regionColor;
+                  effectiveOpacity = belongsToActiveRegion ? (isHovered ? 0.75 : 0.60) : 0.18;
+                  effectiveStroke = belongsToActiveRegion ? regionColor : '#475569';
+                  effectiveStrokeWidth = belongsToActiveRegion ? 2.4 : 1.0;
+                } else if (isClimateActive || isGeopoliticaActive) {
+                  // Modos temáticos Clima e Geopolítica preservam integralmente seus preenchimentos coropléticos sem véu verde
+                  effectiveFill = visuals.stateFill;
+                  effectiveOpacity = visuals.stateFillOpacity;
+                  effectiveStroke = isSelected ? '#fef08a' : isHovered ? '#ffffff' : visuals.strokeColor;
+                  effectiveStrokeWidth = visuals.strokeWidth;
+                } else if (visualStyle !== 'tiles') {
+                  // Modos coropléticos estruturados (Biomas, Progresso, etc.)
+                  effectiveFill = visuals.stateFill;
+                  effectiveOpacity = isSelected ? 0.85 : isHovered ? 0.75 : 0.60;
+                  effectiveStroke = isSelected ? '#fef08a' : isHovered ? '#ffffff' : visuals.strokeColor;
+                  effectiveStrokeWidth = visuals.strokeWidth;
+                } else {
+                  // Modos com Relevo Físico / Tiles (Aventura, Biodiversidade, Musicalidades):
+                  // Preserva 100% o relevo, contraste e sombras naturais sem película leitosa ou luz ambiente
+                  effectiveFill = isSelected ? '#fbbf24' : isHovered ? '#34d399' : 'transparent';
+                  effectiveOpacity = isSelected ? 0.40 : isHovered ? 0.30 : 0.0;
+                  effectiveStroke = isNeighborOfSelected
                     ? '#38bdf8'
-                    : visuals.strokeColor
+                    : isHovered
+                    ? '#ffffff'
+                    : isSelected
+                    ? '#fef08a'
+                    : visuals.strokeColor;
+                  effectiveStrokeWidth = isSelected ? 3.0 : isHovered ? 2.4 : visuals.strokeWidth;
                 }
-                strokeWidth={
-                  activeIsolatedState
-                    ? visuals.strokeWidth
-                    : isRegionActive && belongsToActiveRegion
-                    ? 2.2
-                    : isNeighborOfSelected
-                    ? 2.0
-                    : visuals.strokeWidth
-                }
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-                className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} ${
-                  showNeighbors || (activeIsolatedState && stateId !== activeIsolatedState)
-                    ? 'cursor-default pointer-events-none'
-                    : 'cursor-pointer pointer-events-auto'
-                } transition-all duration-150`}
-                onMouseEnter={() => {
-                  if (!showNeighbors) onStateEnter(stateId);
-                }}
-                onMouseLeave={() => {
-                  if (!showNeighbors) onStateLeave(stateId);
-                }}
-                onClick={(e) => {
-                  if (!showNeighbors) onStateClick(stateId, e);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              />
+
+                return (
+                  <path
+                    id={`state-path-${stateId}`}
+                    d={pathD}
+                    fill={effectiveFill}
+                    fillOpacity={effectiveOpacity}
+                    stroke={
+                      activeIsolatedState
+                        ? visuals.strokeColor
+                        : isRegionActive && belongsToActiveRegion
+                        ? regionColor
+                        : isNeighborOfSelected
+                        ? '#38bdf8'
+                        : isHovered
+                        ? '#ffffff'
+                        : isSelected
+                        ? '#fef08a'
+                        : effectiveStroke
+                    }
+                    strokeWidth={
+                      activeIsolatedState
+                        ? visuals.strokeWidth
+                        : isRegionActive && belongsToActiveRegion
+                        ? 2.2
+                        : isNeighborOfSelected
+                        ? 2.0
+                        : effectiveStrokeWidth
+                    }
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    className={`poligono-estado-interativo path-estado-${stateId.toLowerCase()} ${
+                      showNeighbors || (activeIsolatedState && stateId !== activeIsolatedState)
+                        ? 'cursor-default pointer-events-none'
+                        : 'cursor-pointer pointer-events-auto'
+                    } transition-all duration-150`}
+                    onMouseEnter={() => {
+                      if (!showNeighbors) onStateEnter(stateId);
+                    }}
+                    onMouseLeave={() => {
+                      if (!showNeighbors) onStateLeave(stateId);
+                    }}
+                    onClick={(e) => {
+                      if (!showNeighbors) onStateClick(stateId, e);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                );
+              })()}
 
               {/* Expanded Transparent Hit Target for Small Geographic States (DF, SE, AL, RJ, ES, PB, RN) */}
               <path

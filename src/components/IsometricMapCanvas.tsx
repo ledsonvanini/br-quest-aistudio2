@@ -24,6 +24,7 @@ import {
   MAP_CANVAS_HEIGHT,
 } from '../lib/mapProjections';
 import { MapVisualStyle, ChoroplethSubTheme } from '../lib/mapColorScales';
+import { centralizarZoomMapa } from '../services/mapModeService';
 
 // Modular Sub-components
 import { ProceduralTerrainFilter } from './map/ProceduralTerrainFilter';
@@ -139,6 +140,8 @@ interface Props {
   globeAutoRotate?: boolean;
   globeBorders?: boolean;
   globePinMode?: 'all' | 'compact' | 'none';
+  isGlobeTelemetryOpen?: boolean;
+  onToggleGlobeTelemetry?: () => void;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -199,6 +202,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   globeAutoRotate = false,
   globeBorders = true,
   globePinMode = 'all',
+  isGlobeTelemetryOpen,
+  onToggleGlobeTelemetry,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -217,6 +222,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   const [is3D, setIs3D] = useState<boolean>(true);
   const [isGlobe3DActive, setIsGlobe3DActive] = useState<boolean>(false);
+  const [globeZoomInTrigger, setGlobeZoomInTrigger] = useState<number>(0);
+  const [globeZoomOutTrigger, setGlobeZoomOutTrigger] = useState<number>(0);
+  const [globeCenterTrigger, setGlobeCenterTrigger] = useState<number>(0);
   const [internalAtmosphereEnabled, setAtmosphereEnabled] = useState<boolean>(true);
   const [internalWavesEnabled, setWavesEnabled] = useState<boolean>(true);
   const [internalCloudsEnabled, setCloudsEnabled] = useState<boolean>(true);
@@ -536,13 +544,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         if (!isRadioOpen && onToggleRadio) {
           onToggleRadio();
         }
-        const { targetZoom, targetPan } = getMusicalFocusZoomAndPan(
-          centroids[focusedStateId],
-          getContainerWidth(),
+        const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
+          stateId: focusedStateId,
+          centroid: centroids[focusedStateId],
+          containerWidth: getContainerWidth(),
           is3D,
-          true,
-          focusedStateId
-        );
+          isPanelOpen: true,
+        });
         setPan(targetPan);
         setZoom(targetZoom);
         baseUserPanRef.current = targetPan;
@@ -554,20 +562,27 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         setInternalIsClimatePanelOpen(false);
         setSelectedClimateStation(null);
 
-        const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
-          centroids[focusedStateId],
-          focusedStateId,
-          getContainerWidth(),
-          is3D
-        );
+        const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+          stateId: focusedStateId,
+          centroid: centroids[focusedStateId],
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: true,
+        });
         setPan(targetPan);
         setZoom(targetZoom);
         baseUserPanRef.current = targetPan;
         baseUserZoomRef.current = targetZoom;
         setSelectedClimateStateId(focusedStateId);
       } else {
-        const targetZoom = Math.min(2.0, Math.max(1.2, zoom));
-        const targetPan = calculateStateCenterPan(centroids[focusedStateId], targetZoom, is3D);
+        const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
+          stateId: focusedStateId,
+          centroid: centroids[focusedStateId],
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: false,
+          customZoom: Math.min(2.0, Math.max(1.2, zoom)),
+        });
         setPan(targetPan);
         setZoom(targetZoom);
         baseUserPanRef.current = targetPan;
@@ -978,21 +993,20 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       setInternalIsClimatePanelOpen(false);
       setSelectedClimateStation(null);
 
-      if (centroid) {
-        const { targetZoom, targetPan } = getClimateFocusZoomAndPan(
-          centroid,
-          stateId,
-          getContainerWidth(),
-          is3D,
-          true
-        );
+      const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
 
-        setTransitionMode('button');
-        setPan(targetPan);
-        setZoom(targetZoom);
-        baseUserPanRef.current = targetPan;
-        baseUserZoomRef.current = targetZoom;
-      }
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       setSelectedStateId(stateId);
       setSelectedClimateStateId(stateId);
       audioEngine.playSfx('travel');
@@ -1007,21 +1021,20 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       }
       setInternalIsBiodiversityPanelOpen(false);
 
-      if (centroid) {
-        const { targetZoom, targetPan } = getBiodiversityFocusZoomAndPan(
-          centroid,
-          stateId,
-          getContainerWidth(),
-          is3D,
-          true
-        );
+      const { targetZoom, targetPan } = centralizarZoomMapa('biodiversidade', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
 
-        setTransitionMode('button');
-        setPan(targetPan);
-        setZoom(targetZoom);
-        baseUserPanRef.current = targetPan;
-        baseUserZoomRef.current = targetZoom;
-      }
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       setSelectedStateId(stateId);
       setSelectedBiodiversityStateId(stateId);
       audioEngine.playSfx('travel');
@@ -1036,21 +1049,20 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       }
       setInternalIsGeopoliticaPanelOpen(false);
 
-      if (centroid) {
-        const { targetZoom, targetPan } = getBiodiversityFocusZoomAndPan(
-          centroid,
-          stateId,
-          getContainerWidth(),
-          is3D,
-          true
-        );
+      const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
 
-        setTransitionMode('button');
-        setPan(targetPan);
-        setZoom(targetZoom);
-        baseUserPanRef.current = targetPan;
-        baseUserZoomRef.current = targetZoom;
-      }
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       setSelectedStateId(stateId);
       setSelectedGeopoliticaStateId(stateId);
       audioEngine.playSfx('travel');
@@ -1063,20 +1075,19 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       if (!isRadioOpen && onToggleRadio) {
         onToggleRadio();
       }
-      if (centroid) {
-        const { targetZoom, targetPan } = getMusicalFocusZoomAndPan(
-          centroid,
-          getContainerWidth(),
-          is3D,
-          true,
-          stateId
-        );
-        setTransitionMode('button');
-        setPan(targetPan);
-        setZoom(targetZoom);
-        baseUserPanRef.current = targetPan;
-        baseUserZoomRef.current = targetZoom;
-      }
+      const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       audioEngine.playSfx('click');
       return;
     }
@@ -1572,7 +1583,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           if (hoveredCountryId) handleCountryLeave(hoveredCountryId);
         }
       }}
-      className="container-canva-mapa-br container-mapa-br relative w-full h-full flex-1 overflow-hidden select-none cursor-default"
+      className={`container-canva-mapa-br container-mapa-br relative w-full h-full flex-1 overflow-hidden select-none cursor-default ${
+        isGlobe3DActive ? 'modo-globo-3d-ativo' : ''
+      }`}
       style={{
         perspective: '1600px',
         background:
@@ -1608,21 +1621,21 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 4. Top-Right Navigation & Zoom HUD (Fixed on Row 1, alongside topMenu with no background strip) */}
+      {/* 4. Top-Right Navigation & Zoom HUD (Standard across entire app: 2D Cartographic & 3D Globe mode) */}
+      <TopRightNavigationDock
+        onZoomIn={isGlobe3DActive ? () => setGlobeZoomInTrigger((c) => c + 1) : handleZoomIn}
+        onZoomOut={isGlobe3DActive ? () => setGlobeZoomOutTrigger((c) => c + 1) : handleZoomOut}
+        onResetView={isGlobe3DActive ? () => setGlobeCenterTrigger((c) => c + 1) : handleResetView}
+        zoom={isGlobe3DActive ? 1.0 : zoom}
+      />
+
+      {/* 4.5. Top HUD Celestial Orb (Sol / Lua de Brasília na HUD de Topo - apenas nos modos 2D/isométrico, oculto no Globo 3D) */}
       {!isGlobe3DActive && (
-        <TopRightNavigationDock
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onResetView={handleResetView}
-          zoom={zoom}
+        <TopHudCelestialOrb
+          enabled={atmosphereEnabled}
+          timeOverride={timeOverride}
         />
       )}
-
-      {/* 4.5. Top HUD Celestial Orb (Sol / Lua de Brasília na HUD de Topo com Difusão Atmosférica Orgânica) */}
-      <TopHudCelestialOrb
-        enabled={atmosphereEnabled}
-        timeOverride={timeOverride}
-      />
 
       {/* 5. Choropleth Interactive Legend (Shown on 2D/2.5D Cartographic Mode in Adventure Mode) */}
       {!showNeighbors && !isGlobe3DActive && !isClimateActive && mainMode === 'aventura' && (
@@ -1753,7 +1766,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           pinDisplayMode={globePinMode}
           timeOverride={timeOverride}
           focusedStateId={focusedStateId}
-          centerTrigger={centerTrigger}
+          centerTrigger={globeCenterTrigger || centerTrigger}
+          zoomInTrigger={globeZoomInTrigger}
+          zoomOutTrigger={globeZoomOutTrigger}
+          isTelemetryOpen={isGlobeTelemetryOpen}
+          onToggleTelemetry={onToggleGlobeTelemetry}
         />
       ) : (() => {
         return (
@@ -2275,14 +2292,16 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         }}
       />
 
-      {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave */}
-      <CustomCanvasCursor
-        isDragging={isDragging}
-        hoveredStateId={hoveredStateId}
-        hoveredCountryId={hoveredCountryId}
-        isDwellZoomed={isDwellZoomedRef.current}
-        containerRef={containerRef}
-      />
+      {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave (Apenas modo 2D cartográfico) */}
+      {!isGlobe3DActive && (
+        <CustomCanvasCursor
+          isDragging={isDragging}
+          hoveredStateId={hoveredStateId}
+          hoveredCountryId={hoveredCountryId}
+          isDwellZoomed={isDwellZoomedRef.current}
+          containerRef={containerRef}
+        />
+      )}
 
       {/* 15. Balão Universal de Hover dos Estados com Cálculo de Posicionamento Inteligente (Anti-Corte / Clamping / Z-Index Superior) */}
       <UnifiedStateHoverTooltip

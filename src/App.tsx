@@ -20,6 +20,9 @@ import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFe
 import { apiTracker } from './services/apiTracker';
 import { QuestThemePillar } from './data/brQuestQuestionsData';
 
+import { useAppModes } from './hooks/useAppModes';
+import { centralizarZoomMapa } from './services/mapModeService';
+
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
   const [activeTab, setActiveTab] = useState<'map' | 'insignias'>('map');
@@ -35,15 +38,50 @@ export function App() {
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
 
-  // App Modes: 1º Clima e Telemetria (default on page load), 2º Aventura/Navegação, 3º Biodiversidade, 4º Geopolítica, 5º Musicalidades, 6º Globo 3D
-  const [mainMode, setMainMode] = useState<AppMainMode>('clima');
-  const [terrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
-  const [visualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
-  const [choroplethSubTheme, setChoroplethSubTheme] = useState<ChoroplethSubTheme>('regions');
-  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('todos');
-  const [hoveredRegionFilter, setHoveredRegionFilter] = useState<string | null>(null);
-  const [showNeighbors, setShowNeighbors] = useState<boolean>(false);
-  const [isObservatorioOpen, setIsObservatorioOpen] = useState<boolean>(false);
+  // App Modes Orchestration with custom hook
+  const {
+    mainMode,
+    selectMainMode,
+    terrainProvider,
+    setTerrainProvider,
+    visualStyle,
+    setVisualStyle,
+    choroplethSubTheme,
+    setChoroplethSubTheme,
+    isCloudsActive,
+    setIsCloudsActive,
+    isWavesActive,
+    setIsWavesActive,
+    isAtmosphereActive,
+    setIsAtmosphereActive,
+    isRainSimActive,
+    setIsRainSimActive,
+    celestialTimeOverride,
+    setCelestialTimeOverride,
+    handleCycleCelestial,
+    isObservatorioOpen,
+    setIsObservatorioOpen,
+    isBiodiversityPanelOpen,
+    setIsBiodiversityPanelOpen,
+    isGeopoliticaPanelOpen,
+    setIsGeopoliticaPanelOpen,
+    isRadioOpen,
+    setIsRadioOpen,
+    isGlobeTelemetryOpen,
+    setIsGlobeTelemetryOpen,
+    selectedRegionFilter,
+    setSelectedRegionFilter,
+    hoveredRegionFilter,
+    setHoveredRegionFilter,
+    showNeighbors,
+    setShowNeighbors,
+    toggleNeighbors,
+    focusedStateId,
+    setFocusedStateId,
+    centerMapTrigger,
+    setCenterMapTrigger,
+  } = useAppModes('clima');
+
   const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
 
   // Biodiversity Mode State
@@ -51,11 +89,9 @@ export function App() {
   const [biodiversityBiome, setBiodiversityBiome] = useState<BrazilBiome | 'all'>('all');
   const [isBiodiversityThreatenedOnly, setIsBiodiversityThreatenedOnly] = useState<boolean>(false);
   const [isBiodiversityEndemicOnly, setIsBiodiversityEndemicOnly] = useState<boolean>(false);
-  const [isBiodiversityPanelOpen, setIsBiodiversityPanelOpen] = useState<boolean>(false);
 
   // Geopolítica Mode State
   const [geopoliticaMetric, setGeopoliticaMetric] = useState<GeopoliticaMetricKey>('miscigenacao');
-  const [isGeopoliticaPanelOpen, setIsGeopoliticaPanelOpen] = useState<boolean>(true);
 
   const [climateTelemetry, setClimateTelemetry] = useState<{
     avgTempBrazil: number;
@@ -89,25 +125,8 @@ export function App() {
     };
   }, []);
 
-  const [isRainSimActive, setIsRainSimActive] = useState<boolean>(false);
-  const [isCloudsActive, setIsCloudsActive] = useState<boolean>(true);
-  const [isWavesActive, setIsWavesActive] = useState<boolean>(true);
-  const [isAtmosphereActive, setIsAtmosphereActive] = useState<boolean>(true);
-  const [celestialTimeOverride, setCelestialTimeOverride] = useState<'day' | 'night' | 'auto'>('auto');
-
-  const handleCycleCelestial = () => {
-    setCelestialTimeOverride((curr) => {
-      if (curr === 'day') return 'night';
-      if (curr === 'night') return 'auto';
-      return 'day';
-    });
-    setIsAtmosphereActive(true);
-  };
-  const [isRadioOpen, setIsRadioOpen] = useState<boolean>(false);
   const [activeMusicCategory, setActiveMusicCategory] = useState<'state_anthems' | 'top5' | 'national'>('state_anthems');
   const [selectedRadioEraId, setSelectedRadioEraId] = useState<string>('catedral_1930_1940');
-  const [focusedStateId, setFocusedStateId] = useState<string | null>(null);
-  const [centerMapTrigger, setCenterMapTrigger] = useState<number>(0);
 
   // Globe 3D States
   const [globeTextureMode, setGlobeTextureMode] = useState<'nasa_satellite' | 'night_lights' | 'natural_earth'>('nasa_satellite');
@@ -117,77 +136,7 @@ export function App() {
   const [globePinMode, setGlobePinMode] = useState<'all' | 'compact' | 'none'>('all');
 
   const handleSelectMainMode = (newMode: AppMainMode) => {
-    setMainMode(newMode);
-
-    // Regra Padrão: Sempre que mudar entre os modos do TopMenu, os apps laterais começam fechados e o Mapa centraliza na tela cheia
-    setIsObservatorioOpen(false);
-    setIsBiodiversityPanelOpen(false);
-    setIsGeopoliticaPanelOpen(false);
-    setIsRadioOpen(false);
-    setFocusedStateId(null);
-    setSelectedRegionFilter('todos');
-    setShowNeighbors(false);
-    setCenterMapTrigger((prev) => prev + 1);
-
-    if (newMode === 'aventura') {
-      // Modo Aventura Padrão: Pergaminho histórico séc XVI, nuvens e ondas clássicas
-      setTerrainProvider('voyager_parchment');
-      setVisualStyle('tiles');
-      setChoroplethSubTheme('regions');
-      setIsCloudsActive(true);
-      setIsRainSimActive(false);
-      setIsWavesActive(true);
-      setIsAtmosphereActive(true);
-      setCelestialTimeOverride('auto');
-    } else if (newMode === 'clima') {
-      // Modo Clima Padrão: Sol automático de Brasília, nuvens, ondas, cor neutra para América do Sul; Observatório fechado por padrão
-      setTerrainProvider('muted_gray');
-      setVisualStyle('tiles');
-      setClimateMode('temperaturas_frentes');
-      setIsCloudsActive(true);
-      setIsAtmosphereActive(true);
-      setCelestialTimeOverride('auto');
-      setIsWavesActive(true);
-      setIsRainSimActive(false);
-    } else if (newMode === 'biodiversidade') {
-      // Modo Biodiversidade Padrão: Cores Naturais da Terra (Natural Earth Land Cover), relevo ecológico, nuvens, ondas costeiras, sem vizinhos; Painel fechado por padrão
-      setTerrainProvider('natural_earth');
-      setVisualStyle('tiles');
-      setIsCloudsActive(true);
-      setIsAtmosphereActive(true);
-      setCelestialTimeOverride('auto');
-      setIsWavesActive(true);
-      setIsRainSimActive(false);
-    } else if (newMode === 'geopolitica') {
-      // Modo Geopolítica Padrão: Relevo topográfico sombreado de alta definição com camada coroplética estatística viva
-      setTerrainProvider('shaded_relief');
-      setVisualStyle('tiles');
-      setChoroplethSubTheme('regions');
-      setIsCloudsActive(true);
-      setIsAtmosphereActive(true);
-      setCelestialTimeOverride('auto');
-      setIsWavesActive(true);
-      setIsRainSimActive(false);
-    } else if (newMode === 'musicalidades') {
-      // Modo Musicalidades Padrão: Sol e nuvens leves, ondas costeiras; Rádio fechado por padrão até o usuário acionar
-      setTerrainProvider('shaded_relief');
-      setVisualStyle('tiles');
-      setIsCloudsActive(true);
-      setIsAtmosphereActive(true);
-      setCelestialTimeOverride('auto');
-      setIsWavesActive(true);
-      setIsRainSimActive(false);
-      setActiveMusicCategory('state_anthems');
-      setIsRadioOpen(false);
-      setFocusedStateId('RESET_CENTRAL_BRAZIL');
-    } else if (newMode === 'globo3d') {
-      // Modo Globo 3D Padrão: NASA Satellite Blue Marble, nuvens orbitais, brasões 40% preto translúcidos e bordas douradas
-      setGlobeTextureMode('nasa_satellite');
-      setIsGlobeCloudsActive(true);
-      setIsGlobeBordersActive(true);
-      setGlobePinMode('all');
-      setIsGlobeAutoRotateActive(false);
-    }
+    selectMainMode(newMode);
 
     if (activeTab !== 'map') {
       setActiveTab('map');
@@ -408,20 +357,8 @@ export function App() {
   };
 
   const handleToggleNeighbors = () => {
-    setShowNeighbors((prev) => {
-      const next = !prev;
-      if (next) {
-        // Fechar painéis laterais e limpar seleções para foco exclusivo em Mostrar Vizinhos
-        setIsGeopoliticaPanelOpen(false);
-        setIsBiodiversityPanelOpen(false);
-        setIsObservatorioOpen(false);
-        setFocusedStateId(null);
-        setSelectedRegionFilter('todos');
-        setHoveredRegionFilter(null);
-        setHoveredStateId(null);
-      }
-      return next;
-    });
+    toggleNeighbors();
+    setHoveredStateId(null);
   };
 
   return (
@@ -515,6 +452,8 @@ export function App() {
           globePinMode={globePinMode}
           onGlobePinModeChange={setGlobePinMode}
           onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
+          isGlobeTelemetryOpen={isGlobeTelemetryOpen}
+          onToggleGlobeTelemetry={() => setIsGlobeTelemetryOpen((prev) => !prev)}
           biodiversityKingdom={biodiversityKingdom}
           onBiodiversityKingdomChange={(k) => {
             setBiodiversityKingdom(k);
@@ -542,6 +481,10 @@ export function App() {
             if (showNeighbors) setShowNeighbors(false);
           }}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenAboutInfo={() => setIsAboutInfoOpen(true)}
+          showFps={showFps}
+          onToggleFps={() => setShowFps((prev) => !prev)}
+          onOpenApiStatus={() => setIsApiStatusOpen(true)}
           onResetView={() => {
             if (showNeighbors) setShowNeighbors(false);
             setCenterMapTrigger((prev) => prev + 1);
@@ -629,6 +572,8 @@ export function App() {
               globeAutoRotate={isGlobeAutoRotateActive}
               globeBorders={isGlobeBordersActive}
               globePinMode={globePinMode}
+              isGlobeTelemetryOpen={isGlobeTelemetryOpen}
+              onToggleGlobeTelemetry={() => setIsGlobeTelemetryOpen((prev) => !prev)}
               focusedStateId={focusedStateId}
               onFocusStateHandled={() => setFocusedStateId(null)}
               onHoverStateChange={setHoveredStateId}

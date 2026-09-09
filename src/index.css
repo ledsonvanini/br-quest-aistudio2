@@ -138,51 +138,117 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 9999px;
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: transparent;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #b45309 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f59e0b 55%, #b45309 100%);
   border: 2px solid #ffffff;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
-  margin-top: -5px;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.9), 0 2px 5px rgba(0, 0, 0, 0.8);
+  margin-top: -6px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: grab;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  box-shadow: 0 0 12px rgba(251, 191, 36, 1), 0 2px 6px rgba(0, 0, 0, 0.8);
+  transform: scale(1.18);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 1), 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
   transform: scale(1.1);
-  background: #f59e0b;
+  cursor: grabbing;
 }
 
 input[type="range"]::-moz-range-track {
   height: 6px;
   border-radius: 9999px;
-  background: #1e293b;
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: transparent;
+  border: none;
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #b45309 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f59e0b 55%, #b45309 100%);
   border: 2px solid #ffffff;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.9), 0 2px 5px rgba(0, 0, 0, 0.8);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: grab;
 }
 
 input[type="range"]::-moz-range-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.18);
+}
+
+/* Solar Range Slider with Clean Fill Tracking & Zero Trail Artifact */
+.solar-range-input {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  height: 24px !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.solar-range-input::-webkit-slider-runnable-track {
+  height: 24px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.solar-range-input::-moz-range-track {
+  height: 24px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.solar-range-input::-moz-range-progress {
+  background: transparent !important;
+}
+
+.solar-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fef08a 35%, #f59e0b 70%, #92400e 100%) !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.95), 0 2px 6px rgba(0, 0, 0, 0.8) !important;
+  margin-top: 2px !important;
+  cursor: grab !important;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.solar-range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 0 16px rgba(251, 191, 36, 1), 0 2px 8px rgba(0, 0, 0, 0.95) !important;
+}
+
+.solar-range-input::-webkit-slider-thumb:active {
+  cursor: grabbing !important;
+  transform: scale(1.10);
+}
+
+.solar-range-input::-moz-range-thumb {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fef08a 35%, #f59e0b 70%, #92400e 100%) !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.95), 0 2px 6px rgba(0, 0, 0, 0.8) !important;
+  cursor: grab !important;
 }
 
 /* 2. Text Selection in Gold/Amber Tone */
@@ -235,51 +301,80 @@ body {
   color: #f8fafc;
 }
 
-/* Custom cartographic canvas hides default browser cursor completely so only CustomCanvasCursor renders on map */
-.container-canva-mapa-br,
-.container-canva-mapa-br *,
-.container-canva-mapa-br svg,
-.container-canva-mapa-br path,
-.container-canva-mapa-br g {
+/* Custom cartographic canvas hides default browser cursor completely so only CustomCanvasCursor renders on 2D map */
+.container-canva-mapa-br:not(.modo-globo-3d-ativo),
+.container-canva-mapa-br:not(.modo-globo-3d-ativo) .quadro-canvas-camadas,
+.container-canva-mapa-br:not(.modo-globo-3d-ativo) .quadro-canvas-camadas *,
+.container-canva-mapa-br:not(.modo-globo-3d-ativo) svg,
+.container-canva-mapa-br:not(.modo-globo-3d-ativo) path,
+.container-canva-mapa-br:not(.modo-globo-3d-ativo) g {
   cursor: none !important;
 }
 
-/* Restores native OS cursor exclusively on floating dialogs, modals, top navigation, and footer */
+/* Restores native OS cursor on 3D Globe, HUD toolbar, telemetry, floating dialogs, modals, top navigation, and footer */
+.container-palco-globo-3d,
+.modo-globo-3d-ativo,
+.painel-hud-controles,
+.painel-hud-globo-controles,
+.painel-card-telemetria-globo,
+.btn-controles-zoom-topo,
 .modal-dialog-climatologia-estado,
-.modal-dialog-climatologia-estado *,
 [role="dialog"],
-[role="dialog"] *,
 .menu-superior-status,
-.menu-superior-status *,
 .rodape-aplicacao,
-.rodape-aplicacao *,
 .modal-backdrop,
-.modal-backdrop *,
 .modal-conteudo,
-.modal-conteudo *,
 .modal-arvore-habilidades,
-.modal-arvore-habilidades *,
 .modal-quiz-guardiao,
-.modal-quiz-guardiao *,
 .modal-configuracoes,
-.modal-configuracoes *,
 .modal-inventario-guardiao,
-.modal-inventario-guardiao *,
 .modal-filosofia-sobre,
-.modal-filosofia-sobre *,
 .modal-neighbor-country,
-.modal-neighbor-country *,
 [data-scrollable],
-[data-scrollable] *,
 .overflow-y-auto,
-.overflow-y-auto *,
 .overflow-x-auto,
-.overflow-x-auto *,
-.scrollbar-thin,
-.scrollbar-thin * {
-  cursor: default !important;
+.scrollbar-thin {
+  cursor: default;
 }
 
+/* 3D Globe Canvas drag cursor */
+.camada-canvas-globo-3d {
+  cursor: grab !important;
+}
+.camada-canvas-globo-3d.cursor-grabbing,
+.camada-canvas-globo-3d:active {
+  cursor: grabbing !important;
+}
+
+/* Interactive Pointer Cursor for all 3D HUD & Footer buttons, selects and links */
+.container-palco-globo-3d button,
+.container-palco-globo-3d button *,
+.container-palco-globo-3d [role="button"],
+.container-palco-globo-3d [role="button"] *,
+.container-palco-globo-3d a,
+.container-palco-globo-3d select,
+.container-palco-globo-3d .cursor-pointer,
+.container-palco-globo-3d .cursor-pointer *,
+.painel-hud-controles button,
+.painel-hud-controles button *,
+.painel-hud-controles a,
+.painel-hud-controles a *,
+.painel-hud-controles select,
+.painel-hud-controles [role="button"],
+.painel-hud-globo-controles button,
+.painel-hud-globo-controles button *,
+.painel-hud-globo-controles select,
+.painel-hud-globo-controles [role="button"],
+.painel-card-telemetria-globo button,
+.painel-card-telemetria-globo button *,
+.painel-trajetoria-interplanetaria button,
+.painel-trajetoria-interplanetaria button *,
+.btn-reabrir-telemetria,
+.btn-reabrir-telemetria *,
+.btn-controles-zoom-topo button,
+.btn-controles-zoom-topo button *,
+.pin-brasao-estado button,
+.pin-brasao-estado button *,
 .modal-dialog-climatologia-estado button,
 .modal-dialog-climatologia-estado button *,
 .modal-dialog-climatologia-estado a,

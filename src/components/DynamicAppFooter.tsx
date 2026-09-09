@@ -168,6 +168,11 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
     return getStateMusicalHeritage(stateId);
   }, [selectedStateId, radioState.activeStateId]);
 
+  // No modo Globo 3D, a barra de controle própria (GlobeControlsHUD) ocupa o rodapé de forma exclusiva
+  if (mainMode === 'globo3d') {
+    return null;
+  }
+
   return (
     <footer
       id="rodape-aplicacao-dinamico"
@@ -184,8 +189,8 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
         {/* ========================================================================= */}
         <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
           
-          {/* CASO A & B: Modo Aventura / Cartografia ou Globo 3D (Busca + Ganchos Resumidos) */}
-          {!activeGuardian && activeTab === 'map' && (mainMode === 'aventura' || mainMode === 'globo3d') && (() => {
+          {/* CASO A: Modo Aventura / Cartografia (Busca + Ganchos Resumidos) */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (() => {
             const hGuardian = hoveredStateId ? GUARDIANS_DATA.find((g) => g.id === hoveredStateId) : null;
             const flagUrl = hoveredStateId ? getStateFlagUrl(hoveredStateId) : null;
 
@@ -227,9 +232,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                   <div className="flex items-center gap-2 min-w-0 shrink-0">
                     <div className="flex items-center gap-1.5 text-amber-300 font-serif font-bold text-xs truncate">
                       <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="truncate">
-                        {mainMode === 'globo3d' ? 'Globo 3D' : 'Cartografia'}
-                      </span>
+                      <span className="truncate">Cartografia</span>
                     </div>
 
                     <span className="text-[11px] font-mono text-slate-400 hidden sm:inline truncate">
@@ -551,103 +554,37 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* 2. SEÇÃO DIREITA: ÍCONES FIXOS (Saiba +, FPS, APIs) */}
+        {/* 2. SEÇÃO DIREITA: TELEMETRIA COMPACTA (FPS ATIVO APENAS SE HABILITADO)    */}
+        {/* (Saiba +, FPS toggle e APIs migrados para o Menu Sidebar: Ambiente & Sistema) */}
         {/* ========================================================================= */}
-        <div
-          id="secao-controles-fixos-direita-rodape"
-          className="secao-direita-rodape flex items-center gap-1 sm:gap-1.5 shrink-0"
-        >
-          {/* Botão 1: Saiba Mais com Ícone Exclamação '!' */}
-          <button
-            id="btn-saiba-mais-rodape"
-            onClick={() => {
-              audioEngine.playSfx('click');
-              onOpenAboutInfo();
-            }}
-            className="btn-saiba-mais flex items-center gap-1 px-2 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/60 hover:border-amber-300 text-amber-300 hover:text-amber-200 text-xs font-serif font-bold transition shadow-sm cursor-pointer"
-            title="Saiba Mais: Filosofia, Fontes de Dados e Direitos Autorais"
-            aria-label="Saiba Mais"
+        {showFps && onToggleFps && (
+          <div
+            id="secao-controles-fixos-direita-rodape"
+            className="secao-direita-rodape flex items-center gap-1 sm:gap-1.5 shrink-0"
           >
-            <div className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-mono font-black text-[11px]">
-              !
-            </div>
-            <span className="hidden sm:inline">Saiba +</span>
-          </button>
-
-          {/* Botão 2: FPS Medidor de Performance (Com Swap de Componente no Mesmo Local) */}
-          {onToggleFps && (
-            showFps ? (
-              <button
-                id="btn-fps-rodape"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  onToggleFps();
-                }}
-                className={`btn-fps-rodape painel-fps-swap flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-mono font-bold transition-all shadow-lg shadow-black/80 cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
-                  fpsTelemetry.quality === 'optimal'
-                    ? 'bg-emerald-950/90 border-emerald-400/80 text-emerald-300 shadow-emerald-500/20'
-                    : fpsTelemetry.quality === 'good'
-                    ? 'bg-amber-950/90 border-amber-400/80 text-amber-300 shadow-amber-500/20'
-                    : 'bg-rose-950/90 border-rose-400/80 text-rose-300 shadow-rose-500/20'
-                }`}
-                title={`Taxa de Atualização: ${fpsTelemetry.fps} FPS | Tempo de Quadro: ${fpsTelemetry.frametimeMs}ms | Clique para ocultar`}
-                aria-label={`FPS: ${fpsTelemetry.fps} - ${fpsTelemetry.quality}`}
-              >
-                <Activity className="w-3.5 h-3.5 animate-pulse shrink-0" />
-                <span className="font-black">{fpsTelemetry.fps} FPS</span>
-                <span className="text-slate-500 font-sans">|</span>
-                <span className="text-[10px] font-sans font-bold uppercase tracking-wider shrink-0">
-                  {fpsTelemetry.quality === 'optimal' ? 'Fluido' : fpsTelemetry.quality === 'good' ? 'Estável' : 'Otimizando'}
-                </span>
-                <span className="text-[9px] text-slate-400 font-mono hidden xl:inline">
-                  {fpsTelemetry.frametimeMs}ms
-                </span>
-              </button>
-            ) : (
-              <button
-                id="btn-fps-rodape"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  onToggleFps();
-                }}
-                className="btn-fps-rodape flex items-center gap-1 px-2 py-1 rounded-xl border text-xs font-mono font-bold transition shadow-sm cursor-pointer bg-slate-900/80 hover:bg-slate-800 border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200"
-                title="Exibir Medidor de FPS em Tempo Real (Swap no Rodapé)"
-                aria-label="Ativar Medidor de FPS"
-              >
-                <Gauge className="w-3.5 h-3.5 text-slate-400" />
-                <span className="hidden md:inline">FPS</span>
-              </button>
-            )
-          )}
-
-          {/* Botão 3: APIs, Cotas e Telemetria */}
-          {onOpenApiStatus && (
             <button
-              id="btn-apis-rodape"
+              id="btn-fps-rodape"
               onClick={() => {
                 audioEngine.playSfx('click');
-                onOpenApiStatus();
+                onToggleFps();
               }}
-              className="btn-apis-rodape flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-slate-850 border border-slate-700/90 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 text-xs font-mono font-bold transition shadow-sm cursor-pointer group"
-              title={`APIs & Cotas: ${apiCallsCount} requisições feitas hoje de 10.000 disponíveis (Open-Meteo). Clique para ver detalhes e estatísticas semanais.`}
-              aria-label="Status e Cotas de APIs"
+              className={`btn-fps-rodape flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-mono font-bold transition shadow-md cursor-pointer ${
+                fpsTelemetry.quality === 'optimal'
+                  ? 'bg-emerald-950/90 border-emerald-400/80 text-emerald-300'
+                  : fpsTelemetry.quality === 'good'
+                  ? 'bg-amber-950/90 border-amber-400/80 text-amber-300'
+                  : 'bg-rose-950/90 border-rose-400/80 text-rose-300'
+              }`}
+              title={`Taxa de Atualização: ${fpsTelemetry.fps} FPS (${fpsTelemetry.frametimeMs}ms) • ${
+                fpsTelemetry.quality === 'optimal' ? 'Fluido' : fpsTelemetry.quality === 'good' ? 'Estável' : 'Otimizando'
+              }. Clique para ocultar.`}
+              aria-label={`FPS: ${fpsTelemetry.fps}`}
             >
-              <div className="relative flex items-center justify-center">
-                <Activity className="w-3.5 h-3.5 text-emerald-400 group-hover:text-amber-400 transition-colors" />
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              </div>
-              <span className="hidden sm:inline text-slate-200 group-hover:text-amber-300 font-sans">
-                APIs:
-              </span>
-              <span className="text-amber-300 font-mono font-bold">
-                {apiCallsCount}
-              </span>
-              <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
-                / 10k
-              </span>
+              <Activity className="w-3 h-3 animate-pulse shrink-0" />
+              <span>{fpsTelemetry.fps} FPS</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
     </footer>
