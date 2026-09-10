@@ -24,6 +24,7 @@ import {
   getProceduralPlanetTexture,
   getSaturnRingTexture,
 } from './celestialTextures';
+import { CosmicLaserBeam } from './cosmicLaserBeam';
 
 /**
  * Creates a crisp 3D Billboard Sprite for celestial body labels (Sun, Moon, Planets)
@@ -92,6 +93,8 @@ export class CelestialSystem {
   public cosmicBeamSun: THREE.Line;
   public cosmicTrajectoryLine: THREE.Line;
   public cosmicTargetBeacon: THREE.Mesh;
+  public cosmicLaserBeam: CosmicLaserBeam;
+  public lastEarthScenePos: THREE.Vector3 = new THREE.Vector3(EARTH_SCENE_ORBIT_RADIUS, 0, 0);
   private moonMaterial: THREE.MeshStandardMaterial;
   private trajectoryMaterial: THREE.LineDashedMaterial;
   private activeTargetAstroId: string | null = null;
@@ -100,6 +103,10 @@ export class CelestialSystem {
   constructor() {
     this.group = new THREE.Group();
     this.group.name = 'celestial-system';
+
+    // Microengine do Feixe Laser Cósmico Volumétrico 3D
+    this.cosmicLaserBeam = new CosmicLaserBeam();
+    this.group.add(this.cosmicLaserBeam.group);
 
     // 1. Sun Directional Light & Point Light
     this.sunLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
@@ -502,32 +509,42 @@ export class CelestialSystem {
       moonOrbit.position.copy(earthPos);
     }
 
+    this.lastEarthScenePos.copy(earthPos);
+
     // Update Cosmic Laser Beams if requested and a state is selected
     if (showCosmicBeams && selectedStatePos) {
-      const stateWorldPos = selectedStatePos.clone().add(earthPos);
-      this.cosmicBeamMoon.visible = true;
-      const moonPositions = new Float32Array([
-        stateWorldPos.x,
-        stateWorldPos.y,
-        stateWorldPos.z,
-        moonPos.x,
-        moonPos.y,
-        moonPos.z,
-      ]);
-      this.cosmicBeamMoon.geometry.setAttribute(
-        'position',
-        new THREE.BufferAttribute(moonPositions, 3)
-      );
-      this.cosmicBeamMoon.geometry.attributes.position.needsUpdate = true;
+      // Normaliza para espaço de mundo da cena
+      const stateWorldPos =
+        selectedStatePos.distanceTo(earthPos) < 10 && selectedStatePos.lengthSq() > 30
+          ? selectedStatePos.clone()
+          : selectedStatePos.clone().add(earthPos);
+
+      // Determina astro de destino
+      let targetPos = sunPos;
+      let targetColor = 0xf59e0b; // Ouro Solar padrão
+      if (this.activeTargetAstroId === 'lua') {
+        targetPos = moonPos;
+        targetColor = 0x38bdf8; // Azul Lunar
+      } else if (this.activeTargetAstroId && this.activeTargetAstroId !== 'sol') {
+        const pMesh = this.planetsGroup.getObjectByName(`planet-${this.activeTargetAstroId}`);
+        if (pMesh) {
+          targetPos = new THREE.Vector3();
+          pMesh.getWorldPosition(targetPos);
+          targetColor = 0x38bdf8;
+        }
+      }
+
+      this.cosmicLaserBeam.setVisible(true);
+      this.cosmicLaserBeam.update(stateWorldPos, targetPos, targetColor, performance.now());
 
       this.cosmicBeamSun.visible = true;
       const sunPositions = new Float32Array([
         stateWorldPos.x,
         stateWorldPos.y,
         stateWorldPos.z,
-        sunPos.x,
-        sunPos.y,
-        sunPos.z,
+        targetPos.x,
+        targetPos.y,
+        targetPos.z,
       ]);
       this.cosmicBeamSun.geometry.setAttribute(
         'position',
@@ -535,6 +552,7 @@ export class CelestialSystem {
       );
       this.cosmicBeamSun.geometry.attributes.position.needsUpdate = true;
     } else {
+      this.cosmicLaserBeam.setVisible(false);
       this.cosmicBeamMoon.visible = false;
       this.cosmicBeamSun.visible = false;
     }
@@ -582,7 +600,7 @@ export class CelestialSystem {
       symbol: '☉',
       type: 'star',
       categoryLabel: 'Estrela Central (Classe G2V)',
-      position: solar.sunDirection.clone().multiplyScalar(sunSceneDist),
+      position: new THREE.Vector3(0, 0, 0), // Centro fixo do Sistema Solar
       distanceKm: 149597870,
       radiusKm: 696340,
       apparentSize: 1.6,
@@ -596,6 +614,10 @@ export class CelestialSystem {
       curiosity: 'A energia gerada no núcleo levou mais de 100.000 anos para emergir na fotosfera.',
     };
 
+    const currentEarth = this.lastEarthScenePos.clone();
+    const moonRelPos = lunar.moonDirection.clone().multiplyScalar(moonSceneDist);
+    const moonWorldPos = currentEarth.add(moonRelPos);
+
     const moonInfo: CelestialBodyInfo = {
       id: 'lua',
       name: 'Lua',
@@ -603,7 +625,7 @@ export class CelestialSystem {
       symbol: '☽',
       type: 'moon',
       categoryLabel: 'Satélite Natural da Terra',
-      position: lunar.moonDirection.clone().multiplyScalar(moonSceneDist),
+      position: moonWorldPos,
       distanceKm: 384400,
       radiusKm: 1737.4,
       apparentSize: 0.48,
@@ -802,5 +824,6 @@ export class CelestialSystem {
     (this.cosmicTrajectoryLine.material as THREE.Material).dispose();
     this.cosmicTargetBeacon.geometry.dispose();
     (this.cosmicTargetBeacon.material as THREE.Material).dispose();
+    this.cosmicLaserBeam.dispose();
   }
 }
