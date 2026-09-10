@@ -9,6 +9,13 @@ import {
   calculateLunarCoordinates,
   getVisiblePlanetsInfo,
 } from './celestialMath';
+import { calculateHeliocentricOrbitalState, HeliocentricOrbitalState } from './orbitalPhysics';
+import {
+  EARTH_SCENE_ORBIT_RADIUS,
+  MOON_SCENE_ORBIT_RADIUS,
+  MOON_ORBIT_INCLINATION_RAD,
+  ASTEROID_BELT_SCENE_RADIUS,
+} from './orbitalData';
 import { GlobeSeason, CelestialBodyInfo, CosmicTrajectoryTelemetry } from './types';
 import { SCENE_GLOBE_RADIUS } from './sphericalMath';
 import {
@@ -103,7 +110,8 @@ export class CelestialSystem {
     this.group.add(this.sunPointLight);
 
     // Sun 3D Visual Mesh with Procedural Granulation Texture
-    const sunGeo = new THREE.SphereGeometry(1.65, 48, 48);
+    // Scientifically scaled: Sun is the primary star of our solar system (radius 6.5)
+    const sunGeo = new THREE.SphereGeometry(6.5, 48, 48);
     const sunTex = getProceduralSunTexture();
     const sunMat = new THREE.MeshBasicMaterial({
       map: sunTex,
@@ -113,32 +121,33 @@ export class CelestialSystem {
     this.sunMesh.name = 'astro-sol';
     this.group.add(this.sunMesh);
 
-    // Sun Corona Glow (Inner Core Corona)
-    const coronaGeo = new THREE.SphereGeometry(2.35, 32, 32);
+    // Sun Corona Glow (Inner Core Corona) - Radiant golden aura with additive blending
+    const coronaGeo = new THREE.SphereGeometry(7.6, 32, 32);
     const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xfbbf24,
+      color: 0xfef08a,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.35,
       blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
+      side: THREE.FrontSide,
     });
     this.sunCorona = new THREE.Mesh(coronaGeo, coronaMat);
     this.sunMesh.add(this.sunCorona);
 
     // Sun Radiant Aura (Outer Corona)
-    const outerCoronaGeo = new THREE.SphereGeometry(3.5, 32, 32);
+    const outerCoronaGeo = new THREE.SphereGeometry(9.2, 32, 32);
     const outerCoronaMat = new THREE.MeshBasicMaterial({
-      color: 0xf97316,
+      color: 0xf59e0b,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.18,
       blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
+      side: THREE.FrontSide,
     });
     this.outerCorona = new THREE.Mesh(outerCoronaGeo, outerCoronaMat);
     this.sunMesh.add(this.outerCorona);
 
     // 2. Moon 3D Mesh with Procedural Lunar Maria & Craters
-    const moonGeo = new THREE.SphereGeometry(0.48, 32, 32);
+    // Proportioned: Moon radius 0.46 (in visual balance with Earth radius 2.0)
+    const moonGeo = new THREE.SphereGeometry(0.46, 32, 32);
     const moonTex = getProceduralMoonTexture();
     this.moonMaterial = new THREE.MeshStandardMaterial({
       map: moonTex,
@@ -152,12 +161,12 @@ export class CelestialSystem {
 
     // 3D Billboard Sprite for Moon
     const moonLabel = createAstroBillboardSprite('Lua', '☽', '#e2e8f0');
-    moonLabel.position.set(0, 0.82, 0);
+    moonLabel.position.set(0, 0.95, 0);
     this.moonMesh.add(moonLabel);
 
     // 3D Billboard Sprite for Sun
     const sunLabel = createAstroBillboardSprite('Sol', '☉', '#f59e0b');
-    sunLabel.position.set(0, 2.45, 0);
+    sunLabel.position.set(0, 7.6, 0);
     this.sunMesh.add(sunLabel);
 
     // 3. Planets of the Solar System Group
@@ -260,8 +269,8 @@ export class CelestialSystem {
       pMesh.add(planetLabel);
 
       // Add Saturn's rings if Saturn
-      if (p.name === 'Saturno') {
-        const ringGeo = new THREE.RingGeometry(p.apparentSize * 1.35, p.apparentSize * 2.45, 64);
+      if (p.name === 'Saturno' || p.id === 'saturno') {
+        const ringGeo = new THREE.RingGeometry(p.apparentSize * 1.35, p.apparentSize * 2.55, 64);
         const ringTex = getSaturnRingTexture();
         const ringMat = new THREE.MeshBasicMaterial({
           map: ringTex,
@@ -274,67 +283,233 @@ export class CelestialSystem {
         pMesh.add(ringMesh);
       }
 
-      // Add subtle orbit trajectory circle
-      const orbitRadius = Math.sqrt(p.position.x * p.position.x + p.position.z * p.position.z);
+      // Add Uranus tilted faint ring (Uranus has 98° axial tilt)
+      if (p.name === 'Urano' || p.id === 'urano') {
+        const ringGeo = new THREE.RingGeometry(p.apparentSize * 1.35, p.apparentSize * 1.65, 64);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xa5f3fc,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.55,
+        });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.y = Math.PI / 2.1;
+        pMesh.add(ringMesh);
+      }
+
+      // Add orbit trajectory circle around the Sun (coplanar concentric in the Ecliptic plane)
+      const orbitRadius = p.sceneDist || Math.sqrt(p.position.x * p.position.x + p.position.z * p.position.z);
       const orbitPoints: THREE.Vector3[] = [];
-      const tilt = (23.44 * Math.PI) / 180;
-      for (let i = 0; i <= 64; i++) {
-        const a = (i / 64) * Math.PI * 2;
+      for (let i = 0; i <= 96; i++) {
+        const a = (i / 96) * Math.PI * 2;
         orbitPoints.push(
           new THREE.Vector3(
             orbitRadius * Math.cos(a),
-            orbitRadius * Math.sin(a) * Math.sin(tilt),
-            orbitRadius * Math.sin(a) * Math.cos(tilt)
+            0,
+            orbitRadius * Math.sin(a)
           )
         );
       }
       const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPoints);
       const orbitMat = new THREE.LineBasicMaterial({
-        color: 0x475569,
+        color: 0xe2e8f0,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.45,
       });
       const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+      orbitLine.name = `orbit-line-${p.id}`;
       this.planetsGroup.add(orbitLine);
 
       this.planetsGroup.add(pMesh);
     });
+
+    // Earth's Orbit line around the Sun (EARTH_SCENE_ORBIT_RADIUS in Ecliptic plane)
+    const earthOrbitPoints: THREE.Vector3[] = [];
+    for (let i = 0; i <= 96; i++) {
+      const a = (i / 96) * Math.PI * 2;
+      earthOrbitPoints.push(
+        new THREE.Vector3(
+          EARTH_SCENE_ORBIT_RADIUS * Math.cos(a),
+          0,
+          EARTH_SCENE_ORBIT_RADIUS * Math.sin(a)
+        )
+      );
+    }
+    const earthOrbitGeo = new THREE.BufferGeometry().setFromPoints(earthOrbitPoints);
+    const earthOrbitMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const earthOrbitLine = new THREE.Line(earthOrbitGeo, earthOrbitMat);
+    earthOrbitLine.name = 'orbit-line-terra';
+    this.planetsGroup.add(earthOrbitLine);
+
+    // Add Asteroid Belt (Cinturão de Asteroides, ASTEROID_BELT_SCENE_RADIUS, between Mars 18.5 and Jupiter 27.5)
+    const asteroidCount = 900;
+    const asteroidGeo = new THREE.BufferGeometry();
+    const asteroidPositions = new Float32Array(asteroidCount * 3);
+    const asteroidColors = new Float32Array(asteroidCount * 3);
+    const beltCenter = ASTEROID_BELT_SCENE_RADIUS;
+    const beltWidth = 3.2;
+
+    for (let i = 0; i < asteroidCount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = beltCenter + (Math.random() - 0.5) * beltWidth;
+      const yLoft = (Math.random() - 0.5) * 0.9;
+      const x = r * Math.cos(a);
+      const y = yLoft;
+      const z = r * Math.sin(a);
+
+      asteroidPositions[i * 3] = x;
+      asteroidPositions[i * 3 + 1] = y;
+      asteroidPositions[i * 3 + 2] = z;
+
+      const lum = 0.65 + Math.random() * 0.35;
+      asteroidColors[i * 3] = 0.72 * lum;
+      asteroidColors[i * 3 + 1] = 0.68 * lum;
+      asteroidColors[i * 3 + 2] = 0.64 * lum;
+    }
+    asteroidGeo.setAttribute('position', new THREE.BufferAttribute(asteroidPositions, 3));
+    asteroidGeo.setAttribute('color', new THREE.BufferAttribute(asteroidColors, 3));
+
+    const asteroidMat = new THREE.PointsMaterial({
+      size: 0.18,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.82,
+    });
+    const asteroidBelt = new THREE.Points(asteroidGeo, asteroidMat);
+    asteroidBelt.name = 'asteroid-belt';
+    this.planetsGroup.add(asteroidBelt);
+
+    const asteroidLabel = createAstroBillboardSprite('Cinturão de Asteroides', '☄', '#94a3b8');
+    asteroidLabel.position.set(beltCenter, 0.7, 0);
+    this.planetsGroup.add(asteroidLabel);
+
+    // Add Comet with glowing vapor tail (Cometa Periélico)
+    const cometHeadGeo = new THREE.SphereGeometry(0.24, 16, 16);
+    const cometHeadMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
+    const cometHead = new THREE.Mesh(cometHeadGeo, cometHeadMat);
+    cometHead.position.set(22.0, 1.4, 25.0);
+    cometHead.name = 'comet-head';
+
+    const cometTailPoints = [
+      new THREE.Vector3(22.0, 1.4, 25.0),
+      new THREE.Vector3(24.2, 1.8, 28.5),
+      new THREE.Vector3(26.8, 2.3, 32.5),
+    ];
+    const cometTailGeo = new THREE.BufferGeometry().setFromPoints(cometTailPoints);
+    const cometTailMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.65,
+    });
+    const cometTail = new THREE.Line(cometTailGeo, cometTailMat);
+    cometTail.name = 'comet-tail';
+    this.planetsGroup.add(cometHead);
+    this.planetsGroup.add(cometTail);
+
+    const cometLabel = createAstroBillboardSprite('Cometa Periélico', '☄', '#38bdf8');
+    cometLabel.position.set(22.0, 2.2, 25.0);
+    this.planetsGroup.add(cometLabel);
+
+    // Add Moon's Geocentric orbit path around the Earth (MOON_SCENE_ORBIT_RADIUS scene units, inclined 5.145°)
+    const moonOrbitPoints: THREE.Vector3[] = [];
+    for (let i = 0; i <= 96; i++) {
+      const a = (i / 96) * Math.PI * 2;
+      moonOrbitPoints.push(
+        new THREE.Vector3(
+          MOON_SCENE_ORBIT_RADIUS * Math.cos(a),
+          MOON_SCENE_ORBIT_RADIUS * Math.sin(a) * Math.sin(MOON_ORBIT_INCLINATION_RAD),
+          MOON_SCENE_ORBIT_RADIUS * Math.sin(a) * Math.cos(MOON_ORBIT_INCLINATION_RAD)
+        )
+      );
+    }
+    const moonOrbitGeo = new THREE.BufferGeometry().setFromPoints(moonOrbitPoints);
+    const moonOrbitMat = new THREE.LineBasicMaterial({
+      color: 0xe2e8f0,
+      transparent: true,
+      opacity: 0.25,
+    });
+    const moonOrbitLine = new THREE.Line(moonOrbitGeo, moonOrbitMat);
+    moonOrbitLine.name = 'orbit-line-lua';
+    this.group.add(moonOrbitLine);
   }
 
   /**
-   * Updates Sun, Moon, and Planets positions for current time or chosen season
+   * Updates Sun, Moon, and Planets positions for current time, season, or orbital day of the year
    */
   public updatePositions(
     date: Date = new Date(),
     seasonOverride?: GlobeSeason,
     selectedStatePos?: THREE.Vector3 | null,
-    showCosmicBeams = false
-  ): { sunDirection: THREE.Vector3; moonDirection: THREE.Vector3 } {
-    const solar = calculateSolarCoordinates(date, seasonOverride);
-    const lunar = calculateLunarCoordinates(date);
+    showCosmicBeams = false,
+    orbitalDayOfYear?: number | null,
+    alignPlanets: boolean = false
+  ): {
+    sunDirection: THREE.Vector3;
+    moonDirection: THREE.Vector3;
+    sunPos: THREE.Vector3;
+    earthPos: THREE.Vector3;
+    moonPos: THREE.Vector3;
+    orbitalState?: HeliocentricOrbitalState;
+  } {
+    // Determine effective orbital day of year
+    let effectiveDay = orbitalDayOfYear;
+    if (effectiveDay === null || effectiveDay === undefined) {
+      const startOfYear = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      effectiveDay = (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) + 1;
+    }
 
-    // Scale sun distance aesthetically in the scene (~16.5 scene units away)
-    const sunSceneDist = 16.5;
-    const sunPos = solar.sunDirection.clone().multiplyScalar(sunSceneDist);
+    // Real Keplerian physical translation & heliocentric calculation
+    const orbitalState = calculateHeliocentricOrbitalState(
+      effectiveDay,
+      date.getUTCHours() + date.getUTCMinutes() / 60,
+      alignPlanets
+    );
+
+    const sunPos = orbitalState.sunScenePos; // Fixed at (0, 0, 0)
+    const earthPos = orbitalState.earthScenePos;
+    const moonPos = orbitalState.moonScenePos;
+
+    // Direction vector from Earth pointing directly towards Sun (for surface shaders & lighting)
+    const sunDirection = sunPos.clone().sub(earthPos).normalize();
+    // Direction vector from Earth pointing towards Moon
+    const moonDirection = moonPos.clone().sub(earthPos).normalize();
+
+    // Update planets according to heliocentric physics
+    orbitalState.planets.forEach((p) => {
+      const pMesh = this.planetsGroup.getObjectByName(`planet-${p.id}`);
+      if (pMesh) {
+        pMesh.position.copy(p.position);
+      }
+    });
+
     this.sunLight.position.copy(sunPos);
+    this.sunLight.target.position.copy(earthPos);
+    this.sunLight.target.updateMatrixWorld();
+
     this.sunPointLight.position.copy(sunPos);
     this.sunMesh.position.copy(sunPos);
+    this.planetsGroup.position.copy(sunPos);
 
-    // Scale moon distance aesthetically (~4.2 scene units away)
-    const moonSceneDist = 4.2;
-    const moonPos = lunar.moonDirection.clone().multiplyScalar(moonSceneDist);
     this.moonMesh.position.copy(moonPos);
-
-    // Orient Moon so its illuminated hemisphere points directly toward the Sun
     this.moonMesh.lookAt(sunPos);
+
+    const moonOrbit = this.group.getObjectByName('orbit-line-lua');
+    if (moonOrbit) {
+      moonOrbit.position.copy(earthPos);
+    }
 
     // Update Cosmic Laser Beams if requested and a state is selected
     if (showCosmicBeams && selectedStatePos) {
+      const stateWorldPos = selectedStatePos.clone().add(earthPos);
       this.cosmicBeamMoon.visible = true;
       const moonPositions = new Float32Array([
-        selectedStatePos.x,
-        selectedStatePos.y,
-        selectedStatePos.z,
+        stateWorldPos.x,
+        stateWorldPos.y,
+        stateWorldPos.z,
         moonPos.x,
         moonPos.y,
         moonPos.z,
@@ -347,9 +522,9 @@ export class CelestialSystem {
 
       this.cosmicBeamSun.visible = true;
       const sunPositions = new Float32Array([
-        selectedStatePos.x,
-        selectedStatePos.y,
-        selectedStatePos.z,
+        stateWorldPos.x,
+        stateWorldPos.y,
+        stateWorldPos.z,
         sunPos.x,
         sunPos.y,
         sunPos.z,
@@ -364,9 +539,26 @@ export class CelestialSystem {
       this.cosmicBeamSun.visible = false;
     }
 
+    // Update target beacon if following an active astro
+    if (this.activeTargetAstroId && this.cosmicTargetBeacon.visible) {
+      let targetMesh: THREE.Object3D | null = null;
+      if (this.activeTargetAstroId === 'sol') targetMesh = this.sunMesh;
+      else if (this.activeTargetAstroId === 'lua') targetMesh = this.moonMesh;
+      else targetMesh = this.planetsGroup.getObjectByName(`planet-${this.activeTargetAstroId}`) || null;
+      if (targetMesh) {
+        const endPos = new THREE.Vector3();
+        targetMesh.getWorldPosition(endPos);
+        this.cosmicTargetBeacon.position.copy(endPos);
+      }
+    }
+
     return {
-      sunDirection: solar.sunDirection,
-      moonDirection: lunar.moonDirection,
+      sunDirection,
+      moonDirection,
+      sunPos,
+      earthPos,
+      moonPos,
+      orbitalState,
     };
   }
 
@@ -380,8 +572,8 @@ export class CelestialSystem {
   public getAllCelestialBodies(date: Date = new Date(), seasonOverride?: GlobeSeason): CelestialBodyInfo[] {
     const solar = calculateSolarCoordinates(date, seasonOverride);
     const lunar = calculateLunarCoordinates(date);
-    const sunSceneDist = 16.5;
-    const moonSceneDist = 4.2;
+    const sunSceneDist = EARTH_SCENE_ORBIT_RADIUS;
+    const moonSceneDist = MOON_SCENE_ORBIT_RADIUS;
 
     const sunInfo: CelestialBodyInfo = {
       id: 'sol',
@@ -425,7 +617,10 @@ export class CelestialSystem {
       curiosity: 'A gravidade lunar desacelera gradualmente a rotação da Terra ao longo dos éons.',
     };
 
-    return [sunInfo, moonInfo, ...this.cachedPlanetsInfo];
+    const planets = getVisiblePlanetsInfo(date, solar.sunDirection);
+    this.cachedPlanetsInfo = planets;
+
+    return [sunInfo, moonInfo, ...planets];
   }
 
   /**
@@ -568,6 +763,8 @@ export class CelestialSystem {
       this.planetsGroup.children.forEach((c) => {
         if (c instanceof THREE.Mesh && c.name.startsWith('planet-')) {
           c.rotation.y += 0.003;
+        } else if (c.name === 'asteroid-belt') {
+          c.rotation.y += 0.0004;
         }
       });
     }
@@ -580,6 +777,10 @@ export class CelestialSystem {
       const scale = 1.0 + Math.sin(elapsed * 4.5) * 0.18;
       this.cosmicTargetBeacon.scale.set(scale, scale, scale);
     }
+  }
+
+  public getSunPosition(): THREE.Vector3 {
+    return this.sunMesh.position.clone();
   }
 
   public dispose(): void {

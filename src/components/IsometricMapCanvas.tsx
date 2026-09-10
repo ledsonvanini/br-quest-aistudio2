@@ -16,7 +16,6 @@ import {
   getBrazilOverviewFocusZoomAndPan,
   getMusicalFocusZoomAndPan,
   calculateAnchoredZoomPan,
-  getParameterizedMapCentering,
   DEFAULT_BRAZIL_ZOOM,
   NEIGHBORS_CONTINENT_ZOOM,
   BRAZIL_MAP_PIVOT_CENTER,
@@ -1305,11 +1304,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       ? 'Centralizar Mapa com App Lateral'
       : 'Centralizar Mapa';
 
-    const { targetZoom: finalZoom, targetPan: calculatedPan } = getParameterizedMapCentering({
-      scenario,
-      is3D,
+    const { targetZoom: finalZoom, targetPan: calculatedPan } = centralizarZoomMapa(mainMode, {
       containerWidth: getContainerWidth(),
+      is3D,
+      isPanelOpen: isAnySidePanelOpen,
       isExpanded,
+      showNeighbors,
     });
 
     baseUserZoomRef.current = finalZoom;
@@ -1351,10 +1351,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       ? 'Centralizar Mapa com App Lateral'
       : 'Centralizar Mapa';
 
-    const { targetZoom, targetPan } = getParameterizedMapCentering({
-      scenario,
-      is3D,
+    const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
       containerWidth: getContainerWidth(),
+      is3D,
+      isPanelOpen: isAnySidePanelOpen,
+      showNeighbors,
     });
 
     const isPanNear = Math.abs(pan.x - targetPan.x) < 14 && Math.abs(pan.y - targetPan.y) < 14;
@@ -1413,9 +1414,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         hoveredStateIdRef.current = null;
 
         // Zoom out suave parametrizado mantendo o Brasil no centro
-        const { targetZoom: continentZoom, targetPan: continentPan } = getParameterizedMapCentering({
-          scenario: 'Centralizar Mapa mostrar Vizinhos',
+        const { targetZoom: continentZoom, targetPan: continentPan } = centralizarZoomMapa(mainMode, {
+          containerWidth: getContainerWidth(),
           is3D,
+          showNeighbors: true,
         });
         baseUserZoomRef.current = continentZoom;
         applyClampedPanZoom(continentPan, continentZoom);
@@ -1429,9 +1431,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         setHoveredStateId(null);
         hoveredStateIdRef.current = null;
 
-        const { targetZoom: brazilZoom, targetPan: brazilPan } = getParameterizedMapCentering({
-          scenario: 'Centralizar Mapa',
+        const { targetZoom: brazilZoom, targetPan: brazilPan } = centralizarZoomMapa(mainMode, {
+          containerWidth: getContainerWidth(),
           is3D,
+          showNeighbors: false,
         });
         baseUserZoomRef.current = brazilZoom;
         applyClampedPanZoom(brazilPan, brazilZoom);

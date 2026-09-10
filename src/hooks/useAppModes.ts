@@ -61,10 +61,13 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
     setIsBiodiversityPanelOpen(false);
     setIsGeopoliticaPanelOpen(newMode === 'geopolitica');
     setIsRadioOpen(false);
-    setFocusedStateId(null);
+    setFocusedStateId(newMode === 'musicalidades' ? 'RESET_CENTRAL_BRAZIL' : null);
     setSelectedRegionFilter('todos');
     setShowNeighbors(false);
     setCenterMapTrigger((prev) => prev + 1);
+    if (newMode === 'globo3d') {
+      setIsGlobeTelemetryOpen(true);
+    }
 
     // Apply mode-specific default configurations
     setTerrainProvider(profile.defaultTerrain);

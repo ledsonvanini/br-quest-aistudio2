@@ -254,8 +254,8 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       periodDays: 87.97,
       distanceKm: 91.7e6,
       radiusKm: 2439.7,
-      sceneDist: 5.5,
-      apparentSize: 0.12,
+      sceneDist: 5.2,
+      apparentSize: 0.24,
       color: '#cbd5e1',
       description: 'Menor planeta do Sistema Solar, rico em ferro e sem atmosfera protetora.',
       surfaceTemp: '-180 °C a +430 °C',
@@ -275,8 +275,8 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       periodDays: 224.7,
       distanceKm: 41.4e6,
       radiusKm: 6051.8,
-      sceneDist: 7.2,
-      apparentSize: 0.22,
+      sceneDist: 8.5,
+      apparentSize: 0.50,
       color: '#fef08a',
       description: 'A célebre "Estrela D\'Alva", astro mais brilhante do céu noturno brasileiro.',
       surfaceTemp: '464 °C (efeito estufa extremo)',
@@ -296,8 +296,8 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       periodDays: 686.98,
       distanceKm: 78.3e6,
       radiusKm: 3389.5,
-      sceneDist: 9.2,
-      apparentSize: 0.16,
+      sceneDist: 18.5,
+      apparentSize: 0.35,
       color: '#f87171',
       description: 'Mundo árido com cânions colossais e calotas de gelo seco nos polos.',
       surfaceTemp: '-63 °C (média)',
@@ -317,8 +317,8 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       periodDays: 4332.59,
       distanceKm: 628.7e6,
       radiusKm: 69911.0,
-      sceneDist: 11.8,
-      apparentSize: 0.45,
+      sceneDist: 27.5,
+      apparentSize: 1.55,
       color: '#fed7aa',
       description: 'O maior planeta do Sistema Solar, guardião da Terra contra impactos de asteroides.',
       surfaceTemp: '-110 °C (topo de nuvens)',
@@ -338,8 +338,8 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       periodDays: 10759.22,
       distanceKm: 1275.0e6,
       radiusKm: 58232.0,
-      sceneDist: 14.5,
-      apparentSize: 0.38,
+      sceneDist: 34.0,
+      apparentSize: 1.30,
       color: '#fde68a',
       description: 'A joia do Sistema Solar, coroada pelo mais espetacular sistema de anéis.',
       surfaceTemp: '-140 °C',
@@ -349,7 +349,65 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       visibilityBrazil: 'Brilho calmo e amarelado; seus anéis são visíveis em pequenos telescópios.',
       curiosity: 'Possui densidade menor que a da água: se houvesse um oceano gigante, Saturno flutuaria.',
     },
+    {
+      id: 'urano',
+      name: 'Urano',
+      ptName: 'Urano',
+      symbol: '♅',
+      type: 'planet' as const,
+      categoryLabel: 'Gigante de Gelo (Eixo Deitado)',
+      periodDays: 30685.4,
+      distanceKm: 2720.0e6,
+      radiusKm: 25362.0,
+      sceneDist: 41.0,
+      apparentSize: 0.82,
+      color: '#67e8f9',
+      description: 'Gigante gelado de metano e água, com eixo de rotação inclinado a 98°.',
+      surfaceTemp: '-224 °C (atmosfera mais fria)',
+      massEarthRelative: 14.5,
+      gravityMss: 8.69,
+      lightTimeSeconds: 9070,
+      visibilityBrazil: 'Astro pálido esverdeado observável com binóculos em céus escuros.',
+      curiosity: 'Gira praticamente deitado em relação ao plano de sua órbita solar.',
+    },
+    {
+      id: 'netuno',
+      name: 'Netuno',
+      ptName: 'Netuno',
+      symbol: '♆',
+      type: 'planet' as const,
+      categoryLabel: 'Gigante de Gelo (Último Planeta)',
+      periodDays: 60189.0,
+      distanceKm: 4350.0e6,
+      radiusKm: 24622.0,
+      sceneDist: 47.5,
+      apparentSize: 0.80,
+      color: '#60a5fa',
+      description: 'O mundo mais distante do Sol; ventos supersônicos ultrapassam 2.100 km/h.',
+      surfaceTemp: '-218 °C',
+      massEarthRelative: 17.1,
+      gravityMss: 11.15,
+      lightTimeSeconds: 14500,
+      visibilityBrazil: 'Ponto azulado tênue visível com telescópios de média abertura.',
+      curiosity: 'Leva cerca de 165 anos terrestres para completar uma única volta ao redor do Sol.',
+    },
   ];
+
+  // Earth's heliocentric position for dynamic distance calculation
+  const earthPeriodDays = 365.256;
+  const earthAngle = ((days % earthPeriodDays) / earthPeriodDays) * 2 * Math.PI;
+  const AU_KM = 149597870;
+
+  // Semi-major axes in AU
+  const semiMajorAxesAU: Record<string, number> = {
+    mercurio: 0.387,
+    venus: 0.723,
+    marte: 1.524,
+    jupiter: 5.204,
+    saturno: 9.582,
+    urano: 19.218,
+    netuno: 30.110,
+  };
 
   return planetsConfig.map((p) => {
     // Angular orbital position along ecliptic plane
@@ -357,9 +415,17 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
     // Ecliptic plane inclination relative to scene axes
     const tilt = (AXIAL_TILT_DEG * Math.PI) / 180;
 
+    // Real dynamic distance Earth-Planet (in Astronomical Units and Kilometers)
+    const rAU = semiMajorAxesAU[p.id] || (p.distanceKm / AU_KM);
+    const distAU = Math.sqrt(
+      1.0 + rAU * rAU - 2.0 * rAU * Math.cos(angle - earthAngle)
+    );
+    const currentDistKm = Math.round(distAU * AU_KM);
+    const lightTimeSeconds = Math.round(currentDistKm / 299792.458);
+
     const x = p.sceneDist * Math.cos(angle);
-    const z = p.sceneDist * Math.sin(angle) * Math.cos(tilt);
-    const y = p.sceneDist * Math.sin(angle) * Math.sin(tilt);
+    const y = 0;
+    const z = p.sceneDist * Math.sin(angle);
 
     return {
       id: p.id,
@@ -369,7 +435,7 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       type: p.type,
       categoryLabel: p.categoryLabel,
       position: new THREE.Vector3(x, y, z),
-      distanceKm: p.distanceKm,
+      distanceKm: currentDistKm,
       radiusKm: p.radiusKm,
       apparentSize: p.apparentSize,
       color: p.color,
@@ -377,7 +443,7 @@ export function getVisiblePlanetsInfo(date: Date = new Date(), sunDir: THREE.Vec
       surfaceTemp: p.surfaceTemp,
       massEarthRelative: p.massEarthRelative,
       gravityMss: p.gravityMss,
-      lightTimeSeconds: p.lightTimeSeconds,
+      lightTimeSeconds: lightTimeSeconds,
       visibilityBrazil: p.visibilityBrazil,
       curiosity: p.curiosity,
       orbitalPeriodDays: p.periodDays,

@@ -36,6 +36,9 @@ import {
   Plus,
 } from 'lucide-react';
 import { GlobeTextureMode, GlobeSeason, SEASONS_CATALOG } from '../../lib/globeEngine';
+import { GlobeCameraMenu } from './GlobeCameraMenu';
+import { GlobeTerritoryLayersMenu } from './GlobeTerritoryLayersMenu';
+import { GlobeCosmosAtmosphereMenu } from './GlobeCosmosAtmosphereMenu';
 
 export interface AstroOption {
   id: string;
@@ -49,11 +52,13 @@ export const CELESTIAL_ASTROS_LIST: AstroOption[] = [
   { id: 'terra', name: 'Terra (Brasil)', symbol: 'BR', color: '#38bdf8', category: 'Planeta Natal' },
   { id: 'sol', name: 'Sol', symbol: '☉', color: '#f59e0b', category: 'Estrela Central' },
   { id: 'lua', name: 'Lua', symbol: '☽', color: '#e2e8f0', category: 'Satélite Natural' },
-  { id: 'mercurio', name: 'Mercúrio', symbol: '☿', color: '#94a3b8', category: 'Planeta Rochoso' },
-  { id: 'venus', name: 'Vênus', symbol: 'V', color: '#fbbf24', category: 'Planeta Rochoso' },
-  { id: 'marte', name: 'Marte', symbol: 'M', color: '#ef4444', category: 'Planeta Rochoso' },
-  { id: 'jupiter', name: 'Júpiter', symbol: '♃', color: '#f97316', category: 'Gigante Gasoso' },
-  { id: 'saturno', name: 'Saturno', symbol: '♄', color: '#eab308', category: 'Gigante com Anéis' },
+  { id: 'mercurio', name: 'Mercúrio', symbol: '☿', color: '#cbd5e1', category: 'Planeta Rochoso' },
+  { id: 'venus', name: 'Vênus', symbol: '♀', color: '#fef08a', category: 'Planeta Rochoso' },
+  { id: 'marte', name: 'Marte', symbol: '♂', color: '#f87171', category: 'Planeta Rochoso' },
+  { id: 'jupiter', name: 'Júpiter', symbol: '♃', color: '#fed7aa', category: 'Gigante Gasoso' },
+  { id: 'saturno', name: 'Saturno', symbol: '♄', color: '#fde68a', category: 'Gigante com Anéis' },
+  { id: 'urano', name: 'Urano', symbol: '♅', color: '#67e8f9', category: 'Gigante de Gelo' },
+  { id: 'netuno', name: 'Netuno', symbol: '♆', color: '#60a5fa', category: 'Gigante de Gelo' },
 ];
 
 export type BorderRegionFilter = 'all' | 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul';
@@ -103,6 +108,8 @@ interface GlobeControlsHUDProps {
   onChangeMoonLightIntensity?: (intensity: number) => void;
   isSolarSimulatorOpen?: boolean;
   onToggleSolarSimulator?: () => void;
+  activeScenePresetId?: string;
+  onSelectScenePreset?: (presetId: string) => void;
 }
 
 export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
@@ -141,11 +148,15 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
   onChangeMoonLightIntensity,
   isSolarSimulatorOpen = false,
   onToggleSolarSimulator,
+  activeScenePresetId = 'foco-brasil',
+  onSelectScenePreset,
 }) => {
   const [isAstroMenuOpen, setIsAstroMenuOpen] = useState(false);
+  const [isCameraMenuOpen, setIsCameraMenuOpen] = useState(false);
+  const [isCosmosMenuOpen, setIsCosmosMenuOpen] = useState(false);
+  const [isLayersMenuOpen, setIsLayersMenuOpen] = useState(false);
   const [isSeasonMenuOpen, setIsSeasonMenuOpen] = useState(false);
   const [isTextureMenuOpen, setIsTextureMenuOpen] = useState(false);
-  const [isBordersMenuOpen, setIsBordersMenuOpen] = useState(false);
   const [isSolarMenuOpen, setIsSolarMenuOpen] = useState(false);
 
   // Live real-time official Brasília clock (UTC-3)
@@ -221,16 +232,20 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
         if (path.length > 0) {
           if (!path.includes(menuRef.current)) {
             setIsAstroMenuOpen(false);
+            setIsCameraMenuOpen(false);
+            setIsCosmosMenuOpen(false);
+            setIsLayersMenuOpen(false);
             setIsSeasonMenuOpen(false);
             setIsTextureMenuOpen(false);
-            setIsBordersMenuOpen(false);
             setIsSolarMenuOpen(false);
           }
         } else if (!menuRef.current.contains(e.target as Node)) {
           setIsAstroMenuOpen(false);
+          setIsCameraMenuOpen(false);
+          setIsCosmosMenuOpen(false);
+          setIsLayersMenuOpen(false);
           setIsSeasonMenuOpen(false);
           setIsTextureMenuOpen(false);
-          setIsBordersMenuOpen(false);
           setIsSolarMenuOpen(false);
         }
       }
@@ -254,10 +269,12 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
           id="btn-dropdown-navegar-astro"
           onClick={() => {
             setIsAstroMenuOpen(!isAstroMenuOpen);
+            setIsCameraMenuOpen(false);
+            setIsCosmosMenuOpen(false);
+            setIsLayersMenuOpen(false);
             setIsSeasonMenuOpen(false);
             setIsTextureMenuOpen(false);
             setIsSolarMenuOpen(false);
-            setIsBordersMenuOpen(false);
           }}
           className={`btn-dropdown-navegar-astro flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
             selectedAstroId && selectedAstroId !== 'terra'
@@ -315,160 +332,78 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
 
       <div className="h-5 w-px bg-slate-800" />
 
-      {/* 2. Toggles Ícones: Astros 3D, Rotas 3D, Nuvens, Fronteiras, Auto-Rotação */}
-      <div className="flex items-center gap-0.5 sm:gap-1">
-        {/* Toggle Astros 3D (Icon Only) */}
-        <button
-          id="btn-toggle-sistema-solar"
-          onClick={onToggleSolarSystem}
-          className={`btn-toggle-sistema-solar p-2 rounded-xl text-xs transition-all cursor-pointer ${
-            showSolarSystem
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-500/10'
-              : 'text-slate-400 hover:bg-slate-850 hover:text-slate-200 border border-transparent'
-          }`}
-          title={showSolarSystem ? 'Ocultar Astros do Sistema Solar' : 'Exibir Astros do Sistema Solar'}
-        >
-          <Sparkles className="w-4 h-4" />
-        </button>
+      {/* 2. Câmeras Astronômicas & Visões do Sistema (Novo Ícone Especializado) */}
+      {onSelectScenePreset && (
+        <>
+          <GlobeCameraMenu
+            isOpen={isCameraMenuOpen}
+            onToggle={() => {
+              setIsCameraMenuOpen(!isCameraMenuOpen);
+              setIsAstroMenuOpen(false);
+              setIsCosmosMenuOpen(false);
+              setIsLayersMenuOpen(false);
+              setIsSeasonMenuOpen(false);
+              setIsTextureMenuOpen(false);
+              setIsSolarMenuOpen(false);
+            }}
+            onClose={() => setIsCameraMenuOpen(false)}
+            activePresetId={activeScenePresetId}
+            onSelectPreset={onSelectScenePreset}
+          />
+          <div className="h-5 w-px bg-slate-800" />
+        </>
+      )}
 
-        {/* Toggle Rotas 3D (Icon Only) */}
-        <button
-          id="btn-toggle-rotas-estaduais"
-          onClick={onToggleGeodesicRoutes}
-          className={`btn-toggle-rotas-estaduais p-2 rounded-xl text-xs transition-all cursor-pointer ${
-            showGeodesicRoutes
-              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-500/10'
-              : 'text-slate-400 hover:bg-slate-850 hover:text-slate-200 border border-transparent'
-          }`}
-          title={showGeodesicRoutes ? 'Ocultar Rotas Geodésicas' : 'Exibir Arcos Geodésicos Entre Estados'}
-        >
-          <Navigation className="w-4 h-4" />
-        </button>
-
-        {/* Toggle Nuvens (Icon Only) */}
-        <button
-          id="btn-toggle-nuvens"
-          onClick={onToggleClouds}
-          className={`btn-toggle-nuvens p-2 rounded-xl text-xs transition-all cursor-pointer ${
-            cloudsEnabled
-              ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm shadow-sky-500/10'
-              : 'text-slate-400 hover:bg-slate-850 hover:text-slate-200 border border-transparent'
-          }`}
-          title={cloudsEnabled ? 'Ocultar Manto de Nuvens' : 'Exibir Manto de Nuvens Dinâmico'}
-        >
-          <Cloud className="w-4 h-4" />
-        </button>
-
-        {/* Toggle Fronteiras com Menu Regional Integrado */}
-        <div className="relative">
-          <div
-            className={`flex items-center rounded-xl border transition-all shadow-sm ${
-              showBorders
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-amber-500/10'
-                : 'text-slate-400 hover:bg-slate-850 hover:text-slate-200 border-transparent hover:border-slate-800'
-            }`}
-          >
-            <button
-              id="btn-toggle-fronteiras"
-              onClick={onToggleBorders}
-              className="btn-toggle-fronteiras p-2 rounded-l-xl text-xs transition-colors hover:text-white cursor-pointer flex items-center justify-center"
-              title={showBorders ? 'Ocultar Fronteiras dos Estados' : 'Exibir Fronteiras dos 27 Estados'}
-            >
-              <Layers className="w-4 h-4" />
-            </button>
-            <button
-              id="btn-filtro-regiao-fronteiras"
-              onClick={() => {
-                setIsBordersMenuOpen(!isBordersMenuOpen);
-                setIsAstroMenuOpen(false);
-                setIsSeasonMenuOpen(false);
-                setIsTextureMenuOpen(false);
-                setIsSolarMenuOpen(false);
-              }}
-              className="p-2 pl-0.5 pr-1.5 rounded-r-xl border-l border-white/10 transition-colors hover:text-white cursor-pointer flex items-center justify-center"
-              title="Filtrar Fronteiras por Região (Norte, Sul, etc.)"
-            >
-              <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isBordersMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          {isBordersMenuOpen && (
-            <div className="absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 w-64 rounded-2xl bg-[#030712] border border-amber-500/50 p-2 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 space-y-1 backdrop-blur-2xl whitespace-normal animate-in fade-in zoom-in-95 duration-150">
-              <div className="text-[10px] uppercase font-bold text-amber-400 px-2 py-1 tracking-wider border-b border-slate-800 flex items-center justify-between">
-                <span>Fronteiras por Região</span>
-                <span className="text-[9px] text-slate-400 font-mono">IBGE</span>
-              </div>
-              {REGIONS_LIST.map((reg) => (
-                <button
-                  key={reg.id}
-                  onClick={() => {
-                    onChangeBorderRegionFilter?.(reg.id);
-                    if (!showBorders) onToggleBorders();
-                    setIsBordersMenuOpen(false);
-                  }}
-                  className={`w-full text-left p-2 rounded-xl text-xs transition-colors flex items-center justify-between cursor-pointer ${
-                    borderRegionFilter === reg.id
-                      ? 'bg-amber-500/20 text-amber-200 font-semibold border border-amber-500/40'
-                      : 'text-slate-300 hover:bg-slate-900/90'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: reg.color }}
-                    />
-                    <span className="truncate">{reg.name}</span>
-                  </div>
-                  {borderRegionFilter === reg.id && (
-                    <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Toggle Auto Rotação (Icon Only) */}
-        <button
-          id="btn-toggle-auto-rotacao"
-          onClick={onToggleAutoRotate}
-          className={`btn-toggle-auto-rotacao p-2 rounded-xl text-xs transition-all cursor-pointer ${
-            autoRotate
-              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm shadow-indigo-500/10'
-              : 'text-slate-400 hover:bg-slate-850 hover:text-slate-200 border border-transparent'
-          }`}
-          title={autoRotate ? 'Pausar Giro Orbital' : 'Iniciar Giro Orbital Contínuo'}
-        >
-          <RotateCw className="w-4 h-4" />
-        </button>
-      </div>
+      {/* 3. Cosmos & Atmosfera (Astros do Sistema Solar + Nuvens + Giro Terra agrupados) */}
+      <GlobeCosmosAtmosphereMenu
+        isOpen={isCosmosMenuOpen}
+        onToggle={() => {
+          setIsCosmosMenuOpen(!isCosmosMenuOpen);
+          setIsAstroMenuOpen(false);
+          setIsCameraMenuOpen(false);
+          setIsLayersMenuOpen(false);
+          setIsSeasonMenuOpen(false);
+          setIsTextureMenuOpen(false);
+          setIsSolarMenuOpen(false);
+        }}
+        onClose={() => setIsCosmosMenuOpen(false)}
+        showSolarSystem={showSolarSystem}
+        onToggleSolarSystem={onToggleSolarSystem}
+        cloudsEnabled={cloudsEnabled}
+        onToggleClouds={onToggleClouds}
+        autoRotate={autoRotate}
+        onToggleAutoRotate={onToggleAutoRotate}
+      />
 
       <div className="h-5 w-px bg-slate-800" />
 
-      {/* 3. Brasões & Painel Lateral Telemetria (Icon Only) */}
-      <div className="flex items-center gap-0.5 sm:gap-1">
-        {onTogglePinDisplayMode && (
-          <button
-            id="btn-hud-toggle-pin-mode"
-            onClick={onTogglePinDisplayMode}
-            className={`btn-toggle-pin-mode p-2 rounded-xl text-xs transition-all cursor-pointer ${
-              pinDisplayMode !== 'none'
-                ? 'bg-slate-800/90 text-sky-300 border border-slate-700/80 hover:border-sky-500/40'
-                : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300 border border-transparent'
-            }`}
-            title={`Modo de Brasões: ${
-              pinDisplayMode === 'all'
-                ? 'Brasões Completos'
-                : pinDisplayMode === 'compact'
-                ? 'Siglas UF'
-                : 'Oculto'
-            }`}
-          >
-            <Eye className="w-4 h-4 text-sky-400" />
-          </button>
-        )}
+      {/* 4. Camadas do Território (Rotas Geodésicas + Brasões dos Estados + Fronteiras e Regiões) */}
+      <GlobeTerritoryLayersMenu
+        isOpen={isLayersMenuOpen}
+        onToggle={() => {
+          setIsLayersMenuOpen(!isLayersMenuOpen);
+          setIsAstroMenuOpen(false);
+          setIsCameraMenuOpen(false);
+          setIsCosmosMenuOpen(false);
+          setIsSeasonMenuOpen(false);
+          setIsTextureMenuOpen(false);
+          setIsSolarMenuOpen(false);
+        }}
+        onClose={() => setIsLayersMenuOpen(false)}
+        showGeodesicRoutes={showGeodesicRoutes}
+        onToggleGeodesicRoutes={onToggleGeodesicRoutes}
+        pinDisplayMode={pinDisplayMode}
+        onTogglePinDisplayMode={onTogglePinDisplayMode}
+        showBorders={showBorders}
+        onToggleBorders={onToggleBorders}
+        borderRegionFilter={borderRegionFilter}
+        onChangeBorderRegionFilter={onChangeBorderRegionFilter}
+      />
 
-        {onToggleTelemetry && (
+      {/* 5. Painel Lateral de Telemetria (Icon Only) */}
+      {onToggleTelemetry && (
+        <>
+          <div className="h-5 w-px bg-slate-800" />
           <button
             id="btn-hud-toggle-telemetria"
             onClick={onToggleTelemetry}
@@ -481,8 +416,8 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
           >
             <Sliders className="w-4 h-4 text-sky-400" />
           </button>
-        )}
-      </div>
+        </>
+      )}
 
       <div className="h-5 w-px bg-slate-800" />
 
@@ -493,9 +428,11 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
           onClick={() => {
             setIsSeasonMenuOpen(!isSeasonMenuOpen);
             setIsAstroMenuOpen(false);
+            setIsCameraMenuOpen(false);
+            setIsCosmosMenuOpen(false);
+            setIsLayersMenuOpen(false);
             setIsTextureMenuOpen(false);
             setIsSolarMenuOpen(false);
-            setIsBordersMenuOpen(false);
           }}
           className={`btn-menu-estacoes p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
             isSeasonMenuOpen
@@ -585,9 +522,11 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
               setIsSolarMenuOpen(!isSolarMenuOpen);
             }
             setIsAstroMenuOpen(false);
+            setIsCameraMenuOpen(false);
+            setIsCosmosMenuOpen(false);
+            setIsLayersMenuOpen(false);
             setIsSeasonMenuOpen(false);
             setIsTextureMenuOpen(false);
-            setIsBordersMenuOpen(false);
           }}
           className={`btn-simular-movimento-sol p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
             isSolarSimulatorOpen || isSolarMenuOpen || isSolarCyclePlaying
@@ -1107,9 +1046,11 @@ export const GlobeControlsHUD: React.FC<GlobeControlsHUDProps> = ({
           onClick={() => {
             setIsTextureMenuOpen(!isTextureMenuOpen);
             setIsAstroMenuOpen(false);
+            setIsCameraMenuOpen(false);
+            setIsCosmosMenuOpen(false);
+            setIsLayersMenuOpen(false);
             setIsSeasonMenuOpen(false);
             setIsSolarMenuOpen(false);
-            setIsBordersMenuOpen(false);
           }}
           className={`btn-menu-texturas p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center border ${
             isTextureMenuOpen

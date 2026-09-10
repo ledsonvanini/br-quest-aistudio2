@@ -11,7 +11,7 @@ import {
   getClimateFocusZoomAndPan,
   getBiodiversityFocusZoomAndPan,
   getMusicalFocusZoomAndPan,
-  DEFAULT_BRAZIL_ZOOM,
+  getParameterizedMapCentering,
 } from '../lib/mapProjections';
 
 export interface MapCenteringParams {
@@ -21,6 +21,10 @@ export interface MapCenteringParams {
   containerHeight?: number;
   is3D?: boolean;
   isPanelOpen?: boolean;
+  isExpanded?: boolean;
+  showNeighbors?: boolean;
+  isClimateActive?: boolean;
+  isRadioOpen?: boolean;
   customZoom?: number;
 }
 
@@ -129,40 +133,38 @@ export function centralizarZoomMapa(
     stateId,
     centroid: customCentroid,
     containerWidth,
+    containerHeight,
     is3D = true,
     isPanelOpen = false,
+    isExpanded = true,
+    showNeighbors = false,
     customZoom,
   } = params;
+
+  // Overview centering (no state focused or explicit reset trigger)
+  if (!stateId || stateId === 'RESET_CENTRAL_BRAZIL') {
+    const scenario = showNeighbors
+      ? 'Centralizar Mapa mostrar Vizinhos'
+      : isPanelOpen
+      ? 'Centralizar Mapa com App Lateral'
+      : 'Centralizar Mapa';
+
+    return getParameterizedMapCentering({
+      scenario,
+      is3D,
+      containerWidth,
+      containerHeight,
+      isExpanded,
+      customZoom,
+    });
+  }
 
   // Fallback to state centroid or central Brazil (Goiás)
   const effectiveCentroid: [number, number] =
     customCentroid ||
-    (stateId && DEFAULT_STATE_CENTROIDS[stateId]) ||
+    DEFAULT_STATE_CENTROIDS[stateId] ||
     DEFAULT_STATE_CENTROIDS['GO'] ||
     [1280, 720];
-
-  // If no specific state is focused, return mode-specific overview centering
-  if (!stateId) {
-    let baseOverviewZoom = customZoom || DEFAULT_BRAZIL_ZOOM;
-    let screenOffsetX = 0;
-
-    if (isPanelOpen && containerWidth >= 640) {
-      screenOffsetX = Math.round(containerWidth * 0.18);
-      baseOverviewZoom *= Math.max(0.80, Math.min(1.0, (containerWidth * 0.65) / 600));
-    }
-
-    const targetPan = calculateStateCenterPan(
-      DEFAULT_STATE_CENTROIDS['GO'],
-      baseOverviewZoom,
-      is3D,
-      screenOffsetX
-    );
-
-    return {
-      targetZoom: baseOverviewZoom,
-      targetPan,
-    };
-  }
 
   // Mode-Specific Focus Calculations
   switch (modo) {

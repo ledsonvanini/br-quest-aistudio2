@@ -219,7 +219,7 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       bottom: '0px',
                       height: '148px',
                       background: 'linear-gradient(to right, #78350f, #d97706, #fbbf24, #fef3c7, #b45309)',
-                      boxShadow: '0 0 14px rgba(251, 191, 36, 0.9), 2px 2px 6px rgba(0,0,0,0.9)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
                       borderRadius: '2px',
                       transformStyle: 'preserve-3d',
                     }}
@@ -249,11 +249,8 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       onSelectGuardian(stateId);
                     }}
                   >
-                    {/* Golden Ambient Glow Behind Frame */}
-                    <div className="aura-bandeira-estado absolute -inset-3 rounded-2xl bg-amber-400/35 blur-xl pointer-events-none" />
-
                     {/* Flag Card Frame: The Ornamental Border framing the Real Flag */}
-                    <div className="quadro-moldura-bandeira-real relative w-28 h-18 sm:w-32 sm:h-21 rounded-lg overflow-hidden border-2 border-amber-300 bg-slate-950 ring-2 ring-amber-400/80 shadow-[0_4px_24px_rgba(0,0,0,0.9),0_0_20px_rgba(245,158,11,0.8)] transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
+                    <div className="quadro-moldura-bandeira-real relative w-28 h-18 sm:w-32 sm:h-21 rounded-lg overflow-hidden border-2 border-amber-300 bg-slate-950 ring-1 ring-amber-400/60 shadow-[0_4px_14px_rgba(0,0,0,0.6)] transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
                       {/* Real Official State Flag rendered as pure vector SVG */}
                       <StateFlag
                         uf={stateId}
@@ -266,17 +263,11 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       <div className="borda-bisel-interna absolute inset-0 border border-white/20 pointer-events-none rounded-md" />
                     </div>
 
-                    {/* State Name & Capital Plaque under the Frame */}
-                    <div className="placa-nome-bandeira-estado mt-1.5 px-3 py-1 rounded-lg border bg-slate-950/95 border-amber-300/90 text-amber-200 shadow-[0_4px_16px_rgba(0,0,0,0.8),0_0_12px_rgba(245,158,11,0.5)] flex items-center gap-1.5 whitespace-nowrap transition-transform duration-300 group-hover:scale-105">
-                      <span className="font-mono font-black text-xs text-amber-300">{stateId}</span>
+                    {/* State Name Plaque under the Frame (Concise & Legible) */}
+                    <div className="placa-nome-bandeira-estado mt-1.5 px-2.5 py-1 rounded-lg border bg-slate-950/95 border-amber-300/80 text-amber-200 shadow-[0_2px_8px_rgba(0,0,0,0.6)] flex items-center gap-1.5 whitespace-nowrap transition-transform duration-300 group-hover:scale-105">
+                      <span className="font-mono font-bold text-xs text-amber-300">{stateId}</span>
                       <span className="text-amber-500/70">•</span>
-                      <span className="font-serif font-bold text-xs tracking-wide text-white">{stateInfo.name}</span>
-                      {stateInfo.capital && (
-                        <>
-                          <span className="text-slate-500 text-[10px]">|</span>
-                          <span className="text-amber-200/80 text-[11px] font-sans">{stateInfo.capital}</span>
-                        </>
-                      )}
+                      <span className="font-sans font-semibold text-xs tracking-wide text-white">{stateInfo.name}</span>
                     </div>
                   </div>
                 </div>

@@ -9,7 +9,10 @@ import {
   StateAstrometryTelemetry,
   MoonPhaseData,
   GeodesicRoute,
+  getVisiblePlanetsInfo,
+  AU_KM,
 } from '../../lib/globeEngine';
+import * as THREE from 'three';
 import {
   Compass,
   Moon,
@@ -43,6 +46,8 @@ interface GlobeTelemetryCardProps {
   activeAdaptedRoute?: GeodesicRoute | null;
   showCosmicBeams: boolean;
   onToggleCosmicBeams: () => void;
+  selectedAstroId?: string;
+  onSelectAstroId?: (astroId: string) => void;
   onSelectRouteTarget?: (stateId: string) => void;
   onSelectCapitalRoute?: (originStateId: string, destStateId: string) => void;
   onCustomCityRoute?: (originCity: string, destCity: string) => void;
@@ -58,6 +63,8 @@ export const GlobeTelemetryCard: React.FC<GlobeTelemetryCardProps> = ({
   activeAdaptedRoute,
   showCosmicBeams,
   onToggleCosmicBeams,
+  selectedAstroId,
+  onSelectAstroId,
   onSelectRouteTarget,
   onSelectCapitalRoute,
   onCustomCityRoute,
@@ -68,6 +75,107 @@ export const GlobeTelemetryCard: React.FC<GlobeTelemetryCardProps> = ({
   const [routeMode, setRouteMode] = useState<'capitais' | 'cidades'>('capitais');
   const [customOrigin, setCustomOrigin] = useState<string>('');
   const [customDest, setCustomDest] = useState<string>('São Paulo');
+  const [selectedCelestialId, setSelectedCelestialId] = useState<string>(selectedAstroId || 'sol');
+
+  const visiblePlanets = useMemo(() => {
+    return getVisiblePlanetsInfo(new Date(), new THREE.Vector3(1, 0, 0));
+  }, []);
+
+  const celestialBodies = useMemo(() => {
+    if (!telemetry) return [];
+    const sunItem = {
+      id: 'sol',
+      name: 'Sol',
+      symbol: '☉',
+      type: 'star',
+      categoryLabel: 'Estrela Central',
+      distanceKm: telemetry.distanceToSunKm,
+      distanceAu: (telemetry.distanceToSunKm / AU_KM).toFixed(3),
+      lightTimeText: `${telemetry.lightTimeToSunMin} min`,
+      badge: telemetry.localSolarStatus.toUpperCase(),
+      badgeColor:
+        telemetry.localSolarStatus === 'dia'
+          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+          : 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+      description: 'Estrela central amarela responsável por 99,8% de toda a massa do Sistema Solar.',
+      visibilityBrazil: `Zênite em ${telemetry.solarZenithAngleDeg}° • Insolação local de ${telemetry.insolationPercent}%.`,
+      surfaceTemp: '5.500 °C',
+      gravityMss: 274.0,
+      accentColor: 'text-amber-400',
+      borderColor: 'border-amber-500/40',
+      bgGradient: 'from-amber-950/30 to-slate-900/90',
+    };
+
+    const moonItem = {
+      id: 'lua',
+      name: 'Lua',
+      symbol: '☽',
+      type: 'moon',
+      categoryLabel: 'Satélite Natural',
+      distanceKm: telemetry.distanceToMoonKm,
+      distanceAu: (telemetry.distanceToMoonKm / AU_KM).toFixed(5),
+      lightTimeText: `${telemetry.lightTimeToMoonSec} s`,
+      badge: moonPhase?.phaseName ? `${Math.round(moonPhase.illuminationFraction * 100)}%` : 'Lua Cheia',
+      badgeColor: 'bg-sky-500/20 text-sky-200 border-sky-500/40',
+      description: moonPhase?.phaseName || 'Satélite natural da Terra em sincronia de rotação.',
+      visibilityBrazil: `Fase atual: ${moonPhase?.phaseName || 'Crescente'} (${Math.round((moonPhase?.illuminationFraction || 0.5) * 100)}% iluminada).`,
+      surfaceTemp: '-130 °C a +120 °C',
+      gravityMss: 1.62,
+      accentColor: 'text-sky-300',
+      borderColor: 'border-sky-500/40',
+      bgGradient: 'from-sky-950/30 to-slate-900/90',
+    };
+
+    const planetItems = visiblePlanets.map((p) => ({
+      id: p.id,
+      name: p.name,
+      symbol: p.symbol,
+      type: p.type,
+      categoryLabel: p.categoryLabel,
+      distanceKm: p.distanceKm,
+      distanceAu: (p.distanceKm / AU_KM).toFixed(3),
+      lightTimeText:
+        p.lightTimeSeconds && p.lightTimeSeconds > 60
+          ? `${(p.lightTimeSeconds / 60).toFixed(1)} min`
+          : `${Math.round(p.lightTimeSeconds || 0)} s`,
+      badge: `${(p.distanceKm / AU_KM).toFixed(2)} UA`,
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+      description: p.description,
+      visibilityBrazil: p.visibilityBrazil || '',
+      surfaceTemp: p.surfaceTemp || 'N/A',
+      gravityMss: p.gravityMss || 0,
+      accentColor:
+        p.id === 'marte'
+          ? 'text-red-400'
+          : p.id === 'venus'
+          ? 'text-yellow-200'
+          : p.id === 'jupiter'
+          ? 'text-amber-300'
+          : p.id === 'saturno'
+          ? 'text-yellow-400'
+          : 'text-slate-300',
+      borderColor:
+        p.id === 'marte'
+          ? 'border-red-500/40'
+          : p.id === 'venus'
+          ? 'border-yellow-500/40'
+          : 'border-indigo-500/40',
+      bgGradient: 'from-slate-950/50 to-slate-900/90',
+    }));
+
+    return [sunItem, moonItem, ...planetItems];
+  }, [telemetry, moonPhase, visiblePlanets]);
+
+  const activeAstro = useMemo(() => {
+    return celestialBodies.find((b) => b.id === selectedCelestialId) || celestialBodies[0];
+  }, [celestialBodies, selectedCelestialId]);
+
+  const handleSelectAstro = (id: string) => {
+    setSelectedCelestialId(id);
+    if (onSelectAstroId) {
+      onSelectAstroId(id);
+    }
+  };
 
   // Set default origin when telemetry loads
   React.useEffect(() => {
@@ -210,69 +318,100 @@ export const GlobeTelemetryCard: React.FC<GlobeTelemetryCardProps> = ({
           </div>
         </div>
 
-        {/* Primary Celestial Pair: Sun & Moon */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {/* Sol 3D Card */}
-          <div className="p-3 rounded-xl bg-gradient-to-b from-amber-950/20 to-slate-900/90 border border-amber-500/30 hover:border-amber-400/50 transition-all flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-                <span className="flex items-center gap-1.5 text-amber-300 font-bold">
-                  <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
-                  Sol 3D
-                </span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full uppercase font-bold tracking-wider ${
-                    telemetry.localSolarStatus === 'dia'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      : telemetry.localSolarStatus === 'crepusculo'
-                      ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                      : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                  }`}
-                >
-                  {telemetry.localSolarStatus}
-                </span>
-              </div>
-              <div className="text-base font-bold text-slate-100 font-mono tracking-tight">
-                {formatKm(telemetry.distanceToSunKm)}
-              </div>
-              <div className="text-[11px] text-amber-300/90 flex items-center justify-between mt-1">
-                <span className="text-slate-400">Tempo-luz:</span>
-                <span className="font-mono font-bold">{telemetry.lightTimeToSunMin} min</span>
-              </div>
+        {/* Seletor do Sistema Solar & Astrometria Dinâmica */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+              <Orbit className="w-4 h-4 text-sky-400" />
+              <span>Astrometria dos Astros (Sistema Solar)</span>
             </div>
-            <div className="text-[10px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex justify-between">
-              <span>Zênite: <strong className="text-slate-200">{telemetry.solarZenithAngleDeg}°</strong></span>
-              <span>Insolação: <strong className="text-amber-300">{telemetry.insolationPercent}%</strong></span>
-            </div>
+            <span className="text-[10px] text-amber-400 font-mono bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
+              7 Corpos Celestes
+            </span>
           </div>
 
-          {/* Lua 3D Card */}
-          <div className="p-3 rounded-xl bg-gradient-to-b from-sky-950/20 to-slate-900/90 border border-sky-500/30 hover:border-sky-400/50 transition-all flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-                <span className="flex items-center gap-1.5 text-sky-300 font-bold">
-                  <Moon className="w-4 h-4 text-sky-300" />
-                  Lua 3D
+          {/* Carrossel / Tabs dos Astros */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-800">
+            {celestialBodies.map((astro) => {
+              const isSelected = astro.id === activeAstro.id;
+              return (
+                <button
+                  key={astro.id}
+                  type="button"
+                  onClick={() => handleSelectAstro(astro.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer border shrink-0 ${
+                    isSelected
+                      ? 'bg-sky-500/25 text-sky-200 border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)] ring-1 ring-sky-400/50'
+                      : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  <span className="text-sm font-bold">{astro.symbol}</span>
+                  <span>{astro.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Cartão de Telemetria Detalhado do Astro Selecionado */}
+          <div
+            className={`p-3.5 rounded-xl bg-gradient-to-b ${activeAstro.bgGradient} border ${activeAstro.borderColor} transition-all space-y-2.5 shadow-md`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`text-xl font-bold ${activeAstro.accentColor}`}>
+                  {activeAstro.symbol}
                 </span>
-                <span className="text-[10px] font-mono font-bold text-sky-200 bg-sky-500/15 px-2 py-0.5 rounded-full border border-sky-500/30 flex items-center gap-1">
-                  <Moon className="w-3 h-3 text-sky-300" />
-                  <span>{moonPhase?.phaseName ? `${Math.round(moonPhase.illuminationFraction * 100)}%` : 'Lua Cheia'}</span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                    <span>{activeAstro.name}</span>
+                    <span className="text-[10px] font-normal text-slate-400">
+                      ({activeAstro.categoryLabel})
+                    </span>
+                  </h4>
+                </div>
+              </div>
+              <span
+                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${activeAstro.badgeColor}`}
+              >
+                {activeAstro.badge}
+              </span>
+            </div>
+
+            {/* Distância e Tempo de Luz */}
+            <div className="grid grid-cols-2 gap-2 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+              <div>
+                <span className="text-[10px] text-slate-400 block">Distância da Terra:</span>
+                <div className="text-sm font-bold font-mono text-slate-100">
+                  {formatKm(activeAstro.distanceKm)}
+                </div>
+                <span className="text-[10px] text-sky-300 font-mono">
+                  {activeAstro.distanceAu} UA
                 </span>
               </div>
-              <div className="text-base font-bold text-slate-100 font-mono tracking-tight">
-                {formatKm(telemetry.distanceToMoonKm)}
-              </div>
-              <div className="text-[11px] text-sky-300/90 flex items-center justify-between mt-1">
-                <span className="text-slate-400">Tempo-luz:</span>
-                <span className="font-mono font-bold">{telemetry.lightTimeToMoonSec} s</span>
+              <div>
+                <span className="text-[10px] text-slate-400 block">Tempo-Luz (Atraso):</span>
+                <div className="text-sm font-bold font-mono text-amber-300">
+                  {activeAstro.lightTimeText}
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Velocidade c
+                </span>
               </div>
             </div>
-            {moonPhase && (
-              <div className="text-[10px] text-slate-400 mt-2 pt-2 border-t border-slate-800/80 flex justify-between items-center">
-                <span className="truncate">{moonPhase.phaseName}</span>
-                <span className="font-mono text-sky-200">{Math.round(moonPhase.illuminationFraction * 100)}%</span>
+
+            {/* Informações Físicas e Visibilidade no Brasil */}
+            <div className="text-[11px] text-slate-300 space-y-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800/60">
+              {activeAstro.visibilityBrazil && (
+                <div className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold shrink-0">No Brasil:</span>
+                  <span className="text-slate-300 leading-tight">{activeAstro.visibilityBrazil}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800/60">
+                <span>Temp: <strong className="text-slate-200">{activeAstro.surfaceTemp}</strong></span>
+                <span>Gravidade: <strong className="text-slate-200">{activeAstro.gravityMss} m/s²</strong></span>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -288,7 +427,11 @@ export const GlobeTelemetryCard: React.FC<GlobeTelemetryCardProps> = ({
           }`}
         >
           <Zap className={`w-4 h-4 ${showCosmicBeams ? 'text-slate-950 fill-slate-950 animate-pulse' : 'text-sky-400'}`} />
-          <span>{showCosmicBeams ? 'Feixes Cósmicos Ativos no Espaço 3D' : 'Traçar Feixes Cósmicos 3D (Sol & Lua)'}</span>
+          <span>
+            {showCosmicBeams
+              ? `Feixe Cósmico Ativo até ${activeAstro.name}`
+              : `Traçar Feixe Cósmico 3D até ${activeAstro.name}`}
+          </span>
         </button>
 
         {/* Geodesic Inter-State & Inter-City Routes Module */}

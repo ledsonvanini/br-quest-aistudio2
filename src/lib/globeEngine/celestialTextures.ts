@@ -279,6 +279,75 @@ export function getProceduralPlanetTexture(planetId: string): THREE.CanvasTextur
         ctx.arc(cx, cy, 10 + (i % 15), 0, Math.PI * 2);
         ctx.fill();
       }
+    } else if (planetId === 'urano') {
+      // Uranus: Soft cyan-aquamarine atmosphere with pale methane haze & delicate bands
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, '#cffafe');
+      grad.addColorStop(0.25, '#a5f3fc');
+      grad.addColorStop(0.5, '#67e8f9');
+      grad.addColorStop(0.75, '#22d3ee');
+      grad.addColorStop(1, '#a5f3fc');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Delicate pale equatorial bands
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.fillRect(0, canvas.height * 0.44, canvas.width, canvas.height * 0.12);
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+      ctx.fillRect(0, canvas.height * 0.35, canvas.width, canvas.height * 0.08);
+      ctx.fillRect(0, canvas.height * 0.58, canvas.width, canvas.height * 0.08);
+    } else if (planetId === 'netuno') {
+      // Neptune: Deep azure/cobalt blue with Great Dark Spot and bright white methane cirrus ("Scooter")
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, '#1e3a8a');
+      grad.addColorStop(0.3, '#1d4ed8');
+      grad.addColorStop(0.5, '#2563eb');
+      grad.addColorStop(0.7, '#1e40af');
+      grad.addColorStop(1, '#172554');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Great Dark Spot (Grande Mancha Escura em ~22°S)
+      const dsX = 420;
+      const dsY = 310;
+      const dsGrad = ctx.createRadialGradient(dsX, dsY, 0, dsX, dsY, 40);
+      dsGrad.addColorStop(0, '#0f172a');
+      dsGrad.addColorStop(0.8, '#1e293b');
+      dsGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = dsGrad;
+      ctx.beginPath();
+      ctx.ellipse(dsX, dsY, 52, 26, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bright white cirrus storm streaks ("Scooter" & companion clouds)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      for (let i = 0; i < 6; i++) {
+        const sx = 200 + i * 110;
+        const sy = 280 + (i % 3) * 22;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, 35, 4, 0.05, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (planetId === 'terra') {
+      // Earth: Deep blue oceans, green continents and swirling white cloud cover
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#15803d';
+      // Continents shapes
+      ctx.beginPath();
+      ctx.ellipse(300, 240, 110, 80, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(650, 210, 140, 90, -0.1, 0, Math.PI * 2);
+      ctx.fill();
+      // Swirling white clouds
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      for (let x = 0; x < canvas.width; x += 18) {
+        const y = canvas.height * 0.45 + Math.sin(x * 0.03) * 35;
+        ctx.beginPath();
+        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       // Generic deep space planet fallback
       ctx.fillStyle = '#38bdf8';

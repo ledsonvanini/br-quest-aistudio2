@@ -52,80 +52,74 @@ export const EarthDayNightFragmentShader = `
     // Estimate ocean water mask based on blue dominance and low red/green
     float isWater = clamp((dayTex.b - dayTex.r * 1.05) * 2.0, 0.0, 1.0);
 
-    // Gamma curve & Luminosity Lift to counteract ACES tone mapping crushing darks
-    // Lift midtones and shadows so continents and oceans are vibrant and clearly visible
-    vec3 dayBase = pow(dayTex.rgb, vec3(0.82));
-    // Boost ocean vibrancy (bring out luminous azure, turquoise & royal deep blues)
-    vec3 oceanVibrant = mix(dayBase, vec3(0.04, 0.28, 0.62) * (dayBase.b * 2.0 + 0.15), isWater * 0.40);
-    // Continental enhancement (lush Amazon emerald, Cerrado savannas, Andes cordillera)
-    vec3 dayColorEnhanced = mix(oceanVibrant, dayBase * 1.25, 1.0 - isWater * 0.25) * 1.32;
+    // Natural tone mapping: boost midtones without crushing blacks or washing out highlights
+    vec3 dayBase = pow(dayTex.rgb, vec3(0.92)) * 1.18;
+    // Subtle, gentle contrast curve to maintain clean terrain definition
+    vec3 dayContrast = dayBase * dayBase * (3.0 - 2.0 * dayBase);
+    dayBase = mix(dayBase, dayContrast, 0.18);
 
-    // Subtle, crisp Cloud Shadows onto terrain (from the Hard Sun)
+    // Ocean vibrancy (deep crystal sapphire, luminous coastal turquoise)
+    vec3 oceanVibrant = mix(dayBase * vec3(0.65, 0.85, 1.15), vec3(0.04, 0.18, 0.42) * (dayBase.b * 1.6 + 0.35), isWater * 0.65);
+    // Continental enhancement (lush Amazon emerald, savanna gold, Andes cordillera)
+    vec3 dayColorEnhanced = mix(oceanVibrant, dayBase * vec3(1.02, 1.12, 1.05), 1.0 - isWater * 0.5);
+
+    // Subtle, crisp Cloud Shadows onto terrain
     vec2 cloudUv = vUv + vec2(u_cloudsTime * 0.006, 0.0);
     vec2 shadowOffset = -sunDir.xy * 0.003;
     vec4 cloudSample = texture2D(u_cloudsMap, cloudUv + shadowOffset);
     float rawCloudDensity = (cloudSample.a < 0.95) ? cloudSample.a : cloudSample.r;
     float cloudShadow = smoothstep(0.35, 0.80, rawCloudDensity) * 0.15 * u_cloudsOpacity;
-    float shadowFactor = 1.0 - cloudShadow * smoothstep(-0.15, 0.18, sunDot);
+    float shadowFactor = 1.0 - cloudShadow * smoothstep(-0.15, 0.20, sunDot);
 
     // =================================================================================
     // TÉCNICA DE ILUMINAÇÃO DE 3 PONTOS (CINEMATOGRÁFICA / CARTOGRÁFICA)
     // =================================================================================
     
-    // 1. SOL - LUZ HARD (KEY LIGHT)
-    //    Luz principal direcional com terminador suave, orgânico e natural (sem corte brusco)
-    //    Transição difusa ampla de ~25 graus simulando a espessura da atmosfera terrestre
-    float sunDayFactor = smoothstep(-0.22, 0.22, sunDot);
-    // Half-Lambert / wrap diffuse para iluminação diurna generosa e clara
-    float sunDiffuse = pow(max((sunDot + 0.20) / 1.20, 0.0), 1.15);
+    // 1. SOL - LUZ DIRETA (KEY LIGHT)
+    // Transição suave no terminador para alvorecer e entardecer sem cortes abruptos
+    float sunDayFactor = smoothstep(-0.18, 0.18, sunDot);
+    // Half-Lambert diffuse com iluminação rica em relevos
+    float sunDiffuse = max((sunDot + 0.22) / 1.22, 0.0);
     vec3 sunLightColor = vec3(1.08, 1.05, 0.98);
-    vec3 directSun = dayColorEnhanced * (sunDayFactor * (0.45 + 0.65 * sunDiffuse) * u_sunIntensity * sunLightColor) * shadowFactor;
+    vec3 directSun = dayColorEnhanced * (sunDayFactor * (0.40 + 0.70 * sunDiffuse) * u_sunIntensity * sunLightColor) * shadowFactor;
 
-    // Ocean Specular Reflex do Sol (World-Space Blinn-Phong, nítido e focado)
+    // Ocean Specular Reflex do Sol (World-Space Blinn-Phong nítido)
     vec3 sunHalfVec = normalize(sunDir + vViewDir);
-    float specPower = (u_textureMode == 3) ? 28.0 : 48.0;
-    float specMult = (u_textureMode == 3) ? 0.75 : 0.45;
+    float specPower = (u_textureMode == 3) ? 32.0 : 48.0;
+    float specMult = (u_textureMode == 3) ? 0.90 : 0.70;
     float specFactor = pow(max(dot(norm, sunHalfVec), 0.0), specPower) * isWater;
     vec3 sunSpecularColor = vec3(1.0, 0.96, 0.88) * specFactor * specMult * smoothstep(-0.05, 0.15, sunDot);
 
     // 2. LUA - LUZ DE PREENCHIMENTO (FILL LIGHT / SOFT BOX NATURAL COM LEVE GLOW)
-    //    A Lua atua como uma soft box esférica difusa no espaço sideral.
-    //    - Soft Wrap amplo: preenche a face noturna e penumbra com luar azul-prateado
-    //    - Tonalidade: prateado etéreo celeste límpido (4800K)
-    //    - Leve Glow de borda (Fresnel suave) e Shimmer especular acetinado no oceano
-    float moonWrap = smoothstep(-0.45, 0.50, moonDot);
-    float moonGlowSurface = pow(max(moonDot, 0.0), 1.5) * 0.20;
-    float moonRimGlow = pow(1.0 - max(dot(vViewDir, norm), 0.0), 2.5) * max(moonDot, 0.0) * 0.35;
+    float moonWrap = smoothstep(-0.40, 0.45, moonDot);
+    float moonGlowSurface = pow(max(moonDot, 0.0), 1.6) * 0.22;
+    float moonRimGlow = pow(1.0 - max(dot(vViewDir, norm), 0.0), 2.5) * max(moonDot, 0.0) * 0.45;
     
-    // Reflexo especular acetinado da Lua na água (Moonlight Glint suave)
+    // Reflexo especular suave da Lua na água
     vec3 moonHalfVec = normalize(moonDir + vViewDir);
-    float moonSpec = pow(max(dot(norm, moonHalfVec), 0.0), 18.0) * isWater * 0.35 * smoothstep(-0.05, 0.25, moonDot);
+    float moonSpec = pow(max(dot(norm, moonHalfVec), 0.0), 20.0) * isWater * 0.45 * smoothstep(-0.05, 0.20, moonDot);
     
-    vec3 moonlightColor = vec3(0.70, 0.82, 1.0); // Prateado-celeste límpido do luar
-    // A luz da Lua atua como preenchimento ideal nas áreas onde o Sol não está pleno (penumbra e noite)
-    float fillMask = 1.0 - smoothstep(0.0, 0.40, sunDot);
-    vec3 moonFill = dayColorEnhanced * (moonWrap * (moonlightColor + vec3(moonGlowSurface)) * (u_moonIntensity * 0.70)) * fillMask;
-    vec3 moonHighlights = moonlightColor * (moonSpec + moonRimGlow * 0.30) * u_moonIntensity * fillMask;
+    vec3 moonlightColor = vec3(0.70, 0.84, 1.0); // Prateado-celeste límpido do luar
+    float fillMask = 1.0 - smoothstep(-0.10, 0.40, sunDot);
+    vec3 moonFill = dayColorEnhanced * (moonWrap * (moonlightColor + vec3(moonGlowSurface)) * (u_moonIntensity * 0.85)) * fillMask;
+    vec3 moonHighlights = moonlightColor * (moonSpec + moonRimGlow * 0.40) * u_moonIntensity * fillMask;
 
-    // 3. AMBIENT LIGHT - LUZ FAKE SUAVE PARA PREENCHER PEQUENOS GAPS
-    //    Luz omnidirecional fake suave com base de luminescência cartográfica noturna,
-    //    garantindo que o relevo, continentes e fronteiras nunca desapareçam na escuridão total.
-    vec3 ambientColor = vec3(0.08, 0.14, 0.24); // Tonalidade azul-profundo de céu noturno
-    vec3 ambientFill = dayColorEnhanced * (u_ambientIntensity * 1.6) + ambientColor * (u_ambientIntensity * 0.45);
+    // 3. AMBIENT LIGHT - LUZ DE BASE (EARTHSHINE & STARLIGHT - NUNCA ESCURO DEMAIS)
+    vec3 ambientSpaceColor = vec3(0.12, 0.18, 0.32); // Azul-marinho estelar suave
+    vec3 ambientFill = dayColorEnhanced * (max(u_ambientIntensity, 0.25) * 1.5) + ambientSpaceColor * (max(u_ambientIntensity, 0.25) * 0.65);
 
     // Iluminação combinada de 3 Pontos + Especulares
     vec3 threePointIllumination = directSun + moonFill + moonHighlights + ambientFill + sunSpecularColor;
 
-    // 4. NASA VIIRS Black Marble City Lights (Nocturnal Radiance)
+    // 4. NASA VIIRS Black Marble City Lights (Nocturnal Radiance brilhante e calorosa)
     vec4 nightTex = texture2D(u_nightMap, vUv);
-    vec3 warmCityColor = mix(vec3(1.0, 0.85, 0.45), vec3(1.0, 0.95, 0.75), nightTex.r);
-    // As luzes das cidades brilham no lado noturno e crepúsculo suave
-    float nightMask = 1.0 - smoothstep(-0.15, 0.12, sunDot);
-    vec3 nightRadiance = nightTex.rgb * warmCityColor * (u_cityLightIntensity * 1.7) * nightMask;
+    vec3 warmCityColor = mix(vec3(1.0, 0.82, 0.38), vec3(1.0, 0.94, 0.72), nightTex.r);
+    float nightMask = 1.0 - smoothstep(-0.12, 0.10, sunDot);
+    vec3 nightRadiance = nightTex.rgb * warmCityColor * (u_cityLightIntensity * 3.0) * nightMask;
 
-    // 5. Suave calor crepuscular orgânico no terminador (apenas nos continentes, sem manchar o oceano)
-    float terminatorEdge = smoothstep(-0.14, 0.02, sunDot) * smoothstep(0.20, 0.04, sunDot);
-    vec3 sunsetWarmth = vec3(1.0, 0.65, 0.35) * terminatorEdge * 0.10 * (1.0 - isWater * 0.7);
+    // 5. Calor crepuscular no terminador (Aura dourada no pôr do sol)
+    float terminatorEdge = smoothstep(-0.16, 0.02, sunDot) * smoothstep(0.22, 0.02, sunDot);
+    vec3 sunsetWarmth = vec3(1.0, 0.65, 0.32) * terminatorEdge * 0.28 * (1.0 - isWater * 0.5);
 
     vec3 composite = threePointIllumination + nightRadiance + sunsetWarmth;
 

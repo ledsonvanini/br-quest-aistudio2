@@ -25,6 +25,7 @@ export interface CelestialBodyInfo {
   distanceKm: number;
   radiusKm: number;
   apparentSize: number; // visual scale in scene
+  sceneDist?: number; // Distance in 3D scene units
   color: string;
   description: string;
   surfaceTemp: string;

@@ -12,3 +12,7 @@ export * from './shaders/earthShader';
 export * from './shaders/atmosphereShader';
 export * from './shaders/cloudShader';
 export * from './shaders/geodesicPulseShader';
+export * from './orbitalData';
+export * from './orbitalPhysics';
+export * from './orbitalMilestones';
+export * from './astronomicalScenes';

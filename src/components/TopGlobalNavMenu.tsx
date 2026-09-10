@@ -361,6 +361,13 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     };
   }, []);
 
+  // Se o painel lateral de qualquer modo estiver aberto, garante que o flyout não sobreponha
+  useEffect(() => {
+    if (isGeopoliticaPanelOpen || isBiodiversityPanelOpen || isObservatorioOpen) {
+      setOpenFlyoutMode(null);
+    }
+  }, [isGeopoliticaPanelOpen, isBiodiversityPanelOpen, isObservatorioOpen]);
+
   // Handler para clique nos botões principais da sidebar
   const handleModeButtonClick = (mode: AppMainMode) => {
     audioEngine.playSfx('click');
@@ -368,37 +375,59 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     const isChangingMode = mainMode !== mode;
     if (isChangingMode) {
       onSelectMainMode(mode);
+      setOpenFlyoutMode(null);
+      return;
     }
     
-    // No modo Aventura ou Globo 3D, mantemos o menu de navegação limpo e focado no palco
+    // Se o usuário clicou no modo já ativo, alterna o painel dedicado do modo sem abrir flyouts sobrepostos
     if (mode === 'globo3d') {
       setOpenFlyoutMode(null);
-      if (!isChangingMode) {
-        onToggleGlobeTelemetry?.();
-      }
+      onToggleGlobeTelemetry?.();
       return;
     }
 
-    if (mode === 'aventura' && isChangingMode) {
+    if (mode === 'geopolitica') {
       setOpenFlyoutMode(null);
+      onToggleGeopoliticaPanel?.();
       return;
     }
 
-    if (openFlyoutMode === mode) {
+    if (mode === 'biodiversidade') {
       setOpenFlyoutMode(null);
-    } else {
-      setOpenFlyoutMode(mode);
-      const btn = buttonRefs.current[mode];
-      if (btn) {
-        const btnRect = btn.getBoundingClientRect();
-        const btnCenterY = btnRect.top + btnRect.height / 2;
-        const initialTop = Math.max(12, Math.min(window.innerHeight - 380, btnCenterY - 48));
-        setFlyoutPos({
-          top: Math.round(initialTop),
-          arrowTop: Math.round(btnCenterY - initialTop),
-        });
+      onToggleBiodiversityPanel?.();
+      return;
+    }
+
+    if (mode === 'clima') {
+      setOpenFlyoutMode(null);
+      onToggleObservatorio?.();
+      return;
+    }
+
+    if (mode === 'musicalidades') {
+      setOpenFlyoutMode(null);
+      onToggleRadio?.();
+      return;
+    }
+
+    if (mode === 'aventura') {
+      if (openFlyoutMode === 'aventura') {
+        setOpenFlyoutMode(null);
+      } else {
+        setOpenFlyoutMode('aventura');
+        const btn = buttonRefs.current['aventura'];
+        if (btn) {
+          const btnRect = btn.getBoundingClientRect();
+          const btnCenterY = btnRect.top + btnRect.height / 2;
+          const initialTop = Math.max(12, Math.min(window.innerHeight - 380, btnCenterY - 48));
+          setFlyoutPos({
+            top: Math.round(initialTop),
+            arrowTop: Math.round(btnCenterY - initialTop),
+          });
+        }
+        setTimeout(() => updateFlyoutPosition('aventura'), 16);
       }
-      setTimeout(() => updateFlyoutPosition(mode), 16);
+      return;
     }
   };
 
