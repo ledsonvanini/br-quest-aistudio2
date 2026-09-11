@@ -1,6 +1,6 @@
 # Ficha Técnica da Aplicação (Data Sheet)
 **BR Quest — Plataforma Gamificada de Inteligência Geográfica, Biodiversidade e Cartografia 3D**  
-*Versão:* 1.4.0 (Edição Pós-Guerra / Atlas Interativo) | *Data de Revisão:* Setembro de 2026  
+*Versão:* 1.5.0 (Edição Atlas Cósmico & Sistema Solar) | *Data de Revisão:* Setembro de 2026  
 *Documento:* `/plan/ficha_tecnica.md`
 
 ---
@@ -30,7 +30,7 @@
 ├────────────────────────────────────────────────────────────────────────┤
 │                       MICROENGINES ESPECIALIZADAS                      │
 │  CelestialSystem • CameraOrbitController • CosmicLaser • GeodesicEngine │
-│  OceanShaderCanvas (Batimetria & Swell) • ClimaticStreamEngine         │
+│  OceanShaderCanvas (Batimetria & Swell) • SunPhotosphereShader (GLSL)  │
 ├────────────────────────────────────────────────────────────────────────┤
 │                       SERVIÇOS DE DADOS & APIS EXTERNAS                │
 │  Open-Meteo (Clima/Vento) • GBIF/ICMBio (Espécies) • IBGE (Malhas D3)  │
@@ -47,7 +47,10 @@
 - **Three.js (r128+)**: Renderização da esfera terrestre tridimensional, coordenadas esféricas geodésicas, iluminação solar fotorrealista e campo estelar.
 - **D3.js (`d3-geo`, `d3-array`)**: Projeções cartográficas ortográficas e cônicas conformes de Albers para o Brasil, interpolação de fronteiras estaduais e polígonos dos 6 biomas.
 - **GLSL Shaders Customizados (WebGL2)**:
-  - *Atmosfera Rayleigh/Mie*: Dispersão de luz com efeito crepuscular azul cobalto (absorção de Chappuis na camada de ozônio).
+  - *SunPhotosphereShader & SunCoronaGlowShader*: Shader de fotossfera solar com granulação convectiva via ruído simplex 3D/FBM, perturbação tridimensional de normais para relevo plasmático, manchas solares magnéticas realistas com penumbra, e halo volumétrico radial (corona solar) com decaimento exponencial suave (smoothstep), eliminando qualquer aresta ou contorno rígido de esfera.
+  - *Microengine Planetário PBR (`celestialPBR.ts`)*: Renderização baseada em física (PBR) completa para os corpos celestes com geração procedural de mapas de Albedo, Bump/Normal (cânions, crateras, vulcões, bandas de jatos zonais), Rugosidade (Roughness) diferenciada e Oclusão Ambiental (AO).
+  - *Atmosferas Planetárias Rayleigh/Mie (`planetAtmosphereShader.ts`)*: Camada de dispersão atmosférica e brilho de limbo Fresnel ajustada espectralmente para planetas com atmosfera (Vênus, Marte, Júpiter, Saturno, Urano e Netuno).
+  - *Atmosfera Terrestre Rayleigh/Mie*: Dispersão de luz com efeito crepuscular azul cobalto (absorção de Chappuis na camada de ozônio).
   - *Terminador Dia/Noite*: Mistura contínua entre mapa de albedo diurno e luzes urbanas noturnas (NASA VIIRS).
   - *Oceano Cartográfico Procedural*: Swell bidirecional em alto-mar, Domain Warping duplo, cáusticas líquidas e atenuação costeira anti-aliased.
 
@@ -56,7 +59,11 @@
 ## 3. Microengines e Módulos Arquiteturais Internos
 
 ### 3.1. `CelestialSystem` (`src/lib/globeEngine/celestialSystem.ts`)
-- **Astrometria Kepleriana**: Posicionamento tridimensional em tempo real ou simulado do Sol, da Lua e de planetas clássicos (Mercúrio, Vênus, Marte, Júpiter e Saturno com anéis).
+- **Astrometria Kepleriana e Escala Cosmológica**: Posicionamento tridimensional em tempo real ou simulado do Sol, da Lua e de planetas clássicos (Mercúrio, Vênus, Marte, Júpiter, Saturno com anéis, Urano e Netuno).
+- **Proporção Escalar Terra-Sol Reajustada**: Raio orbital da Terra calibrado para 58 unidades de cena (com Sol a 3.6 de raio e luz pontual com raio de 550 unidades), eliminando a sensação de proximidade excessiva e conferindo profundidade astronômica real.
+- **Shader Solar Fotorrealista (`sunShader.ts`)**: Fotossfera procedural viva com convecção turbulenta, relevo de normais, e corona solar volumétrica billboard orientada à câmera com plumas e filamentos de proeminência dinâmicos.
+- **Materiais PBR Planetários & Limbo Atmosférico**: Todos os planetas e a Lua utilizam mapas procedurais de Albedo, Bump (relevo) e Rugosidade (GGX specular), acompanhados de conchas atmosféricas Fresnel com dispersão Rayleigh voltada ao Sol.
+- **Renderização Condicional Discreta de Linhas Orbitais**: Linhas de órbita, cinturão de asteroides, cometa e labels celestes permanecem estritamente invisíveis na visão padrão estática, surgindo de forma tênue (opacidade 0.20) exclusivamente durante a simulação da animação dos ciclos solares/lunares.
 - **Fases Lunares Físicas**: A iluminação da malha lunar é derivada diretamente do vetor de incidência solar, gerando fases geometricamente fidedignas (Nova, Crescente, Cheia, Minguante).
 - **Simulador 24h & Eclíptica**: Controle interativo de hora solar e dia do ano com cálculo de declinação axial ($23,44^\circ$) e solstícios/equinócios.
 
@@ -76,6 +83,17 @@
 ### 3.5. `OceanEngine` (`src/components/map/CoastalWavesCanvas.tsx`)
 - **Campo Contínuo Procedural**: Shader WebGL2 contínuo cobrindo toda a bacia oceânica sem emendas ou cortes em bloco.
 - **Batimetria Gradual**: Transição orgânica de profundidade abissal para águas rasas e praias com ruído fractal e atenuação nas bordas do canvas (Zero Bounding Box).
+
+### 3.6. `AudioEngine` (`src/lib/audioSynth.ts`)
+- **Síntese Web Audio API Pura**: Osciladores senoidais, dentes de serra e triangulares sem arquivos pesados de áudio externo.
+- **Proteção Anti-Double-Click**: Debounce temporal nativo (<75ms) para eventos de clique do sistema, eliminando sobreposições e ecos sonoros acidentais.
+
+### 3.7. `NavFlyoutMenu & TopGlobalNavMenu` (`src/components/nav/NavFlyoutMenu.tsx`)
+- **Menus Flutuantes por Modo**: Arquitetura modular de submenus reativos para os 6 modos principais (Aventura, Clima/Temperatura ECMWF, Biodiversidade, Geopolítica, Musicalidades e Globo 3D).
+- **Isolamento de Painéis e Exclusividade Mútua**: Abertura de subitens com fechamento automático de menus e garantia de fechamento cruzado de painéis laterais.
+
+### 3.8. `GeopoliticsMapLayer` (`src/components/map/GeopoliticsMapLayer.tsx`)
+- **Pins Geopolíticos de Alta Densidade**: Badges resumidos de ultra-legibilidade (ex: `RO: 69% P`), substituindo textos prolixos e eliminando filtros de drop-shadow excessivos por sombreamento sutil e nítido.
 
 ---
 

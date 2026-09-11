@@ -228,6 +228,9 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const [projectedPins, setProjectedPins] = useState<ProjectedPin[]>([]);
+  const projectedPinsRef = useRef<ProjectedPin[]>([]);
+  const lastPinsSyncMsRef = useRef<number>(0);
+  const lastAppliedShiftPxRef = useRef<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const isDraggingRef = useRef<boolean>(false);
 
@@ -380,10 +383,10 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   const [allCapitalRoutes, setAllCapitalRoutes] = useState<GeodesicRoute[]>([]);
   const [activeAdaptedRoute, setActiveAdaptedRoute] = useState<GeodesicRoute | null>(null);
 
-  // Solar Hour & Day/Night 24h Cycle Simulation (Default to 12:00 midday for optimal map clarity)
-  const [simulatedSolarHour, setSimulatedSolarHour] = useState<number | null>(12);
+  // Solar Hour & Day/Night 24h Cycle Simulation (Default to null = Ao Vivo Brasilia UTC-3)
+  const [simulatedSolarHour, setSimulatedSolarHour] = useState<number | null>(null);
   const [isSolarCyclePlaying, setIsSolarCyclePlaying] = useState(false);
-  const simulatedSolarHourRef = useRef<number | null>(12);
+  const simulatedSolarHourRef = useRef<number | null>(null);
   const isSolarCyclePlayingRef = useRef<boolean>(false);
 
   // 3-Point Planetary Lighting System & Solar Simulator State:
@@ -413,6 +416,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   const solarCycleSpeedRef = useRef<number>(1);
   solarCycleSpeedRef.current = solarCycleSpeed;
   const lastSolarUiSyncRef = useRef<number>(0);
+  const lastOrbitalUiSyncRef = useRef<number>(0);
 
   // Orbital Translation & Keplerian Physics State
   const [orbitalDayOfYear, setOrbitalDayOfYear] = useState<number>(() => {
@@ -612,7 +616,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   const geodesicEngineRef = useRef<GeodesicRoutesEngine | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
 
-  // Timer instance using modern THREE.Timer API (eliminates deprecated THREE.Clock warning)
+  // Timer instance using modern THREE.Timer API with robust fallback tracking
   const timerRef = useRef<any>(null);
   if (!timerRef.current) {
     if (typeof (THREE as any).Timer !== 'undefined') {
@@ -620,12 +624,15 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     } else {
       let lastTime = performance.now() * 0.001;
       let totalElapsed = 0;
+      let currentDelta = 0.016;
       timerRef.current = {
         update: () => {
           const now = performance.now() * 0.001;
-          totalElapsed += Math.max(0, now - lastTime);
+          currentDelta = Math.min(0.1, Math.max(0.001, now - lastTime));
+          totalElapsed += currentDelta;
           lastTime = now;
         },
+        getDelta: () => currentDelta,
         getElapsed: () => totalElapsed,
         dispose: () => {},
       };
@@ -708,7 +715,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   useEffect(() => {
     if (celestialSystemRef.current) {
       celestialSystemRef.current.setVisiblePlanets(showSolarSystem);
-      celestialSystemRef.current.sunMesh.visible = showSolarSystem;
+      celestialSystemRef.current.setSunVisible(showSolarSystem);
       celestialSystemRef.current.moonMesh.visible = showSolarSystem;
     }
   }, [showSolarSystem]);
@@ -848,7 +855,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     const initialEarthPos = initialOrbitalState.earthScenePos.clone();
 
     // 2. Camera: Focused directly on Brazil and South America
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 350);
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.4, 350);
     const initialBrazilCam = initialEarthPos.clone().add(latLonToSphereVector3(-14.235, -51.925, 5.76));
     camera.position.copy(initialBrazilCam);
     cameraRef.current = camera;
@@ -866,7 +873,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 4. OrbitControls
+    // 4. OrbitControls with Middle Mouse Grab/Pan
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(initialEarthPos);
     controls.enableDamping = true;
@@ -880,20 +887,43 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     controls.maxPolarAngle = (5 * Math.PI) / 6;
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
+
+    // Draggable Grab/Pan for moving the entire scene with Middle Mouse or Right Mouse
+    controls.enablePan = true;
+    controls.screenSpacePanning = true;
+    controls.panSpeed = 1.0;
+    controls.mouseButtons = {
+      LEFT: THREE.MOUSE.ROTATE,
+      MIDDLE: THREE.MOUSE.PAN,
+      RIGHT: THREE.MOUSE.PAN,
+    };
+
     controlsRef.current = controls;
     cameraOrbitControllerRef.current.attach(camera, controls);
 
     controls.addEventListener('start', () => {
       setIsDragging(true);
       isDraggingRef.current = true;
-      if (cameraOrbitControllerRef.current.focusMode !== 'earth') {
-        cameraOrbitControllerRef.current.focusMode = 'free';
-      }
     });
     controls.addEventListener('end', () => {
       setIsDragging(false);
       isDraggingRef.current = false;
     });
+
+    const handlePanMouseDown = (e: MouseEvent) => {
+      if (e.button === 1 || e.button === 2) {
+        cameraOrbitControllerRef.current.focusMode = 'free';
+        renderer.domElement.style.cursor = 'grabbing';
+      }
+    };
+    const handlePanMouseUp = (e: MouseEvent) => {
+      if (e.button === 1 || e.button === 2) {
+        renderer.domElement.style.cursor = 'grab';
+      }
+    };
+    renderer.domElement.style.cursor = 'grab';
+    renderer.domElement.addEventListener('mousedown', handlePanMouseDown);
+    window.addEventListener('mouseup', handlePanMouseUp);
 
     // 5. Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.32);
@@ -1087,13 +1117,16 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     const animate = () => {
       animFrameIdRef.current = requestAnimationFrame(animate);
 
-      controls.update();
-
       if (timerRef.current) {
         timerRef.current.update();
       }
       const elapsed = timerRef.current ? timerRef.current.getElapsed() : performance.now() * 0.001;
-      const delta = timerRef.current ? timerRef.current.getDelta() : 0.016;
+      const deltaRaw =
+        typeof timerRef.current?.getDelta === 'function'
+          ? timerRef.current.getDelta()
+          : 0.016;
+      // Clamp delta smoothly between 0.001s and 0.033s to eliminate any sudden frame-skip jumps
+      const delta = Math.min(0.033, Math.max(0.001, deltaRaw));
       const nowMs = performance.now();
 
       // Handle continuous 24h day/night rotation cycle animation
@@ -1118,8 +1151,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         const nextD = ((currentD + delta * speed - 1) % 365.25) + 1;
         orbitalDayOfYearRef.current = nextD;
 
-        if (nowMs - lastSolarUiSyncRef.current > 65) {
-          lastSolarUiSyncRef.current = nowMs;
+        if (nowMs - lastOrbitalUiSyncRef.current > 65) {
+          lastOrbitalUiSyncRef.current = nowMs;
           setOrbitalDayOfYear(nextD);
         }
       }
@@ -1166,13 +1199,32 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
           globeGroupRef.current.position.copy(earthPos);
         }
 
+        // Discrete orbital lines & alignment axis: only appear during active simulation
+        const isSimulating =
+          isOrbitalPlayingRef.current ||
+          isSolarCyclePlayingRef.current ||
+          isPlanetsAlignedRef.current;
+        const shouldShowOrbitalLines = showSolarSystemRef.current && isSimulating;
+        celestialSystemRef.current.setOrbitalVisualsVisibility(
+          shouldShowOrbitalLines,
+          0.20,
+          isPlanetsAlignedRef.current
+        );
+
         // Camera Orbit Controller: Smooth Geodesic Glide & Continuous Tracking
         cameraOrbitControllerRef.current.update(nowMs, earthPos, isOrbitalPlayingRef.current);
 
         // Feed updated Sun & Moon vectors and lighting uniforms into Earth, Atmosphere, and Cloud Shaders (3-Point Lighting)
+        const effectiveSunDir = sunDirection.clone();
+        const effectiveMoonDir = moonDirection.clone();
+        if (globeGroupRef.current) {
+          effectiveSunDir.applyQuaternion(globeGroupRef.current.quaternion);
+          effectiveMoonDir.applyQuaternion(globeGroupRef.current.quaternion);
+        }
+
         if (earthShaderMatRef.current) {
-          earthShaderMatRef.current.uniforms.u_sunDirection.value.copy(sunDirection);
-          earthShaderMatRef.current.uniforms.u_moonDirection.value.copy(moonDirection);
+          earthShaderMatRef.current.uniforms.u_sunDirection.value.copy(effectiveSunDir);
+          earthShaderMatRef.current.uniforms.u_moonDirection.value.copy(effectiveMoonDir);
           earthShaderMatRef.current.uniforms.u_sunIntensity.value = sunIntensityRef.current;
           earthShaderMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensityRef.current;
           earthShaderMatRef.current.uniforms.u_ambientIntensity.value = ambientLightIntensityRef.current;
@@ -1181,13 +1233,13 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
           earthShaderMatRef.current.uniforms.u_cloudsTime.value = elapsed;
         }
         if (atmosphereMatRef.current) {
-          atmosphereMatRef.current.uniforms.u_sunDirection.value.copy(sunDirection);
-          atmosphereMatRef.current.uniforms.u_moonDirection.value.copy(moonDirection);
+          atmosphereMatRef.current.uniforms.u_sunDirection.value.copy(effectiveSunDir);
+          atmosphereMatRef.current.uniforms.u_moonDirection.value.copy(effectiveMoonDir);
           atmosphereMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensityRef.current;
         }
         if (cloudsMatRef.current) {
-          cloudsMatRef.current.uniforms.u_sunDirection.value.copy(sunDirection);
-          cloudsMatRef.current.uniforms.u_moonDirection.value.copy(moonDirection);
+          cloudsMatRef.current.uniforms.u_sunDirection.value.copy(effectiveSunDir);
+          cloudsMatRef.current.uniforms.u_moonDirection.value.copy(effectiveMoonDir);
           cloudsMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensityRef.current;
           cloudsMatRef.current.uniforms.u_time.value = elapsed;
           cloudsMatRef.current.uniforms.u_opacity.value = cloudsOpacityRef.current;
@@ -1239,54 +1291,72 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         }
       }
 
-      currentShiftPxRef.current += (targetShiftX - currentShiftPxRef.current) * 0.08;
-
-      if (Math.abs(currentShiftPxRef.current) > 0.5) {
-        camera.setViewOffset(currentWidth, currentHeight, currentShiftPxRef.current, 0, currentWidth, currentHeight);
+      currentShiftPxRef.current += (targetShiftX - currentShiftPxRef.current) * 0.06;
+      const targetRounded = Math.round(currentShiftPxRef.current);
+      if (Math.abs(targetRounded) >= 1) {
+        if (Math.abs(targetRounded - lastAppliedShiftPxRef.current) >= 1) {
+          lastAppliedShiftPxRef.current = targetRounded;
+          camera.setViewOffset(currentWidth, currentHeight, targetRounded, 0, currentWidth, currentHeight);
+        }
       } else if (camera.view && camera.view.enabled) {
+        lastAppliedShiftPxRef.current = 0;
         camera.clearViewOffset();
         camera.aspect = currentWidth / currentHeight;
         camera.updateProjectionMatrix();
       }
 
-      // 13. Project 3D state coordinates onto 2D screen space (suppressed during Astral Mode or Solar System view)
-      if (isAstralModeRef.current || cameraFocusModeRef.current === 'sun' || camera.position.distanceTo(globeGroup.position) > 22) {
-        setProjectedPins([]);
+      // 13. Project 3D state coordinates onto 2D screen space (suppressed during Astral Mode, Solar view, or orbital simulation)
+      const shouldHidePins =
+        isAstralModeRef.current ||
+        cameraFocusModeRef.current === 'sun' ||
+        camera.position.distanceTo(globeGroup.position) > 22 ||
+        isOrbitalPlayingRef.current;
+
+      if (shouldHidePins) {
+        if (projectedPinsRef.current.length > 0) {
+          projectedPinsRef.current = [];
+          setProjectedPins([]);
+        }
       } else {
-        camera.getWorldPosition(cameraWorldPos);
-        const newPins: ProjectedPin[] = [];
+        // Throttle pin coordinate projection to ~30fps to keep main thread and WebGL at solid 60fps
+        if (nowMs - lastPinsSyncMsRef.current > 33) {
+          lastPinsSyncMsRef.current = nowMs;
+          camera.getWorldPosition(cameraWorldPos);
+          const newPins: ProjectedPin[] = [];
 
-        Object.entries(state3DVectors.current).forEach(([stateId, worldPos]) => {
-          tempVec.copy(worldPos);
-          tempVec.applyMatrix4(globeGroup.matrixWorld);
+          Object.entries(state3DVectors.current).forEach(([stateId, worldPos]) => {
+            tempVec.copy(worldPos);
+            tempVec.applyMatrix4(globeGroup.matrixWorld);
 
-          const dot = tempVec.dot(cameraWorldPos);
-          const isVisible = dot > 1.85; // Front hemisphere facing camera
+            const dot = tempVec.dot(cameraWorldPos);
+            const isVisible = dot > 1.85; // Front hemisphere facing camera
 
-          if (isVisible) {
-            tempVec.project(camera);
-            const screenX = (tempVec.x * 0.5 + 0.5) * currentWidth;
-            const screenY = (-(tempVec.y * 0.5) + 0.5) * currentHeight;
-            const dist = cameraWorldPos.distanceTo(worldPos);
-            const scale = Math.max(0.6, Math.min(1.25, 4.8 / dist));
+            if (isVisible) {
+              tempVec.project(camera);
+              const screenX = (tempVec.x * 0.5 + 0.5) * currentWidth;
+              const screenY = (-(tempVec.y * 0.5) + 0.5) * currentHeight;
+              const dist = cameraWorldPos.distanceTo(worldPos);
+              const scale = Math.max(0.6, Math.min(1.25, 4.8 / dist));
 
-            newPins.push({
-              stateId,
-              x: screenX,
-              y: screenY,
-              visible: true,
-              scale,
-              distance: dist,
-            });
-          }
-        });
+              newPins.push({
+                stateId,
+                x: screenX,
+                y: screenY,
+                visible: true,
+                scale,
+                distance: dist,
+              });
+            }
+          });
 
-        setProjectedPins(newPins);
+          projectedPinsRef.current = newPins;
+          setProjectedPins(newPins);
+        }
       }
 
-      // 14. Animate Celestial Trajectory when showSolarSystem is active
-      if (celestialSystemRef.current && showSolarSystemRef.current) {
-        celestialSystemRef.current.tickTrajectory(elapsed);
+      // 14. Animate Celestial Trajectory and Solar Corona Orientation
+      if (celestialSystemRef.current) {
+        celestialSystemRef.current.tickTrajectory(elapsed, camera);
       }
 
       renderer.render(scene, camera);
@@ -1331,6 +1401,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       if (timerRef.current && typeof timerRef.current.dispose === 'function') {
         timerRef.current.dispose();
       }
+      renderer.domElement.removeEventListener('mousedown', handlePanMouseDown);
+      window.removeEventListener('mouseup', handlePanMouseUp);
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
@@ -1395,9 +1467,12 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       const preset = ASTRONOMICAL_SCENE_PRESETS.find((p) => p.id === presetId);
       if (!preset) return;
 
-      if (['sistema-ortogonal', 'terra-lua', 'alinhamento-astros', 'eclipse-solar', 'heliocentrico-geral'].includes(presetId)) {
+      if (['sistema-ortogonal', 'terra-lua', 'alinhamento-astros', 'eclipse-solar', 'heliocentrico-geral', 'gigantes-gasosos'].includes(presetId)) {
         setShowSolarSystem(true);
       }
+
+      const effectiveDay = preset.targetDayOfYear !== undefined ? preset.targetDayOfYear : orbitalDayOfYearRef.current;
+      const effectiveAlign = preset.alignPlanets !== undefined ? preset.alignPlanets : isPlanetsAlignedRef.current;
 
       if (preset.targetDayOfYear !== undefined) {
         setOrbitalDayOfYear(preset.targetDayOfYear);
@@ -1412,18 +1487,63 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       setCameraFocusMode(preset.focusMode);
       cameraFocusModeRef.current = preset.focusMode;
 
+      // Atualiza coordenadas celestes de imediato para garantir que a Terra e os astros estejam na posição de destino exata
+      let destinationEarthPos = globeGroupRef.current ? globeGroupRef.current.position.clone() : new THREE.Vector3(14, 0, 0);
+      let moonWorldPos = new THREE.Vector3();
+
+      if (celestialSystemRef.current) {
+        const effHour = simulatedSolarHourRef.current !== null ? simulatedSolarHourRef.current : liveBrasilia.floatHours;
+        const utcHour = (effHour + 3) % 24;
+        const animDate = new Date();
+        animDate.setUTCHours(Math.floor(utcHour), Math.floor((utcHour % 1) * 60), 0, 0);
+
+        const { earthPos, moonPos } = celestialSystemRef.current.updatePositions(
+          animDate,
+          currentSeasonRef.current,
+          null,
+          showCosmicBeamsRef.current,
+          effectiveDay,
+          effectiveAlign
+        );
+        if (globeGroupRef.current && earthPos) {
+          globeGroupRef.current.position.copy(earthPos);
+          destinationEarthPos = earthPos.clone();
+        }
+        if (moonPos) {
+          moonWorldPos = moonPos.clone();
+        }
+      }
+
       let lookTarget = new THREE.Vector3(preset.lookTarget.x, preset.lookTarget.y, preset.lookTarget.z);
       let camPos = new THREE.Vector3(preset.camOffset.x, preset.camOffset.y, preset.camOffset.z);
 
-      if (preset.focusMode === 'earth' && globeGroupRef.current) {
-        lookTarget = globeGroupRef.current.position.clone();
-        camPos = globeGroupRef.current.position.clone().add(camPos);
+      if (preset.id === 'foco-brasil') {
+        lookTarget = destinationEarthPos.clone();
+        let normal = latLonToSphereVector3(-14.235, -51.925, 1.0).normalize();
+        if (globeGroupRef.current) {
+          normal.applyQuaternion(globeGroupRef.current.quaternion);
+        }
+        camPos = destinationEarthPos.clone().add(normal.multiplyScalar(5.5));
+      } else if (preset.id === 'solsticio-verao' || preset.id === 'solsticio-inverno' || preset.id === 'equinocio-outono') {
+        lookTarget = destinationEarthPos.clone();
+        camPos = destinationEarthPos.clone().add(new THREE.Vector3(preset.camOffset.x, preset.camOffset.y, preset.camOffset.z));
+      } else if (preset.id === 'terra-lua') {
+        lookTarget = destinationEarthPos.clone().lerp(moonWorldPos, 0.35);
+        camPos = destinationEarthPos.clone().add(new THREE.Vector3(preset.camOffset.x, preset.camOffset.y, preset.camOffset.z));
+      } else if (preset.id === 'eclipse-solar') {
+        // Alinhamento na frente da Terra olhando diretamente para a silhueta da Lua eclipsando o Sol
+        lookTarget = new THREE.Vector3(0, 0, 0);
+        const dirToSun = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), destinationEarthPos).normalize();
+        camPos = destinationEarthPos.clone().add(dirToSun.multiplyScalar(2.6));
+      } else if (preset.focusMode === 'earth') {
+        lookTarget = destinationEarthPos.clone().add(lookTarget);
+        camPos = destinationEarthPos.clone().add(camPos);
       }
 
       cameraOrbitControllerRef.current.targetMesh = null;
-      smoothGlideCamera(camPos, lookTarget, preset.durationMs || 1600, preset.focusMode, null);
+      smoothGlideCamera(camPos, lookTarget, Math.min(preset.durationMs || 1400, 1400), preset.focusMode, null);
     },
-    [smoothGlideCamera]
+    [smoothGlideCamera, liveBrasilia.floatHours]
   );
 
   const handleTogglePlanetsAlignment = useCallback(() => {
@@ -2083,7 +2203,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
                   transform: `translate(-50%, -100%) scale(${pinScale})`,
                   transformOrigin: 'bottom center',
                 }}
-                className="pin-estado-3d-item pin-brasao-estado absolute pointer-events-auto transition-transform duration-200"
+                className="pin-estado-3d-item pin-brasao-estado absolute pointer-events-auto will-change-transform"
               >
                 <button
                   type="button"

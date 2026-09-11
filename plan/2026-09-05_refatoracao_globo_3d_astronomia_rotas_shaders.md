@@ -317,3 +317,11 @@ Seguindo as diretrizes obrigatórias do projeto, todos os novos elementos e pain
 
 ## 10. Conclusão e Próximos Passos
 Este plano fornece uma base técnica e arquitetural robusta para elevar o modo **Globo 3D** de um visualizador básico para uma verdadeira **ferramenta de exploração planetária e espacial**, unindo rigor cartográfico brasileiro, astrometria tridimensional real e computação gráfica de ponta (GLSL Shaders e WebGL2) com performance fluida e carregamento assíncrono transparente.
+
+
+REFERÊNCIAS:
+https://www.cienciaviva.pt/equinocio/lat_long/index.asp
+
+
+
+

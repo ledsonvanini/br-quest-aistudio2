@@ -404,7 +404,16 @@ export function App() {
           onToggleNeighbors={handleToggleNeighbors}
           isObservatorioOpen={isObservatorioOpen}
           onToggleObservatorio={() => {
-            setIsObservatorioOpen((prev) => !prev);
+            setIsObservatorioOpen((prev) => {
+              const next = !prev;
+              if (next) {
+                setIsBiodiversityPanelOpen(false);
+                setIsGeopoliticaPanelOpen(false);
+                setIsRadioOpen(false);
+                setIsGlobeTelemetryOpen(false);
+              }
+              return next;
+            });
             if (showNeighbors) setShowNeighbors(false);
           }}
           onNavigateToSanctuary={() => {
@@ -436,7 +445,18 @@ export function App() {
             if (showNeighbors) setShowNeighbors(false);
           }}
           isRadioOpen={isRadioOpen}
-          onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+          onToggleRadio={() => {
+            setIsRadioOpen((prev) => {
+              const next = !prev;
+              if (next) {
+                setIsObservatorioOpen(false);
+                setIsBiodiversityPanelOpen(false);
+                setIsGeopoliticaPanelOpen(false);
+                setIsGlobeTelemetryOpen(false);
+              }
+              return next;
+            });
+          }}
           activeMusicCategory={activeMusicCategory}
           onSelectMusicCategory={setActiveMusicCategory}
           selectedRadioEraId={selectedRadioEraId}
@@ -453,7 +473,18 @@ export function App() {
           onGlobePinModeChange={setGlobePinMode}
           onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
           isGlobeTelemetryOpen={isGlobeTelemetryOpen}
-          onToggleGlobeTelemetry={() => setIsGlobeTelemetryOpen((prev) => !prev)}
+          onToggleGlobeTelemetry={() => {
+            setIsGlobeTelemetryOpen((prev) => {
+              const next = !prev;
+              if (next) {
+                setIsObservatorioOpen(false);
+                setIsBiodiversityPanelOpen(false);
+                setIsGeopoliticaPanelOpen(false);
+                setIsRadioOpen(false);
+              }
+              return next;
+            });
+          }}
           biodiversityKingdom={biodiversityKingdom}
           onBiodiversityKingdomChange={(k) => {
             setBiodiversityKingdom(k);
@@ -469,7 +500,18 @@ export function App() {
           isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
           onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
           isBiodiversityPanelOpen={isBiodiversityPanelOpen}
-          onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
+          onToggleBiodiversityPanel={() => {
+            setIsBiodiversityPanelOpen((p) => {
+              const next = !p;
+              if (next) {
+                setIsObservatorioOpen(false);
+                setIsGeopoliticaPanelOpen(false);
+                setIsRadioOpen(false);
+                setIsGlobeTelemetryOpen(false);
+              }
+              return next;
+            });
+          }}
           geopoliticaMetric={geopoliticaMetric}
           onGeopoliticaMetricChange={(metric) => {
             setGeopoliticaMetric(metric);
@@ -477,7 +519,16 @@ export function App() {
           }}
           isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
           onToggleGeopoliticaPanel={() => {
-            setIsGeopoliticaPanelOpen((p) => !p);
+            setIsGeopoliticaPanelOpen((p) => {
+              const next = !p;
+              if (next) {
+                setIsObservatorioOpen(false);
+                setIsBiodiversityPanelOpen(false);
+                setIsRadioOpen(false);
+                setIsGlobeTelemetryOpen(false);
+              }
+              return next;
+            });
             if (showNeighbors) setShowNeighbors(false);
           }}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -675,7 +726,18 @@ export function App() {
         onToggleFps={() => setShowFps((prev) => !prev)}
         onOpenApiStatus={() => setIsApiStatusOpen(true)}
         climateMode={climateMode}
-        onOpenObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
+        onOpenObservatorio={() => {
+          setIsObservatorioOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              setIsBiodiversityPanelOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsRadioOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
+            return next;
+          });
+        }}
         isObservatorioOpen={isObservatorioOpen}
         avgTempBrazil={climateTelemetry.avgTempBrazil}
         maxTempState={climateTelemetry.maxTempState}
@@ -691,7 +753,18 @@ export function App() {
         onToggleAtmosphere={() => setIsAtmosphereActive((prev) => !prev)}
         timeOverride={celestialTimeOverride}
         onTimeOverrideChange={setCelestialTimeOverride}
-        onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+        onToggleRadio={() => {
+          setIsRadioOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              setIsObservatorioOpen(false);
+              setIsBiodiversityPanelOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
+            return next;
+          });
+        }}
         geopoliticaMetric={geopoliticaMetric}
         onOpenBrQuestHub={() => setIsBrQuestHubOpen(true)}
       />

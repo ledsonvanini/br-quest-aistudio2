@@ -115,10 +115,10 @@ export const GlobeSolarSimulatorPanel: React.FC<GlobeSolarSimulatorPanelProps> =
   return (
     <div
       id="painel-simulador-solar-container"
-      className={`painel-simulador-solar-container painel-hud-controles absolute top-4 right-4 z-40 bg-slate-950/95 backdrop-blur-md rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col transition-all duration-300 ${
+      className={`painel-simulador-solar-container painel-hud-controles fixed sm:absolute top-3 sm:top-4 right-2 sm:right-4 left-2 sm:left-auto z-40 bg-slate-950/95 backdrop-blur-md rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col transition-all duration-300 overflow-hidden ${
         isExpanded
-          ? 'w-[94vw] sm:w-[540px] max-h-[90vh]'
-          : 'w-[92vw] sm:w-[410px] max-h-[84vh]'
+          ? 'w-auto sm:w-[540px] max-w-[calc(100vw-16px)] sm:max-w-none max-h-[88vh]'
+          : 'w-auto sm:w-[440px] max-w-[calc(100vw-16px)] sm:max-w-none max-h-[84vh]'
       }`}
     >
       {/* CABEÇALHO DO PAINEL */}

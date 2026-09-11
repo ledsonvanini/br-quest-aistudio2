@@ -1,6 +1,6 @@
 # BR Quest / Símbolos BR: O Dossiê "Me Convença"
 **Plataforma Gamificada de Inteligência Geográfica, Biodiversidade e Climatologia do Brasil**  
-*Documento Estratégico:* `/plan/me_convenca.md` | *Versão Atualizada:* 1.4.0 (Setembro de 2026)
+*Documento Estratégico:* `/plan/me_convenca.md` | *Versão Atualizada:* 1.5.0 (Setembro de 2026)
 
 ---
 
@@ -13,7 +13,8 @@ Combinando a profundidade cartográfica de um atlas de alta precisão, o rigor c
 Ao invés de mapas estáticos e livros didáticos obsoletos, o usuário atua como um **Explorador Territorial**, interagindo com:
 - **27 Guardiões Culturais e Históricos** com identidade visual nobre, brasões vetorizados, bandeiras oficiais e hinos históricos restaurados;
 - **Cartografia Vetorial Multidimensional Instantânea** (2D Flat, 2.5D Isométrico Tático e Globo 3D Esférico Orbital com iluminação solar astronômica real);
-- **Sistema Solar e Espaço Astronômico 3D**: Simulação kepleriana com Sol de corona turbulenta, Lua em fases fidedignas e planetas clássicos orbitais com anéis de Saturno e bandas de Júpiter;
+- **Sistema Solar Fotorrealista e Astrometria 3D**: Sol vivo com shader procedural GLSL (granulação térmica FBM, manchas solares e corona aditiva turbulenta), escala cosmológica ajustada (Sol a 58 unidades orbitais da Terra), Lua com fases fidedignas e planetas clássicos orbitais com anéis de Saturno e bandas atmosféricas;
+- **Visão Estática Limpa com Linhas Cósmicas Condicionais**: Trajetórias orbitais, cinturão de asteroides e cometas ocultos na visão padrão da Terra/Brasil, surgindo discretamente apenas durante a simulação ativa ou visão heliocêntrica;
 - **Arcos Geodésicos e Feixes Cósmicos**: Rotas de Grande Círculo inter-estaduais e vetores fotônicos conectando capitais a astros do cosmos com cálculo de tempo-luz;
 - **Observatório Climático Vivo**: Simulação de correntes de jato, ZCAS (Zona de Convergência do Atlântico Sul) e rios voadores amazônicos integrados a dados da Open-Meteo, NOAA e ECMWF;
 - **Diagramação e UX de Precisão Milimétrica**: Exclusividade mútua estrita entre painéis e recálculo dinâmico da câmera para prevenir sobreposição de astros e territórios.

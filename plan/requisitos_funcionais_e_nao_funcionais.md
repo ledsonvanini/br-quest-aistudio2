@@ -1,7 +1,7 @@
 # Especificação de Requisitos Funcionais e Não-Funcionais
 **BR Quest — Plataforma Gamificada de Inteligência Geográfica, Biodiversidade e Globo 3D**  
 *Documento de Engenharia:* `/plan/requisitos_funcionais_e_nao_funcionais.md`  
-*Versão do Sistema:* 1.4.0 | *Data de Revisão:* Setembro de 2026
+*Versão do Sistema:* 1.5.0 | *Data de Revisão:* Setembro de 2026
 
 ---
 
@@ -21,7 +21,7 @@
 - **[RF03] Sistema Solar Kepleriano Tridimensional**:
   - Renderizar o Sol em posição heliocêntrica com shader de corona e turbulência cromosférica procedural.
   - Renderizar a Lua com textura albedo da NASA e fases físicas derivadas do vetor de iluminação solar.
-  - Renderizar os planetas clássicos (Mercúrio, Vênus, Marte, Júpiter e Saturno com anéis) em órbitas eclípticas.
+  - Renderizar os planetas clássicos (Mercúrio, Vênus, Marte, Júpiter, Saturno com anéis, Urano e Netuno) em órbitas eclípticas.
 - **[RF04] Feixe Cósmico e Telemetria Espacial**:
   - Traçar vetor emissivo tridimensional (`CosmicLaserBeam`) entre o estado selecionado e o astro focalizado (Sol ou Lua).
   - Exibir telemetria em tempo real contendo distância topocêntrica em quilômetros e tempo de propagação da luz (tempo-luz).
@@ -32,6 +32,15 @@
 - **[RF06] Simulador Solar e Ciclo Dia/Noite 24h**:
   - Permitir emular qualquer hora do dia (0h às 24h) com transição suave da luz e acendimento das luzes urbanas (NASA VIIRS).
   - Permitir simular o dia do ano (1 a 365) com inclinação do eixo terrestre de $23,44^\circ$, refletindo solstícios e equinócios.
+- **[RF12] Shaders Solares e Planetários Procedurais Fotorrealistas**:
+  - Implementar shader GLSL customizado para a fotossfera solar com granulação térmica via ruído simplex 3D/FBM, manchas solares escuras e escurecimento de bordo (limb darkening).
+  - Implementar camada de corona solar aditiva tridimensional com plumas dinâmicas, filamentos de proeminência e animação orientada por `u_time`.
+  - Calibrar rugosidade e propriedades ópticas PBR de cada planeta (Mercúrio 0.88, Vênus 0.30, Marte 0.82, Júpiter 0.65, Saturno 0.65).
+- **[RF13] Renderização Condicional Discreta de Linhas Cósmicas e Trajetórias**:
+  - Ocultar estritamente da visão estática padrão (câmera orbital focada no Brasil) todas as trajetórias de órbita, cinturão de asteroides, cometa e labels celestes.
+  - Exibir as linhas orbitais de forma sutil e tênue (opacidade 0.20) exclusivamente durante a simulação da animação de ciclos solares/lunares ou em visão heliocêntrica.
+- **[RF14] Escala Cosmológica Calibrada da Terra e Sol**:
+  - Manter o raio de órbita da Terra calibrado em 58 unidades de cena e o Sol em raio 3.6, prevenindo a sensação visual de proximidade excessiva do astro rei em relação à Terra e garantindo enquadramento cinematográfico.
 
 ### 1.3. Arquitetura de Interface, Câmera e Diagramação
 - **[RF07] Exclusividade Mútua Estrita de Painéis de UI**:

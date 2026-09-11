@@ -21,10 +21,10 @@ export interface PlanetOrbitalElements {
 }
 
 /** Canonical 3D scene orbital distances ensuring 100% alignment between orbits and meshes */
-export const EARTH_SCENE_ORBIT_RADIUS = 14.0;
-export const MOON_SCENE_ORBIT_RADIUS = 5.6;
+export const EARTH_SCENE_ORBIT_RADIUS = 34.0;
+export const MOON_SCENE_ORBIT_RADIUS = 5.2;
 export const MOON_ORBIT_INCLINATION_RAD = (5.145 * Math.PI) / 180;
-export const ASTEROID_BELT_SCENE_RADIUS = 23.0;
+export const ASTEROID_BELT_SCENE_RADIUS = 62.0;
 
 export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
   {
@@ -40,8 +40,8 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 2439.7,
     massRelative: 0.055,
     description: 'Menor planeta e o mais veloz; temperaturas oscilam entre -180 °C e +430 °C.',
-    sceneDist: 5.2,
-    apparentSize: 0.24,
+    sceneDist: 9.5,
+    apparentSize: 0.28,
   },
   {
     id: 'venus',
@@ -56,8 +56,8 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 6051.8,
     massRelative: 0.815,
     description: 'A "Estrela D\'Alva"; atmosfera densa de CO2 com efeito estufa extremo de 464 °C.',
-    sceneDist: 8.5,
-    apparentSize: 0.50,
+    sceneDist: 19.0,
+    apparentSize: 0.52,
   },
   {
     id: 'terra',
@@ -72,7 +72,7 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 6371.0,
     massRelative: 1.0,
     description: 'Nosso lar; o único mundo conhecido com vida ativa e oceanos de água líquida.',
-    sceneDist: 14.0,
+    sceneDist: 34.0,
     apparentSize: 0.55,
   },
   {
@@ -88,8 +88,8 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 3389.5,
     massRelative: 0.107,
     description: 'O Planeta Vermelho; possui cânions colossais e o Monte Olimpo (21 km de altura).',
-    sceneDist: 18.5,
-    apparentSize: 0.35,
+    sceneDist: 48.0,
+    apparentSize: 0.38,
   },
   {
     id: 'jupiter',
@@ -104,8 +104,8 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 69911.0,
     massRelative: 317.8,
     description: 'Maior planeta (11x diâmetro da Terra); gigante gasoso com a Grande Mancha Vermelha.',
-    sceneDist: 27.5,
-    apparentSize: 1.55,
+    sceneDist: 82.0,
+    apparentSize: 1.45,
   },
   {
     id: 'saturno',
@@ -120,8 +120,8 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 58232.0,
     massRelative: 95.2,
     description: 'A joia do Sistema Solar; espetacular sistema de anéis de gelo e poeira.',
-    sceneDist: 34.0,
-    apparentSize: 1.30,
+    sceneDist: 112.0,
+    apparentSize: 1.25,
   },
   {
     id: 'urano',
@@ -136,7 +136,7 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 25362.0,
     massRelative: 14.5,
     description: 'Gigante de gelo azul-turquesa com atmosfera de metano e eixo inclinado a 98°.',
-    sceneDist: 41.0,
+    sceneDist: 146.0,
     apparentSize: 0.82,
   },
   {
@@ -152,7 +152,7 @@ export const SOLAR_SYSTEM_PLANETS: PlanetOrbitalElements[] = [
     radiusKm: 24622.0,
     massRelative: 17.1,
     description: 'Planeta mais distante; ventos supersônicos ultrapassam 2.100 km/h.',
-    sceneDist: 47.5,
+    sceneDist: 180.0,
     apparentSize: 0.80,
   },
 ];

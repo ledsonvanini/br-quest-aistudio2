@@ -1,6 +1,6 @@
 # Visão de Negócio e Estratégia de Mercado
 **BR Quest — Plataforma Gamificada de Inteligência Geográfica e Patrimônio Nacional**  
-*Documento Estratégico:* `/plan/visao_de_negocio.md` | *Versão:* 1.4.0 (Setembro de 2026)
+*Documento Estratégico:* `/plan/visao_de_negocio.md` | *Versão:* 1.5.0 (Setembro de 2026)
 
 ---
 

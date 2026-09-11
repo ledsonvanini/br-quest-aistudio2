@@ -15,16 +15,23 @@ import {
   MOON_SCENE_ORBIT_RADIUS,
   MOON_ORBIT_INCLINATION_RAD,
   ASTEROID_BELT_SCENE_RADIUS,
+  SOLAR_SYSTEM_PLANETS,
 } from './orbitalData';
 import { GlobeSeason, CelestialBodyInfo, CosmicTrajectoryTelemetry } from './types';
 import { SCENE_GLOBE_RADIUS } from './sphericalMath';
 import {
-  getProceduralSunTexture,
   getProceduralMoonTexture,
   getProceduralPlanetTexture,
   getSaturnRingTexture,
 } from './celestialTextures';
 import { CosmicLaserBeam } from './cosmicLaserBeam';
+import {
+  createSunPhotosphereMaterial,
+  createSunChromosphereMaterial,
+  createSunCoronaGlowMaterial,
+} from './shaders/sunShader';
+import { getPlanetPBRMaps } from './celestialPBR';
+import { createPlanetAtmosphereMesh } from './shaders/planetAtmosphereShader';
 
 /**
  * Creates a crisp 3D Billboard Sprite for celestial body labels (Sun, Moon, Planets)
@@ -85,8 +92,8 @@ export class CelestialSystem {
   public sunLight: THREE.DirectionalLight;
   public sunPointLight: THREE.PointLight;
   public sunMesh: THREE.Mesh;
+  public sunChromosphere: THREE.Mesh;
   public sunCorona: THREE.Mesh;
-  public outerCorona: THREE.Mesh;
   public moonMesh: THREE.Mesh;
   public planetsGroup: THREE.Group;
   public cosmicBeamMoon: THREE.Line;
@@ -109,58 +116,51 @@ export class CelestialSystem {
     this.group.add(this.cosmicLaserBeam.group);
 
     // 1. Sun Directional Light & Point Light
-    this.sunLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
+    this.sunLight = new THREE.DirectionalLight(0xfff7ed, 3.4);
     this.sunLight.castShadow = false;
     this.group.add(this.sunLight);
 
-    this.sunPointLight = new THREE.PointLight(0xffedd5, 2.8, 60, 0.7);
+    this.sunPointLight = new THREE.PointLight(0xffedd5, 3.8, 550, 0.35);
     this.group.add(this.sunPointLight);
 
-    // Sun 3D Visual Mesh with Procedural Granulation Texture
-    // Scientifically scaled: Sun is the primary star of our solar system (radius 6.5)
-    const sunGeo = new THREE.SphereGeometry(6.5, 48, 48);
-    const sunTex = getProceduralSunTexture();
-    const sunMat = new THREE.MeshBasicMaterial({
-      map: sunTex,
-      color: 0xffffff,
-    });
+    // Subtle deep-space ambient light for celestial occlusion & starlight fill
+    const spaceAmbient = new THREE.AmbientLight(0x1e293b, 0.35);
+    this.group.add(spaceAmbient);
+
+    // Sun 3D Visual Mesh with High-Fidelity GLSL Photosphere Shader (3D normal perturbation & convective granulation)
+    const sunGeo = new THREE.SphereGeometry(3.6, 64, 64);
+    const sunMat = createSunPhotosphereMaterial();
     this.sunMesh = new THREE.Mesh(sunGeo, sunMat);
     this.sunMesh.name = 'astro-sol';
     this.group.add(this.sunMesh);
 
-    // Sun Corona Glow (Inner Core Corona) - Radiant golden aura with additive blending
-    const coronaGeo = new THREE.SphereGeometry(7.6, 32, 32);
-    const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xfef08a,
-      transparent: true,
-      opacity: 0.35,
-      blending: THREE.AdditiveBlending,
-      side: THREE.FrontSide,
-    });
-    this.sunCorona = new THREE.Mesh(coronaGeo, coronaMat);
-    this.sunMesh.add(this.sunCorona);
+    // 3D Spherical Solar Chromosphere Shell (Seamless 360° volume with inverted Fresnel, no planar cut)
+    const chromosphereGeo = new THREE.SphereGeometry(3.6 * 1.08, 48, 48);
+    const chromosphereMat = createSunChromosphereMaterial();
+    this.sunChromosphere = new THREE.Mesh(chromosphereGeo, chromosphereMat);
+    this.sunChromosphere.name = 'astro-sol-chromosphere';
+    this.sunChromosphere.renderOrder = 2;
+    this.group.add(this.sunChromosphere);
 
-    // Sun Radiant Aura (Outer Corona)
-    const outerCoronaGeo = new THREE.SphereGeometry(9.2, 32, 32);
-    const outerCoronaMat = new THREE.MeshBasicMaterial({
-      color: 0xf59e0b,
-      transparent: true,
-      opacity: 0.18,
-      blending: THREE.AdditiveBlending,
-      side: THREE.FrontSide,
-    });
-    this.outerCorona = new THREE.Mesh(outerCoronaGeo, outerCoronaMat);
-    this.sunMesh.add(this.outerCorona);
+    // Volumetric Outer Solar Corona Streamers & Deep-Space Rays (Attached to group in world space)
+    const coronaQuadGeo = new THREE.PlaneGeometry(32, 32);
+    const coronaMat = createSunCoronaGlowMaterial();
+    this.sunCorona = new THREE.Mesh(coronaQuadGeo, coronaMat);
+    this.sunCorona.name = 'astro-sol-corona';
+    this.sunCorona.renderOrder = 1;
+    this.group.add(this.sunCorona);
 
-    // 2. Moon 3D Mesh with Procedural Lunar Maria & Craters
+    // 2. Moon 3D Mesh with Procedural PBR Textures (Albedo, Crater Rims Bump Map, Roughness)
     // Proportioned: Moon radius 0.46 (in visual balance with Earth radius 2.0)
     const moonGeo = new THREE.SphereGeometry(0.46, 32, 32);
-    const moonTex = getProceduralMoonTexture();
+    const moonPbr = getPlanetPBRMaps('moon');
     this.moonMaterial = new THREE.MeshStandardMaterial({
-      map: moonTex,
-      color: 0xffffff,
-      roughness: 0.85,
-      metalness: 0.05,
+      map: moonPbr.albedoMap,
+      bumpMap: moonPbr.bumpMap,
+      bumpScale: 0.08,
+      roughnessMap: moonPbr.roughnessMap,
+      roughness: moonPbr.roughness,
+      metalness: moonPbr.metalness,
     });
     this.moonMesh = new THREE.Mesh(moonGeo, this.moonMaterial);
     this.moonMesh.name = 'astro-lua';
@@ -168,12 +168,16 @@ export class CelestialSystem {
 
     // 3D Billboard Sprite for Moon
     const moonLabel = createAstroBillboardSprite('Lua', '☽', '#e2e8f0');
+    moonLabel.name = 'label-lua';
     moonLabel.position.set(0, 0.95, 0);
+    moonLabel.visible = false; // Hidden in static default view
     this.moonMesh.add(moonLabel);
 
     // 3D Billboard Sprite for Sun
     const sunLabel = createAstroBillboardSprite('Sol', '☉', '#f59e0b');
-    sunLabel.position.set(0, 7.6, 0);
+    sunLabel.name = 'label-sol';
+    sunLabel.position.set(0, 4.4, 0);
+    sunLabel.visible = false; // Hidden in static default view
     this.sunMesh.add(sunLabel);
 
     // 3. Planets of the Solar System Group
@@ -258,21 +262,31 @@ export class CelestialSystem {
     this.cachedPlanetsInfo = planets;
 
     planets.forEach((p) => {
-      const pGeo = new THREE.SphereGeometry(p.apparentSize, 32, 32);
-      const pTex = getProceduralPlanetTexture(p.id);
+      const pGeo = new THREE.SphereGeometry(p.apparentSize, 48, 48);
+      const pbr = getPlanetPBRMaps(p.id);
       const pMat = new THREE.MeshStandardMaterial({
-        map: pTex,
-        roughness: p.id === 'venus' ? 0.35 : 0.75,
-        metalness: 0.05,
+        map: pbr.albedoMap,
+        bumpMap: pbr.bumpMap,
+        bumpScale: pbr.bumpScale,
+        roughnessMap: pbr.roughnessMap,
+        roughness: pbr.roughness,
+        metalness: pbr.metalness,
       });
       const pMesh = new THREE.Mesh(pGeo, pMat);
       pMesh.position.copy(p.position);
       pMesh.name = `planet-${p.id}`;
       pMesh.userData = { astroId: p.id, name: p.name };
 
+      // Add Atmospheric Rayleigh scattering Fresnel limb glow for atmosphere-bearing planets
+      const atmoMesh = createPlanetAtmosphereMesh(p.id, p.apparentSize);
+      if (atmoMesh) {
+        pMesh.add(atmoMesh);
+      }
+
       // 3D Billboard Sprite Label for planet
       const planetLabel = createAstroBillboardSprite(p.name, p.symbol, p.color);
       planetLabel.position.set(0, p.apparentSize * 1.5 + 0.32, 0);
+      planetLabel.visible = false; // Hidden in default static view
       pMesh.add(planetLabel);
 
       // Add Saturn's rings if Saturn
@@ -319,12 +333,13 @@ export class CelestialSystem {
       }
       const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPoints);
       const orbitMat = new THREE.LineBasicMaterial({
-        color: 0xe2e8f0,
+        color: 0x94a3b8,
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.18,
       });
       const orbitLine = new THREE.Line(orbitGeo, orbitMat);
       orbitLine.name = `orbit-line-${p.id}`;
+      orbitLine.visible = false; // Hidden in default static view
       this.planetsGroup.add(orbitLine);
 
       this.planetsGroup.add(pMesh);
@@ -346,24 +361,38 @@ export class CelestialSystem {
     const earthOrbitMat = new THREE.LineBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.22,
     });
     const earthOrbitLine = new THREE.Line(earthOrbitGeo, earthOrbitMat);
     earthOrbitLine.name = 'orbit-line-terra';
+    earthOrbitLine.visible = false; // Hidden in default static view
     this.planetsGroup.add(earthOrbitLine);
 
-    // Add Asteroid Belt (Cinturão de Asteroides, ASTEROID_BELT_SCENE_RADIUS, between Mars 18.5 and Jupiter 27.5)
+    // Alignment axis line (visual ray passing from Sun through all aligned planets during simulation)
+    const alignPoints = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(120, 0, 0)];
+    const alignGeo = new THREE.BufferGeometry().setFromPoints(alignPoints);
+    const alignMat = new THREE.LineBasicMaterial({
+      color: 0xfbbf24,
+      transparent: true,
+      opacity: 0.35,
+    });
+    const alignmentLine = new THREE.Line(alignGeo, alignMat);
+    alignmentLine.name = 'alignment-axis-line';
+    alignmentLine.visible = false;
+    this.planetsGroup.add(alignmentLine);
+
+    // Add Asteroid Belt (Cinturão de Asteroides, ASTEROID_BELT_SCENE_RADIUS)
     const asteroidCount = 900;
     const asteroidGeo = new THREE.BufferGeometry();
     const asteroidPositions = new Float32Array(asteroidCount * 3);
     const asteroidColors = new Float32Array(asteroidCount * 3);
     const beltCenter = ASTEROID_BELT_SCENE_RADIUS;
-    const beltWidth = 3.2;
+    const beltWidth = 4.5;
 
     for (let i = 0; i < asteroidCount; i++) {
       const a = Math.random() * Math.PI * 2;
       const r = beltCenter + (Math.random() - 0.5) * beltWidth;
-      const yLoft = (Math.random() - 0.5) * 0.9;
+      const yLoft = (Math.random() - 0.5) * 1.1;
       const x = r * Math.cos(a);
       const y = yLoft;
       const z = r * Math.sin(a);
@@ -381,44 +410,51 @@ export class CelestialSystem {
     asteroidGeo.setAttribute('color', new THREE.BufferAttribute(asteroidColors, 3));
 
     const asteroidMat = new THREE.PointsMaterial({
-      size: 0.18,
+      size: 0.14,
       vertexColors: true,
       transparent: true,
-      opacity: 0.82,
+      opacity: 0.40,
     });
     const asteroidBelt = new THREE.Points(asteroidGeo, asteroidMat);
     asteroidBelt.name = 'asteroid-belt';
+    asteroidBelt.visible = false; // Hidden in default static view
     this.planetsGroup.add(asteroidBelt);
 
     const asteroidLabel = createAstroBillboardSprite('Cinturão de Asteroides', '☄', '#94a3b8');
+    asteroidLabel.name = 'label-asteroides';
     asteroidLabel.position.set(beltCenter, 0.7, 0);
+    asteroidLabel.visible = false; // Hidden in default static view
     this.planetsGroup.add(asteroidLabel);
 
     // Add Comet with glowing vapor tail (Cometa Periélico)
     const cometHeadGeo = new THREE.SphereGeometry(0.24, 16, 16);
     const cometHeadMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9 });
     const cometHead = new THREE.Mesh(cometHeadGeo, cometHeadMat);
-    cometHead.position.set(22.0, 1.4, 25.0);
+    cometHead.position.set(38.0, 2.4, 42.0);
     cometHead.name = 'comet-head';
+    cometHead.visible = false; // Hidden in default static view
 
     const cometTailPoints = [
-      new THREE.Vector3(22.0, 1.4, 25.0),
-      new THREE.Vector3(24.2, 1.8, 28.5),
-      new THREE.Vector3(26.8, 2.3, 32.5),
+      new THREE.Vector3(38.0, 2.4, 42.0),
+      new THREE.Vector3(41.2, 3.1, 47.5),
+      new THREE.Vector3(45.5, 3.8, 54.0),
     ];
     const cometTailGeo = new THREE.BufferGeometry().setFromPoints(cometTailPoints);
     const cometTailMat = new THREE.LineBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.65,
+      opacity: 0.45,
     });
     const cometTail = new THREE.Line(cometTailGeo, cometTailMat);
     cometTail.name = 'comet-tail';
+    cometTail.visible = false; // Hidden in default static view
     this.planetsGroup.add(cometHead);
     this.planetsGroup.add(cometTail);
 
     const cometLabel = createAstroBillboardSprite('Cometa Periélico', '☄', '#38bdf8');
-    cometLabel.position.set(22.0, 2.2, 25.0);
+    cometLabel.name = 'label-cometa';
+    cometLabel.position.set(38.0, 3.4, 42.0);
+    cometLabel.visible = false; // Hidden in default static view
     this.planetsGroup.add(cometLabel);
 
     // Add Moon's Geocentric orbit path around the Earth (MOON_SCENE_ORBIT_RADIUS scene units, inclined 5.145°)
@@ -437,10 +473,11 @@ export class CelestialSystem {
     const moonOrbitMat = new THREE.LineBasicMaterial({
       color: 0xe2e8f0,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.20,
     });
     const moonOrbitLine = new THREE.Line(moonOrbitGeo, moonOrbitMat);
     moonOrbitLine.name = 'orbit-line-lua';
+    moonOrbitLine.visible = false; // Hidden in default static view
     this.group.add(moonOrbitLine);
   }
 
@@ -480,10 +517,11 @@ export class CelestialSystem {
     const earthPos = orbitalState.earthScenePos;
     const moonPos = orbitalState.moonScenePos;
 
-    // Direction vector from Earth pointing directly towards Sun (for surface shaders & lighting)
-    const sunDirection = sunPos.clone().sub(earthPos).normalize();
-    // Direction vector from Earth pointing towards Moon
-    const moonDirection = moonPos.clone().sub(earthPos).normalize();
+    // Vetores subsolar e sublunar calculados pela efeméride analítica real baseada na hora UTC (Brasília UTC-3)
+    const solarCoords = calculateSolarCoordinates(date, seasonOverride);
+    const lunarCoords = calculateLunarCoordinates(date);
+    const sunDirection = solarCoords.sunDirection.clone();
+    const moonDirection = lunarCoords.moonDirection.clone();
 
     // Update planets according to heliocentric physics
     orbitalState.planets.forEach((p) => {
@@ -499,6 +537,8 @@ export class CelestialSystem {
 
     this.sunPointLight.position.copy(sunPos);
     this.sunMesh.position.copy(sunPos);
+    this.sunChromosphere.position.copy(sunPos);
+    this.sunCorona.position.copy(sunPos);
     this.planetsGroup.position.copy(sunPos);
 
     this.moonMesh.position.copy(moonPos);
@@ -759,6 +799,53 @@ export class CelestialSystem {
   }
 
   /**
+   * Toggles orbital trajectory lines, labels, asteroid belt, comet and cosmic lines.
+   * In static view (standard camera focused on Brazil), all orbital lines are strictly hidden.
+   * They only appear discretely when active simulation is running or in heliocentric overview.
+   */
+  public setOrbitalVisualsVisibility(visible: boolean, opacity: number = 0.20, isAligned = false): void {
+    const orbitNames = [
+      'orbit-line-lua',
+      'orbit-line-terra',
+      ...SOLAR_SYSTEM_PLANETS.map((p) => `orbit-line-${p.id}`),
+    ];
+
+    orbitNames.forEach((name) => {
+      const obj = this.group.getObjectByName(name) || this.planetsGroup.getObjectByName(name);
+      if (obj) {
+        obj.visible = visible;
+        if (obj instanceof THREE.Line && obj.material instanceof THREE.LineBasicMaterial) {
+          obj.material.opacity = opacity;
+        }
+      }
+    });
+
+    const alignmentLine = this.planetsGroup.getObjectByName('alignment-axis-line');
+    if (alignmentLine) {
+      alignmentLine.visible = visible && isAligned;
+    }
+
+    const asteroidBelt = this.planetsGroup.getObjectByName('asteroid-belt');
+    if (asteroidBelt) asteroidBelt.visible = visible;
+
+    const cometHead = this.planetsGroup.getObjectByName('comet-head');
+    if (cometHead) cometHead.visible = visible;
+    const cometTail = this.planetsGroup.getObjectByName('comet-tail');
+    if (cometTail) cometTail.visible = visible;
+
+    // Billboard labels
+    this.planetsGroup.traverse((child) => {
+      if (child instanceof THREE.Sprite) {
+        child.visible = visible;
+      }
+    });
+    const moonLabel = this.moonMesh.getObjectByName('label-lua');
+    if (moonLabel) moonLabel.visible = visible;
+    const sunLabel = this.sunMesh.getObjectByName('label-sol');
+    if (sunLabel) sunLabel.visible = visible;
+  }
+
+  /**
    * Clears cosmic trajectory line and beacon
    */
   public clearCosmicTrajectory(): void {
@@ -768,23 +855,48 @@ export class CelestialSystem {
   }
 
   /**
-   * Ticks trajectory visual animation and solar/planetary rotation
+   * Ticks trajectory visual animation, billboard alignment, and solar/planetary rotation
    */
-  public tickTrajectory(elapsed: number): void {
+  public tickTrajectory(elapsed: number, camera?: THREE.Camera): void {
     if (this.sunMesh) {
       this.sunMesh.rotation.y += 0.0015;
-      this.sunCorona.rotation.z -= 0.001;
-      if (this.outerCorona) {
-        this.outerCorona.rotation.z += 0.0008;
+      if (this.sunMesh.material instanceof THREE.ShaderMaterial && this.sunMesh.material.uniforms.u_time) {
+        this.sunMesh.material.uniforms.u_time.value = elapsed;
+      }
+    }
+    if (this.sunChromosphere) {
+      if (this.sunChromosphere.material instanceof THREE.ShaderMaterial && this.sunChromosphere.material.uniforms.u_time) {
+        this.sunChromosphere.material.uniforms.u_time.value = elapsed;
+      }
+    }
+    if (this.sunCorona) {
+      if (camera) {
+        // Align volumetric radial corona quad perpendicularly to camera in world space
+        this.sunCorona.quaternion.copy(camera.quaternion);
+      }
+      if (this.sunCorona.material instanceof THREE.ShaderMaterial && this.sunCorona.material.uniforms.u_time) {
+        this.sunCorona.material.uniforms.u_time.value = elapsed;
       }
     }
     if (this.moonMesh) {
       this.moonMesh.rotation.y += 0.0008;
     }
     if (this.planetsGroup) {
+      const sunPos = this.sunMesh.position;
       this.planetsGroup.children.forEach((c) => {
         if (c instanceof THREE.Mesh && c.name.startsWith('planet-')) {
           c.rotation.y += 0.003;
+          // Update planetary atmosphere sun-facing direction
+          c.children.forEach((child) => {
+            if (child instanceof THREE.Mesh && child.name.startsWith('atmosphere-')) {
+              if (child.material instanceof THREE.ShaderMaterial && child.material.uniforms.u_sunDirection) {
+                const worldPos = new THREE.Vector3();
+                c.getWorldPosition(worldPos);
+                const dirToSun = new THREE.Vector3().subVectors(sunPos, worldPos).normalize();
+                child.material.uniforms.u_sunDirection.value.copy(dirToSun);
+              }
+            }
+          });
         } else if (c.name === 'asteroid-belt') {
           c.rotation.y += 0.0004;
         }
@@ -805,15 +917,19 @@ export class CelestialSystem {
     return this.sunMesh.position.clone();
   }
 
+  public setSunVisible(visible: boolean): void {
+    if (this.sunMesh) this.sunMesh.visible = visible;
+    if (this.sunChromosphere) this.sunChromosphere.visible = visible;
+    if (this.sunCorona) this.sunCorona.visible = visible;
+  }
+
   public dispose(): void {
     this.sunMesh.geometry.dispose();
     (this.sunMesh.material as THREE.Material).dispose();
+    this.sunChromosphere.geometry.dispose();
+    (this.sunChromosphere.material as THREE.Material).dispose();
     this.sunCorona.geometry.dispose();
     (this.sunCorona.material as THREE.Material).dispose();
-    if (this.outerCorona) {
-      this.outerCorona.geometry.dispose();
-      (this.outerCorona.material as THREE.Material).dispose();
-    }
     this.moonMesh.geometry.dispose();
     this.moonMaterial.dispose();
     this.cosmicBeamMoon.geometry.dispose();

@@ -147,7 +147,7 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
       }
       case 'mortalidade': {
         return {
-          text: `${profile.vitais.expectativaVidaAnos.toFixed(1)} anos`,
+          text: `${profile.vitais.expectativaVidaAnos.toFixed(0)}a`,
           color: '#f43f5e',
         };
       }
@@ -156,12 +156,12 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
         const branco = profile.etnia.brancoPercent;
         const preto = profile.etnia.pretoPercent;
         const indigena = profile.etnia.indigenaPercent;
-        let dominant = 'Pardo';
+        let dominant = 'P';
         let val = pardo;
         let color = '#f59e0b';
-        if (branco > val) { dominant = 'Branco'; val = branco; color = '#38bdf8'; }
-        if (preto > val) { dominant = 'Preto'; val = preto; color = '#a855f7'; }
-        if (indigena > val) { dominant = 'Indígena'; val = indigena; color = '#10b981'; }
+        if (branco > val) { dominant = 'B'; val = branco; color = '#38bdf8'; }
+        if (preto > val) { dominant = 'PR'; val = preto; color = '#a855f7'; }
+        if (indigena > val) { dominant = 'I'; val = indigena; color = '#10b981'; }
         return {
           text: `${val.toFixed(0)}% ${dominant}`,
           color,
@@ -169,26 +169,26 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
       }
       case 'genero': {
         return {
-          text: `${profile.genero.mulheresPercent.toFixed(1)}% ♀`,
+          text: `${profile.genero.mulheresPercent.toFixed(0)}%♀`,
           color: '#ec4899',
         };
       }
       case 'densidade': {
         const dens = profile.demografia.densidadeHabKm2;
         return {
-          text: `${dens < 10 ? dens.toFixed(1) : Math.round(dens)} hab/km²`,
+          text: `${Math.round(dens)}/km²`,
           color: dens > 100 ? '#f43f5e' : dens > 30 ? '#f59e0b' : '#38bdf8',
         };
       }
       case 'natalidade': {
         return {
-          text: `${profile.vitais.taxaNatalidadePorMil.toFixed(1)} ‰`,
+          text: `${profile.vitais.taxaNatalidadePorMil.toFixed(1)}‰`,
           color: '#06b6d4',
         };
       }
       case 'analfabetismo': {
         return {
-          text: `${profile.educacao.taxaAlfabetizacao.toFixed(1)}%`,
+          text: `${profile.educacao.taxaAlfabetizacao.toFixed(0)}%`,
           color: '#10b981',
         };
       }
@@ -251,7 +251,6 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
               }`}
               style={{
                 transform: 'translate(-50%, -100%)',
-                filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75))',
                 transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}
               onMouseEnter={() => {
@@ -267,26 +266,26 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
               }}
               aria-label={`Geopolítica ${profile.stateName} (${stateId})`}
             >
-              {/* BALÃO DISCRETO E MINIMALISTA DO PIN (UF • DADO) */}
+              {/* BALÃO DISCRETO E MINIMALISTA DO PIN (UF • DADO RESUMIDO) */}
               <div
-                className={`card-pin-geopolitica flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/95 border transition-all ${
+                className={`card-pin-geopolitica flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-950/95 border transition-all ${
                   isHovered || isSelected
-                    ? 'border-cyan-400 bg-slate-900 ring-2 ring-cyan-400/80 shadow-cyan-950/90 scale-105'
-                    : 'border-slate-700/90 hover:border-cyan-400 hover:bg-slate-900/95'
+                    ? 'border-cyan-400 bg-slate-900 ring-1 ring-cyan-400/80 scale-105'
+                    : 'border-slate-700/80 hover:border-cyan-400 hover:bg-slate-900/95'
                 }`}
                 style={{
                   boxShadow: isHovered || isSelected
-                    ? `0 0 16px ${summary.color}60, 0 8px 24px rgba(0,0,0,0.9)`
-                    : `0 4px 12px rgba(0,0,0,0.75)`,
+                    ? `0 0 10px ${summary.color}60, 0 3px 8px rgba(0,0,0,0.6)`
+                    : `0 2px 4px rgba(0,0,0,0.45)`,
                 }}
               >
                 {/* Sigla do Estado */}
-                <span className="text-xs font-mono font-black text-white">{stateId}</span>
-                {/* Ponto divisor com a cor do tema */}
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: summary.color }} />
-                {/* Valor Direto */}
+                <span className="text-[10.5px] font-mono font-black text-slate-100 leading-none">{stateId}</span>
+                {/* Separador minimalista */}
+                <span className="text-[9px] font-mono font-semibold text-slate-400 leading-none">:</span>
+                {/* Valor Direto Resumido (ex: 69% P, 70% P) */}
                 <span
-                  className="text-xs font-mono font-bold tracking-tight whitespace-nowrap"
+                  className="text-[10.5px] font-mono font-bold tracking-tight whitespace-nowrap leading-none"
                   style={{ color: summary.color }}
                 >
                   {summary.text}
@@ -294,13 +293,13 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
               </div>
 
               {/* HASTE DISCRETA DO PIN COM PONTA CÔNICA */}
-              <div className="flex flex-col items-center -mt-0.5 pointer-events-none">
+              <div className="flex flex-col items-center pointer-events-none">
                 <div
-                  className="w-0.5 h-2 shadow-sm"
+                  className="w-[1.5px] h-1.5"
                   style={{ backgroundColor: summary.color }}
                 />
                 <div
-                  className="w-1.5 h-1.5 rounded-full ring-1 ring-white/40"
+                  className="w-1 h-1 rounded-full"
                   style={{ backgroundColor: summary.color }}
                 />
               </div>

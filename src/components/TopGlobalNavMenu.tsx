@@ -361,74 +361,47 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     };
   }, []);
 
-  // Se o painel lateral de qualquer modo estiver aberto, garante que o flyout não sobreponha
-  useEffect(() => {
-    if (isGeopoliticaPanelOpen || isBiodiversityPanelOpen || isObservatorioOpen) {
-      setOpenFlyoutMode(null);
-    }
-  }, [isGeopoliticaPanelOpen, isBiodiversityPanelOpen, isObservatorioOpen]);
-
   // Handler para clique nos botões principais da sidebar
   const handleModeButtonClick = (mode: AppMainMode) => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
-    const isChangingMode = mainMode !== mode;
-    if (isChangingMode) {
-      onSelectMainMode(mode);
-      setOpenFlyoutMode(null);
-      return;
-    }
-    
-    // Se o usuário clicou no modo já ativo, alterna o painel dedicado do modo sem abrir flyouts sobrepostos
+
+    // No modo Globo 3D, as ferramentas agora residem no Footer do aplicativo.
+    // O botão na sidebar alterna o modo diretamente sem exibir subitens legados.
     if (mode === 'globo3d') {
       setOpenFlyoutMode(null);
-      onToggleGlobeTelemetry?.();
-      return;
-    }
-
-    if (mode === 'geopolitica') {
-      setOpenFlyoutMode(null);
-      onToggleGeopoliticaPanel?.();
-      return;
-    }
-
-    if (mode === 'biodiversidade') {
-      setOpenFlyoutMode(null);
-      onToggleBiodiversityPanel?.();
-      return;
-    }
-
-    if (mode === 'clima') {
-      setOpenFlyoutMode(null);
-      onToggleObservatorio?.();
-      return;
-    }
-
-    if (mode === 'musicalidades') {
-      setOpenFlyoutMode(null);
-      onToggleRadio?.();
-      return;
-    }
-
-    if (mode === 'aventura') {
-      if (openFlyoutMode === 'aventura') {
-        setOpenFlyoutMode(null);
+      if (mainMode === 'globo3d') {
+        onSelectMainMode('clima');
       } else {
-        setOpenFlyoutMode('aventura');
-        const btn = buttonRefs.current['aventura'];
-        if (btn) {
-          const btnRect = btn.getBoundingClientRect();
-          const btnCenterY = btnRect.top + btnRect.height / 2;
-          const initialTop = Math.max(12, Math.min(window.innerHeight - 380, btnCenterY - 48));
-          setFlyoutPos({
-            top: Math.round(initialTop),
-            arrowTop: Math.round(btnCenterY - initialTop),
-          });
-        }
-        setTimeout(() => updateFlyoutPosition('aventura'), 16);
+        onSelectMainMode('globo3d');
       }
       return;
     }
+
+    // Se já estiver com o menu flyout deste modo aberto, fecha o flyout
+    if (openFlyoutMode === mode) {
+      setOpenFlyoutMode(null);
+      return;
+    }
+
+    // Se estiver em outro modo, seleciona o modo clicado
+    if (mainMode !== mode) {
+      onSelectMainMode(mode);
+    }
+
+    // Abre o menu flyout do modo selecionado
+    setOpenFlyoutMode(mode);
+    const btn = buttonRefs.current[mode];
+    if (btn) {
+      const btnRect = btn.getBoundingClientRect();
+      const btnCenterY = btnRect.top + btnRect.height / 2;
+      const initialTop = Math.max(12, Math.min(window.innerHeight - 380, btnCenterY - 48));
+      setFlyoutPos({
+        top: Math.round(initialTop),
+        arrowTop: Math.round(btnCenterY - initialTop),
+      });
+    }
+    setTimeout(() => updateFlyoutPosition(mode), 16);
   };
 
   // Helper para acionar seleção de subitem, executar transformação e recolher flyout
@@ -817,11 +790,11 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     }}
                     onClick={() => handleModeButtonClick('globo3d')}
                     {...bindTooltip({
-                      title: `Globo 3D: ${getGloboActiveLabel()}`,
+                      title: 'Globo 3D Orbital',
                       badge: mainMode === 'globo3d' ? 'Modo Ativo' : 'Órbita Terrestre',
                       badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
                       description:
-                        'Clique para abrir o menu flutuante do Globo 3D: Satélite NASA HD, Luzes Noturnas, Fronteiras Vetoriais, Nuvens 3D, Rotação e Brasões.',
+                        'Clique para alternar para o Globo 3D Orbital (Visão do Espaço, Ciclo Solar 24h, Órbitas e Ferramentas no Rodapé).',
                     })}
                     className={`btn-modo-globo3d relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'globo3d'

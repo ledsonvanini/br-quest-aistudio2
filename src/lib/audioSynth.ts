@@ -127,11 +127,18 @@ class AudioEngine {
     });
   }
 
+  private lastClickTime = 0;
+
   public playSfx(type: 'click' | 'step' | 'levelUp' | 'badge' | 'fanfare' | 'scroll' | 'hover' | 'travel') {
     if (!this.soundEnabled) return;
     this.initCtx();
 
     if (type === 'click') {
+      const now = performance.now();
+      if (now - this.lastClickTime < 75) {
+        return; // Previne duplicidade de clique sonoro em disparos encadeados (<75ms)
+      }
+      this.lastClickTime = now;
       this.playNote(520, 0.08, 'sine');
     } else if (type === 'travel') {
       this.playHymnArpeggio([440, 554, 659, 880]);

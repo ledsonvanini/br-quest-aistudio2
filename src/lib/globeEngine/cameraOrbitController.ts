@@ -25,6 +25,9 @@ export class CameraOrbitController {
   public targetAstroId: string | null = null;
   public targetMesh: THREE.Object3D | null = null;
 
+  private lastEarthPos: THREE.Vector3 | null = null;
+  private lastTargetMeshPos: THREE.Vector3 | null = null;
+
   private glideState: CameraGlideState = {
     startPos: new THREE.Vector3(),
     endPos: new THREE.Vector3(),
@@ -50,8 +53,7 @@ export class CameraOrbitController {
   }
 
   /**
-   * Inicia transição orbital esférica pura.
-   * Evita trajetórias retilíneas que cortam por dentro de corpos celestes.
+   * Inicia transição orbital esférica e direta ao ponto alvo.
    */
   public glideTo(
     targetPos: THREE.Vector3,
@@ -82,42 +84,58 @@ export class CameraOrbitController {
   public update(nowMs: number, earthPos?: THREE.Vector3, isOrbitalPlaying = false): void {
     if (!this.camera || !this.controls) return;
 
+    // 1. Rastreamento dinâmico de translação da Terra ou astros durante transição ou em repouso
+    if (this.focusMode === 'earth' && earthPos) {
+      if (this.lastEarthPos) {
+        const deltaEarth = earthPos.clone().sub(this.lastEarthPos);
+        if (deltaEarth.lengthSq() > 0.0000001) {
+          // Se a Terra se moveu no espaço orbital, move a câmera e o alvo em sincronia absoluta
+          if (this.glideState.active) {
+            this.glideState.endPos.add(deltaEarth);
+            this.glideState.endTarget.add(deltaEarth);
+          } else {
+            this.camera.position.add(deltaEarth);
+            this.controls.target.add(deltaEarth);
+          }
+        }
+      }
+      this.lastEarthPos = earthPos.clone();
+    } else {
+      this.lastEarthPos = null;
+    }
+
+    if ((this.focusMode === 'moon' || this.focusMode === 'planet') && this.targetMesh) {
+      const meshWorld = new THREE.Vector3();
+      this.targetMesh.getWorldPosition(meshWorld);
+      if (this.lastTargetMeshPos) {
+        const delta = meshWorld.clone().sub(this.lastTargetMeshPos);
+        if (delta.lengthSq() > 0.0000001) {
+          if (this.glideState.active) {
+            this.glideState.endPos.add(delta);
+            this.glideState.endTarget.add(delta);
+          } else {
+            this.camera.position.add(delta);
+            this.controls.target.add(delta);
+          }
+        }
+      }
+      this.lastTargetMeshPos = meshWorld.clone();
+    } else {
+      this.lastTargetMeshPos = null;
+    }
+
+    // 2. Executa a interpolação suave da câmera durante o voo
     if (this.glideState.active) {
       const elapsed = nowMs - this.glideState.startTime;
       const progress = Math.min(1.0, elapsed / this.glideState.durationMs);
 
-      // Easing cúbico monotônico desacelerado (sem overshooting)
+      // Easing cúbico desacelerado puro (monotônico, sem overshooting nem distorção)
       const ease = 1.0 - Math.pow(1.0 - progress, 3);
 
-      // 1. Interpola o centro focal (look target)
-      const currentTarget = new THREE.Vector3().lerpVectors(
-        this.glideState.startTarget,
-        this.glideState.endTarget,
-        ease
-      );
-      this.controls.target.copy(currentTarget);
-
-      // 2. Interpolação esférica da posição da câmera ao redor do centro focal
-      const startOffset = this.glideState.startPos.clone().sub(this.glideState.startTarget);
-      const endOffset = this.glideState.endPos.clone().sub(this.glideState.endTarget);
-
-      const startDist = Math.max(0.1, startOffset.length());
-      const endDist = Math.max(0.1, endOffset.length());
-      const currentDist = (1.0 - ease) * startDist + ease * endDist;
-
-      const startDir = startOffset.normalize();
-      const endDir = endOffset.normalize();
-
-      // Rotação geodésica em arco esférico usando Quaternion Slerp
-      const qStart = new THREE.Quaternion();
-      const qTarget = new THREE.Quaternion().setFromUnitVectors(startDir, endDir);
-      const qCurrent = new THREE.Quaternion();
-      qCurrent.slerpQuaternions(qStart, qTarget, ease);
-
-      const currentDir = startDir.clone().applyQuaternion(qCurrent).normalize();
-      this.camera.position.copy(currentTarget).add(currentDir.multiplyScalar(currentDist));
-
-      this.controls.update();
+      // Interpolação direta e precisa do ponto de visada e da posição
+      this.controls.target.lerpVectors(this.glideState.startTarget, this.glideState.endTarget, ease);
+      this.camera.position.lerpVectors(this.glideState.startPos, this.glideState.endPos, ease);
+      this.camera.lookAt(this.controls.target);
 
       if (progress >= 1.0) {
         this.glideState.active = false;
@@ -128,57 +146,7 @@ export class CameraOrbitController {
       return;
     }
 
-    // Modo contínuo (quando a transição terminou)
-    this.handleContinuousTracking(earthPos, isOrbitalPlaying);
-  }
-
-  /**
-   * Mantém o enquadramento estável e contínuo no corpo celeste correspondente
-   */
-  private handleContinuousTracking(earthPos?: THREE.Vector3, isOrbitalPlaying = false): void {
-    if (!this.controls || !this.camera) return;
-
-    if (this.focusMode === 'sun') {
-      const sunPos = new THREE.Vector3(0, 0, 0);
-      this.controls.target.lerp(sunPos, 0.1);
-      this.controls.update();
-      return;
-    }
-
-    if (this.focusMode === 'moon' && this.targetMesh) {
-      const moonWorld = new THREE.Vector3();
-      this.targetMesh.getWorldPosition(moonWorld);
-
-      const delta = moonWorld.clone().sub(this.controls.target);
-      this.camera.position.add(delta);
-      this.controls.target.copy(moonWorld);
-      this.controls.update();
-      return;
-    }
-
-    if (this.focusMode === 'planet' && this.targetMesh) {
-      const planetWorld = new THREE.Vector3();
-      this.targetMesh.getWorldPosition(planetWorld);
-
-      const delta = planetWorld.clone().sub(this.controls.target);
-      this.camera.position.add(delta);
-      this.controls.target.copy(planetWorld);
-      this.controls.update();
-      return;
-    }
-
-    if (this.focusMode === 'earth' && earthPos) {
-      if (isOrbitalPlaying) {
-        const deltaEarth = earthPos.clone().sub(this.controls.target);
-        this.camera.position.add(deltaEarth);
-        this.controls.target.copy(earthPos);
-      } else {
-        this.controls.target.lerp(earthPos, 0.1);
-      }
-      this.controls.update();
-      return;
-    }
-
+    // 3. Atualização normal dos controles de órbita
     this.controls.update();
   }
 }

@@ -1391,7 +1391,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   useEffect(() => {
     if (centerTrigger !== undefined && centerTrigger > 0 && centerTrigger !== lastCenterTriggerRef.current) {
       lastCenterTriggerRef.current = centerTrigger;
-      handleResetView(true);
+      handleResetView(false);
     }
   }, [centerTrigger, handleResetView]);
 
