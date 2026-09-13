@@ -20,6 +20,8 @@ import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
 import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFetchTimestamp } from './services/climateService';
 import { apiTracker } from './services/apiTracker';
 import { QuestThemePillar } from './data/brQuestQuestionsData';
+import { DailyTipsModal } from './components/quest/DailyTipsModal';
+import { useDailyTips } from './hooks/useDailyTips';
 
 import { useAppModes } from './hooks/useAppModes';
 import { centralizarZoomMapa } from './services/mapModeService';
@@ -36,6 +38,7 @@ export function App() {
   const [isUserProfileOpen, setIsUserProfileOpen] = useState<boolean>(false);
   const [isBrQuestHubOpen, setIsBrQuestHubOpen] = useState<boolean>(false);
   const [brQuestInitialPillar, setBrQuestInitialPillar] = useState<QuestThemePillar | 'nacional' | null>(null);
+  const [isDailyTipsOpen, setIsDailyTipsOpen] = useState<boolean>(false);
   const [showFps, setShowFps] = useState<boolean>(false);
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
@@ -363,6 +366,49 @@ export function App() {
     setHoveredStateId(null);
   };
 
+  const handleGainXp = (xpEarned: number, label: string) => {
+    setProgress((prev) => {
+      const newXp = prev.xp + xpEarned;
+      const oldLevelData = calculateLevel(prev.xp);
+      const newLevelData = calculateLevel(newXp);
+
+      if (newLevelData.level > oldLevelData.level) {
+        audioEngine.playSfx('levelUp');
+        showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
+      } else {
+        showNotification(`💡 ${label}: +${xpEarned} XP!`);
+      }
+
+      const updated: UserProgress = {
+        ...prev,
+        xp: newXp,
+        level: newLevelData.level,
+      };
+
+      saveUserProgress(updated);
+      return updated;
+    });
+  };
+
+  const dailyTips = useDailyTips(handleGainXp);
+
+  const handleTeleportFromDailyTip = (stateId: string, suggestedMode: '2d' | 'globo3d') => {
+    if (suggestedMode === 'globo3d') {
+      selectMainMode('globo3d');
+    } else {
+      if (mainMode === 'globo3d') {
+        selectMainMode('clima');
+      }
+    }
+    setSelectedStateId(stateId);
+    setFocusedStateId(stateId);
+    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
+    if (guardian) {
+      showNotification(`✨ Teletransportado para ${guardian.stateNamePt}!`);
+    }
+    audioEngine.playSfx('click');
+  };
+
   return (
     <div
       className="container-app-principal h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 select-none"
@@ -548,6 +594,8 @@ export function App() {
             setCenterMapTrigger((prev) => prev + 1);
           }}
           hoveredStateId={hoveredStateId}
+          onOpenDailyTips={() => setIsDailyTipsOpen(true)}
+          dailyTipsUnreadCount={dailyTips.unreadCount}
           onOpenBrQuestHub={(pillar) => {
             setBrQuestInitialPillar(pillar || null);
             setIsBrQuestHubOpen(true);
@@ -645,6 +693,8 @@ export function App() {
               onGeopoliticaMetricChange={setGeopoliticaMetric}
               isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
               onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
+              onOpenDailyTips={() => setIsDailyTipsOpen(true)}
+              dailyTipsUnreadCount={dailyTips.unreadCount}
             />
           </div>
 
@@ -711,6 +761,15 @@ export function App() {
         onGainXp={(xp) => handleBrQuestComplete(xp, Math.round(xp / 75))}
         playerLevel={progress.level}
         playerXp={progress.xp}
+      />
+
+      {/* 5 Dicas do Dia: Você Sabia? Modal (Retenção DAU & Curiosidades Oficiais) */}
+      <DailyTipsModal
+        isOpen={isDailyTipsOpen}
+        onClose={() => setIsDailyTipsOpen(false)}
+        onTeleportToState={handleTeleportFromDailyTip}
+        onGainXp={handleGainXp}
+        dailyTipsController={dailyTips}
       />
 
       {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS Swap | APIs ] */}

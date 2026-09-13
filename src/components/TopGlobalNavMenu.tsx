@@ -38,6 +38,7 @@ import {
   Percent,
   Gauge,
   HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 import { audioEngine } from '../lib/audioSynth';
 import { apiTracker } from '../services/apiTracker';
@@ -156,6 +157,8 @@ interface Props {
   showFps?: boolean;
   onToggleFps?: () => void;
   onOpenApiStatus?: () => void;
+  onOpenDailyTips?: () => void;
+  dailyTipsUnreadCount?: number;
 }
 
 export const TopGlobalNavMenu: React.FC<Props> = ({
@@ -227,6 +230,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   showFps = false,
   onToggleFps,
   onOpenApiStatus,
+  onOpenDailyTips,
+  dailyTipsUnreadCount,
 }) => {
   const activeCelestialMode = timeOverride || celestialTimeOverride;
 
@@ -846,6 +851,42 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     )}
                   </button>
                 </div>
+
+                {/* 7. DICAS DO DIA: VOCÊ SABIA? */}
+                {onOpenDailyTips && (
+                  <div className="relative pt-0.5">
+                    <button
+                      id="btn-sidebar-dicas-do-dia"
+                      type="button"
+                      onClick={() => {
+                        audioEngine.playSfx('click');
+                        setHoveredMenuTooltip(null);
+                        setOpenFlyoutMode(null);
+                        onOpenDailyTips();
+                      }}
+                      {...bindTooltip({
+                        title: '5 Dicas do Dia: Você Sabia?',
+                        badge:
+                          dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0
+                            ? `${dailyTipsUnreadCount} Novas`
+                            : '5/5 Lidas',
+                        badgeColor:
+                          dailyTipsUnreadCount && dailyTipsUnreadCount > 0
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                        description:
+                          'Pílulas diárias de curiosidades com dados abertos oficiais (IBGE, INPE, NASA, ICMBio), ganho de XP e teletransporte instantâneo.',
+                      })}
+                      className="btn-sidebar-dicas-do-dia relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-amber-100 shadow-md group"
+                      aria-label="5 Dicas do Dia: Você Sabia?"
+                    >
+                      <Sparkles className="w-5 h-5 text-amber-400 group-hover:rotate-12 transition-transform" />
+                      {dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-slate-950 shadow-[0_0_8px_#f59e0b] animate-pulse pointer-events-none" />
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

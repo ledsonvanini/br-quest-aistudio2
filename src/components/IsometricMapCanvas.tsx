@@ -141,6 +141,8 @@ interface Props {
   globePinMode?: 'all' | 'compact' | 'none';
   isGlobeTelemetryOpen?: boolean;
   onToggleGlobeTelemetry?: () => void;
+  onOpenDailyTips?: () => void;
+  dailyTipsUnreadCount?: number;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -203,6 +205,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   globePinMode = 'all',
   isGlobeTelemetryOpen,
   onToggleGlobeTelemetry,
+  onOpenDailyTips,
+  dailyTipsUnreadCount,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -1630,6 +1634,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onZoomOut={isGlobe3DActive ? () => setGlobeZoomOutTrigger((c) => c + 1) : handleZoomOut}
         onResetView={isGlobe3DActive ? () => setGlobeCenterTrigger((c) => c + 1) : handleResetView}
         zoom={isGlobe3DActive ? 1.0 : zoom}
+        onOpenDailyTips={onOpenDailyTips}
+        dailyTipsUnreadCount={dailyTipsUnreadCount}
       />
 
       {/* 4.5. Top HUD Celestial Orb (Sol / Lua de Brasília na HUD de Topo - apenas nos modos 2D/isométrico, oculto no Globo 3D) */}

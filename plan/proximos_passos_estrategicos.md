@@ -24,9 +24,10 @@ Os próximos passos foram agrupados em quatro pilares estratégicos, priorizados
 ├───────────────┬──────────────────────────────────┬───────────────────────────┬────────┤
 │ Horizonte     │ Iniciativa                       │ Pilar de Valor            │ Status │
 ├───────────────┼──────────────────────────────────┼───────────────────────────┼────────┤
-│ H1: Imediato  │ "5 Dicas do Dia: Você Sabia?"    │ Retenção & DAU (Alavanca) │ Prior.1│
-│ H1: Imediato  │ Nuvem & Auth (Firebase)          │ Conversão Free -> Pro     │ Prior.2│
-│ H1: Imediato  │ Modularização de `BrazilMapD3`   │ Governança (250-270 lin)  │ Prior.3│
+│ H1: Imediato  │ "5 Dicas do Dia: Você Sabia?"    │ Retenção & DAU (Alavanca) │Concluído
+│ H1: Imediato  │ Auth Desacoplado & SQLite Local  │ Portabilidade & Leveza    │Concluído
+│ H1: Imediato  │ Buffer & Cache Inteligente APIs  │ Resiliência & Custo Zero  │Concluído
+│ H1: Imediato  │ Modularização de `BrazilMapD3`   │ Governança (250-270 lin)  │ Prior.1│
 ├───────────────┼──────────────────────────────────┼───────────────────────────┼────────┤
 │ H2: Médio     │ Portal do Educador (BR Quest Edu)│ B2B Escolas & BNCC        │ Planej.│
 │ H2: Médio     │ PWA & Cache L3 (IndexedDB)       │ Performance & Uso Escolar │ Planej.│
@@ -44,21 +45,22 @@ Os próximos passos foram agrupados em quatro pilares estratégicos, priorizados
 
 ### Horizonte 1: Imediato (Sprint 2 — Fundação de Retenção & Conversão)
 
-#### 1. Implementação do Mecanismo "5 Dicas do Dia: Você Sabia?"
+#### 1. Mecanismo "5 Dicas do Dia: Você Sabia?" [CONCLUÍDO]
 - **Objetivo Estratégico:** Ativar o "Cavalo de Troia da Curiosidade" mapeado no Plano de Negócio (Seção 4).
-- **Escopo Funcional:**
-  - Carrossel / Card flutuante diário exibindo mini-drops de curiosidades oficiais baseadas em dados abertos (IBGE/INPE/NASA).
-  - Botão de ação com teletransporte imediato (*"Ver no Globo 3D"* ou *"Explorar Estado"*).
-  - Contador de leitura diária concedendo bônus de XP de exploração.
+- **Entregáveis Implementados:**
+  - `src/data/dailyTipsData.ts`: Catálogo de curiosidades geo-históricas com dados oficiais (IBGE, INPE, NASA, ICMBio) e seleção determinística diária com base na data brasileira.
+  - `src/hooks/useDailyTips.ts`: Hook com persistência local, rastreio de dicas lidas e concessão de XP (+10 XP por dica, +50 XP bônus ao ler as 5).
+  - `src/components/quest/DailyTipsModal.tsx` & `DailyTipCard.tsx`: Modal interativo responsivo com botões de teletransporte direto para o estado em 2D ou Globo 3D.
+  - Integração no `TopRightNavigationDock.tsx`, `TopGlobalNavMenu.tsx`, `IsometricMapCanvas.tsx` e `App.tsx` com contador de não lidas e badge animado.
 
-#### 2. Camada de Identidade e Nuvem (Firebase Auth + Firestore)
-- **Objetivo Estratégico:** Habilitar a monetização do **Passe do Guardião Pro** e eliminar a perda de progresso em limpezas de cache.
-- **Escopo Funcional:**
-  - Autenticação federada (Google e E-mail/Senha).
-  - Sincronização multi-dispositivo do perfil do jogador, nível de Guardião, XP acumulado, insígnias conquistadas e itens do baú de relíquias.
-  - Suporte a perfil de visitante (anônimo) que migra o progresso local do `localStorage` para a nuvem ao autenticar.
+#### 2. Autenticação Desacoplável, Persistência SQLite & Buffer de APIs [CONCLUÍDO]
+- **Objetivo Estratégico:** Garantir independência de fornecedor de autenticação (Vendor Agnostic), banco de dados leve nativo (`node:sqlite`) e controle inteligente de tráfego contra rate limit nas APIs públicas.
+- **Entregáveis Implementados:**
+  - `server/auth/AuthAdapter.ts` & `server/auth/MockAuthAdapter.ts`: Interface desacoplada de autenticação.
+  - `server/db/sqlite.ts`: Banco de dados SQLite local armazenando usuários e preferências.
+  - `src/services/apiBuffer.ts`: Buffer com deduplicação de requisições em voo (in-flight) e cache com TTL configurável para Open-Meteo, Gemini, GBIF, Wikipedia e Nominatim.
 
-#### 3. Refatoração e Decomposição de `src/components/map/BrazilMapD3.tsx`
+#### 3. Refatoração e Decomposição de `src/components/map/BrazilMapD3.tsx` [PRÓXIMO PASSO]
 - **Objetivo Estratégico:** Conformidade estrita com o limite de 250 a 270 linhas estipulado em `MODES_ARCHITECTURE_AND_CODE_GUIDELINES.md` e `requisitos_funcionais_e_nao_funcionais.md`.
 - **Escopo Funcional:**
   - Extração de hooks: `useD3Projection`, `useD3ZoomPan` e `useMapBounds`.
