@@ -76,68 +76,75 @@ export const GlobeSolarLightingTab: React.FC<GlobeSolarLightingTabProps> = ({
           <span>Iluminação Rápida (1 Clique)</span>
           <span className="text-amber-400 font-normal">Hora Oficial Brasília (UTC-3)</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button
             type="button"
             onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(6); }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
               solarHour !== null && Math.abs(solarHour - 6) < 0.5
                 ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md shadow-amber-400/30'
                 : 'bg-slate-950 hover:bg-slate-800 text-amber-200 border-amber-400/30'
             }`}
           >
-            <Sunrise className="w-3.5 h-3.5 shrink-0" />
-            <span>Alvorecer (06h)</span>
+            <Sunrise className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            <span>Alvorecer 06h</span>
           </button>
           <button
             type="button"
             onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(12); }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
               solarHour !== null && Math.abs(solarHour - 12) < 0.5
                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
                 : 'bg-slate-950 hover:bg-slate-800 text-amber-300 border-amber-500/30'
             }`}
           >
-            <Sun className="w-3.5 h-3.5 shrink-0" />
-            <span>Dia (12h)</span>
+            <Sun className="w-3.5 h-3.5 shrink-0 text-amber-300" />
+            <span>Dia 12h</span>
           </button>
           <button
             type="button"
             onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(18); }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
               solarHour !== null && Math.abs(solarHour - 18) < 0.5
                 ? 'bg-orange-500 text-slate-950 border-orange-400 shadow-md shadow-orange-500/30'
                 : 'bg-slate-950 hover:bg-slate-800 text-orange-300 border-orange-500/30'
             }`}
           >
-            <Sunset className="w-3.5 h-3.5 shrink-0" />
-            <span>Ocaso (18h)</span>
+            <Sunset className="w-3.5 h-3.5 shrink-0 text-orange-400" />
+            <span>Ocaso 18h</span>
           </button>
           <button
             type="button"
             onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(0); }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all whitespace-nowrap ${
               solarHour !== null && (Math.abs(solarHour) < 0.5 || Math.abs(solarHour - 24) < 0.5)
                 ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-500/30'
                 : 'bg-slate-950 hover:bg-slate-800 text-indigo-300 border-indigo-500/30'
             }`}
           >
-            <Moon className="w-3.5 h-3.5 shrink-0" />
-            <span>Noite (00h)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(null); }}
-            className={`py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border transition-all col-span-2 sm:col-span-1 ${
-              solarHour === null
-                ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md shadow-sky-500/30'
-                : 'bg-slate-950 hover:bg-slate-800 text-sky-300 border-sky-500/30'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Agora ({liveBrasilia.formattedTime})</span>
+            <Moon className="w-3.5 h-3.5 shrink-0 text-indigo-300" />
+            <span>Noite 00h</span>
           </button>
         </div>
+
+        {/* Linha 2: Sincronização em Tempo Real (Brasília UTC-3) com hora completa sem truncamento */}
+        <button
+          type="button"
+          onClick={() => { audioEngine.playSfx('click'); onChangeSolarHour(null); }}
+          className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-between cursor-pointer border transition-all ${
+            solarHour === null
+              ? 'bg-sky-500 text-slate-950 border-sky-400 shadow-md shadow-sky-500/30'
+              : 'bg-slate-950 hover:bg-slate-850 text-sky-300 border-sky-500/30'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>Sincronizar com Tempo Real (Brasília UTC-3)</span>
+          </div>
+          <span className="font-mono text-xs px-2.5 py-0.5 rounded-lg bg-slate-950/40 border border-current/20">
+            {liveBrasilia.formattedTime} BRT
+          </span>
+        </button>
       </div>
 
       {/* 2. CARD DO RELÓGIO & PLAY DO CICLO 24H */}

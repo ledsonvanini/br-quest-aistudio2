@@ -1,48 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Trophy,
-  Compass,
-  Award,
-  Radio,
-  Disc,
-  Play,
-  Pause,
-  Gauge,
-  Activity,
-  CloudSun,
-  Thermometer,
-  Flame,
-  Snowflake,
-  Leaf,
-  Bird,
-  Trees,
-  ShieldAlert,
-  BarChart3,
-  Clock,
-  RefreshCw,
-  CloudRain,
-  Cloud,
-  Waves,
-  Sun,
-  SunMedium,
-  Moon,
-} from 'lucide-react';
+import { Trophy, Activity } from 'lucide-react';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { GuardianData } from '../types';
-import { StateSearchPopover } from './map/StateSearchPopover';
-import { GUARDIANS_DATA } from '../data/guardiansData';
-import { getStateFlagUrl } from '../data/brazilStatesRegistry';
 import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
 import { getStateMusicalHeritage } from '../data/musicalHeritageData';
-import { ECMWF_TEMP_COLOR_STOPS, getEcmwfTempColor, formatFullDayTime, formatBrasiliaTimeDynamic } from '../services/climateService';
-import { getBiomeStats, BRAZIL_BIOMES_INFO } from '../data/brazilBiodiversityData';
+import { formatBrasiliaTimeDynamic } from '../services/climateService';
 import { biodiversityService } from '../services/biodiversityService';
-import { apiTracker } from '../services/apiTracker';
 import { perfEngine, FpsTelemetry } from '../lib/performanceEngine';
 import { GeopoliticaMetricKey } from '../types/geopolitica';
-import { getGeopoliticsLegendData } from './map/GeopoliticsLegendOverlay';
+import { FooterWeatherTicker } from './footer/FooterWeatherTicker';
+import { FooterBiodiversityTicker } from './footer/FooterBiodiversityTicker';
+import { FooterRadioTicker } from './footer/FooterRadioTicker';
+import { FooterGeopoliticsTicker } from './footer/FooterGeopoliticsTicker';
+import { FooterAdventureTicker } from './footer/FooterAdventureTicker';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -57,12 +29,12 @@ interface DynamicAppFooterProps {
   onOpenAboutInfo: () => void;
   onNavigateHome: () => void;
 
-  // Telemetry & Utility buttons (Fixed in all modes)
+  // Telemetry & Utility buttons
   showFps?: boolean;
   onToggleFps?: () => void;
   onOpenApiStatus?: () => void;
 
-  // Climate context & Common Atmosphere Controls
+  // Climate context
   climateMode?: ClimateMode;
   onOpenObservatorio?: () => void;
   isObservatorioOpen?: boolean;
@@ -100,30 +72,14 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   unlockedInsigniaCount,
   hoveredStateId,
   selectedStateId,
-  onStateHover,
   onStateClick,
-  onOpenAboutInfo,
   onNavigateHome,
   showFps = false,
   onToggleFps,
-  onOpenApiStatus,
-  climateMode = 'temperaturas_frentes',
-  onOpenObservatorio,
-  isObservatorioOpen = false,
   avgTempBrazil = 27.4,
   maxTempState = { stateId: 'MT', temp: 35.1 },
   minTempState = { stateId: 'RS', temp: 17.5 },
   climateLastUpdated,
-  isRainSimActive = false,
-  onToggleRainSim,
-  isCloudsActive = true,
-  onToggleClouds,
-  isWavesActive = true,
-  onToggleWaves,
-  isAtmosphereActive = true,
-  onToggleAtmosphere,
-  timeOverride = 'auto',
-  onTimeOverrideChange,
   onToggleRadio,
   geopoliticaMetric = 'miscigenacao',
   onOpenBrQuestHub,
@@ -134,9 +90,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   }, [climateLastUpdated]);
   const biodivTimeOnly = useMemo(() => biodiversityService.getBrasiliaTimeOnly(), []);
 
-  // Real-time synchronization with Vintage Radio Player Engine & Performance Engine
   const [radioState, setRadioState] = useState<RadioPlaybackState>(() => vintageRadioEngine.getState());
-  const [apiCallsCount, setApiCallsCount] = useState<number>(() => apiTracker.getTotalCallsToday());
   const [fpsTelemetry, setFpsTelemetry] = useState<FpsTelemetry>({
     fps: 60,
     frametimeMs: 16.6,
@@ -148,17 +102,12 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
     const unsubscribeRadio = vintageRadioEngine.subscribe((state) => {
       setRadioState(state);
     });
-    const updateApiCount = () => {
-      setApiCallsCount(apiTracker.getTotalCallsToday());
-    };
-    const unsubscribeApi = apiTracker.subscribe(updateApiCount);
     const unsubscribePerf = perfEngine.subscribe((data) => {
       setFpsTelemetry(data);
     });
 
     return () => {
       unsubscribeRadio();
-      unsubscribeApi();
       unsubscribePerf();
     };
   }, []);
@@ -168,7 +117,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
     return getStateMusicalHeritage(stateId);
   }, [selectedStateId, radioState.activeStateId]);
 
-  // No modo Globo 3D, a barra de controle própria (GlobeControlsHUD) ocupa o rodapé de forma exclusiva
+  // No modo Globo 3D, a barra de controle própria (GlobeControlsHUD) ocupa o rodapé
   if (mainMode === 'globo3d') {
     return null;
   }
@@ -183,339 +132,53 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
       aria-label="Rodapé do Sistema BR Quest"
     >
       <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
-        
-        {/* ========================================================================= */}
-        {/* 1. SEÇÃO CENTRAL: CONTEÚDO DINÂMICO AUXILIAR */}
-        {/* ========================================================================= */}
+        {/* Seção de Conteúdo Dinâmico Auxiliar */}
         <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
-          
-          {/* CASO A: Modo Aventura / Cartografia (Busca + Ganchos Resumidos) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (() => {
-            const hGuardian = hoveredStateId ? GUARDIANS_DATA.find((g) => g.id === hoveredStateId) : null;
-            const flagUrl = hoveredStateId ? getStateFlagUrl(hoveredStateId) : null;
+          {/* CASO A: Modo Aventura / Cartografia */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
+            <FooterAdventureTicker
+              completedSet={completedSet}
+              hoveredStateId={hoveredStateId}
+              onStateClick={onStateClick}
+              onOpenBrQuestHub={onOpenBrQuestHub}
+            />
+          )}
 
-            return (
-              <div
-                id="painel-aventura-ticker-rodape"
-                className="painel-aventura-ticker-rodape flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-150 max-w-[95vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
-              >
-                {/* 1. Lupa de Pesquisa de Estados com Popover */}
-                <StateSearchPopover
-                  completedStateIds={completedSet}
-                  onStateClick={onStateClick}
-                />
-
-                <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
-
-                {/* 2. Texto Dinâmico Super Resumido (Ganchos de Navegação) */}
-                {hGuardian ? (
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0 animate-in fade-in duration-100">
-                    {flagUrl && (
-                      <img
-                        src={flagUrl}
-                        alt={`Bandeira de ${hGuardian.stateNamePt}`}
-                        className="w-5 h-3.5 object-cover rounded border border-slate-700 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                    )}
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono text-[11px] font-black border border-amber-400/40 shrink-0">
-                      {hGuardian.id}
-                    </span>
-                    <span className="font-serif font-bold text-slate-100 text-xs truncate">
-                      {hGuardian.stateNamePt}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-mono truncate">
-                      • Cap: {hGuardian.capitalPt}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 min-w-0 shrink-0">
-                    <div className="flex items-center gap-1.5 text-amber-300 font-serif font-bold text-xs truncate">
-                      <Compass className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="truncate">Cartografia</span>
-                    </div>
-
-                    <span className="text-[11px] font-mono text-slate-400 hidden sm:inline truncate">
-                      27 Estados • Passe o mouse para explorar
-                    </span>
-
-                    {onOpenBrQuestHub && (
-                      <button
-                        id="btn-rodape-abrir-brquest"
-                        type="button"
-                        onClick={() => {
-                          audioEngine.playSfx('click');
-                          onOpenBrQuestHub();
-                        }}
-                        className="btn-iniciar-brquest-rodape flex items-center gap-1 px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:brightness-110 text-slate-950 font-serif font-black text-[10px] shadow-sm transition cursor-pointer shrink-0"
-                        title="Abrir a Grande Prova do Brasil & Desafios Regionais"
-                      >
-                        <Award className="w-3 h-3 text-slate-950 shrink-0" />
-                        <span>BrQuest</span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* CASO B: Modo Clima no Mapa (Cartela de Cores ECMWF + Telemetria em Tempo Real com Destaque Máx/Mín + Timestamp Atualizado) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (() => {
-            const maxColor = getEcmwfTempColor(maxTempState.temp);
-            const minColor = getEcmwfTempColor(minTempState.temp);
-            const minPosPct = Math.max(0, Math.min(100, ((minTempState.temp - (-4)) / 44) * 100));
-            const maxPosPct = Math.max(0, Math.min(100, ((maxTempState.temp - (-4)) / 44) * 100));
-
-            return (
-              <div
-                id="painel-telemetria-clima-rodape"
-                className="painel-telemetria-clima-rodape flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-xl bg-slate-950/95 border border-cyan-500/50 text-xs shadow-lg animate-in fade-in duration-200 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0"
-              >
-                {/* Badge ECMWF */}
-                <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-950/90 border border-cyan-400/60 text-[10px] font-mono text-cyan-300 font-bold shrink-0">
-                  <CloudSun className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="hidden xs:inline">ECMWF</span>
-                </div>
-
-                {/* CARTELA DE CORES TÉRMICAS COM MARCADORES DINÂMICOS DE MÁX E MÍN */}
-                <div className="secao-cartela-cores-clima flex items-center gap-1 sm:gap-1.5 shrink-0">
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">-4°</span>
-                  <div
-                    className="relative w-16 xs:w-20 sm:w-28 md:w-32 h-2.5 sm:h-3 rounded-full overflow-visible border border-slate-700/90 flex shadow-inner shrink-0"
-                    title={`Cartela Térmica ECMWF (-4°C a 40°C) | Mín: ${minTempState.stateId} ${minTempState.temp}°C | Máx: ${maxTempState.stateId} ${maxTempState.temp}°C`}
-                  >
-                    <div className="absolute inset-0 rounded-full overflow-hidden flex">
-                      {ECMWF_TEMP_COLOR_STOPS.map((stop) => (
-                        <div
-                          key={stop.temp}
-                          className="h-full flex-1"
-                          style={{ backgroundColor: stop.hex }}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Marcador Dinâmico de Posição da Mínima Nacional */}
-                    <div
-                      className="absolute -top-1 w-1.5 sm:w-2 h-4 sm:h-5 rounded-full border border-white shadow-md z-10 -translate-x-1/2 transition-all duration-300 pointer-events-none"
-                      style={{
-                        left: `${minPosPct}%`,
-                        backgroundColor: minColor.hex,
-                      }}
-                    />
-
-                    {/* Marcador Dinâmico de Posição da Máxima Nacional */}
-                    <div
-                      className="absolute -top-1 w-1.5 sm:w-2 h-4 sm:h-5 rounded-full border border-white shadow-md z-10 -translate-x-1/2 transition-all duration-300 pointer-events-none"
-                      style={{
-                        left: `${maxPosPct}%`,
-                        backgroundColor: maxColor.hex,
-                      }}
-                    />
-                  </div>
-                  <span className="text-[9px] font-mono text-slate-400 hidden sm:inline">40°</span>
-                </div>
-
-                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
-
-                {/* Média Brasil */}
-                <div className="flex items-center gap-1 text-[11px] font-mono text-cyan-100 shrink-0">
-                  <Thermometer className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                  <span className="text-slate-400 hidden md:inline">Méd:</span>
-                  <span className="font-bold text-amber-300">{avgTempBrazil.toFixed(1)}°</span>
-                </div>
-
-                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
-
-                {/* Destaque da Máxima Nacional com a cor real da escala ECMWF */}
-                <div
-                  className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md border font-mono text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0"
-                  style={{
-                    backgroundColor: `${maxColor.hex}22`,
-                    borderColor: maxColor.hex,
-                    color: maxColor.hex,
-                  }}
-                  title={`Máxima Nacional: ${maxTempState.stateId} (${maxTempState.temp.toFixed(1)}°C)`}
-                >
-                  <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse shrink-0" style={{ color: maxColor.hex }} />
-                  <span className="hidden xs:inline">Máx:</span>
-                  <span className="text-white bg-slate-900/80 px-1 rounded text-[10px]">{maxTempState.stateId}</span>
-                  <span>{maxTempState.temp.toFixed(1)}°</span>
-                </div>
-
-                {/* Destaque da Mínima Nacional com a cor real da escala ECMWF */}
-                <div
-                  className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md border font-mono text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0"
-                  style={{
-                    backgroundColor: `${minColor.hex}22`,
-                    borderColor: minColor.hex,
-                    color: minColor.hex,
-                  }}
-                  title={`Mínima Nacional: ${minTempState.stateId} (${minTempState.temp.toFixed(1)}°C)`}
-                >
-                  <Snowflake className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse shrink-0" style={{ color: minColor.hex }} />
-                  <span className="hidden xs:inline">Mín:</span>
-                  <span className="text-white bg-slate-900/80 px-1 rounded text-[10px]">{minTempState.stateId}</span>
-                  <span>{minTempState.temp.toFixed(1)}°</span>
-                </div>
-
-                <div className="h-3.5 w-px bg-cyan-500/30 shrink-0" />
-
-                {/* Ícone e Hora Discreta (Brasília UTC-3) */}
-                <div
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-cyan-500/30 text-cyan-200 font-mono text-[10px] shrink-0"
-                  title="Horário da telemetria climática consolidada (Horário de Brasília UTC-3)"
-                >
-                  <Clock className="w-3 h-3 text-cyan-400 shrink-0" />
-                  <span className="text-slate-400 font-sans text-[10px]">atualizado</span>
-                  <span className="font-semibold text-cyan-100">{formattedTimeOnly}</span>
-                </div>
-              </div>
-            );
-          })()}
+          {/* CASO B: Modo Clima no Mapa */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (
+            <FooterWeatherTicker
+              avgTempBrazil={avgTempBrazil}
+              maxTempState={maxTempState}
+              minTempState={minTempState}
+              formattedTimeOnly={formattedTimeOnly}
+            />
+          )}
 
           {/* CASO C: Modo Biodiversidade no Mapa */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
-            <div
-              id="painel-biodiversidade-ticker-rodape"
-              className="painel-biodiversidade-ticker-rodape flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/90 border border-emerald-500/40 text-xs shadow-md animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0 max-w-[90vw] sm:max-w-max"
-            >
-              <div className="flex items-center gap-1.5 text-emerald-300 font-serif font-bold shrink-0">
-                <Leaf className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">Biodiversidade do Brasil</span>
-              </div>
-              <div className="h-3.5 w-px bg-emerald-500/30 hidden md:block shrink-0" />
-              <div className="hidden md:flex items-center gap-2 text-[11px] font-mono text-slate-300 shrink-0">
-                <span className="flex items-center gap-1 text-amber-300">
-                  <Bird className="w-3 h-3 text-amber-400" /> Fauna
-                </span>
-                <span className="flex items-center gap-1 text-emerald-300">
-                  <Trees className="w-3 h-3 text-emerald-400" /> Flora
-                </span>
-                <span className="flex items-center gap-1 text-rose-300">
-                  <ShieldAlert className="w-3 h-3 text-rose-400" /> SisCITES
-                </span>
-              </div>
-
-              <div className="h-3.5 w-px bg-emerald-500/30 shrink-0" />
-
-              {/* Ícone e Hora Discreta (Brasília UTC-3) */}
-              <div
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-emerald-500/30 text-emerald-200 font-mono text-[10px] shrink-0"
-                title="Horário do catálogo de biodiversidade (Horário de Brasília UTC-3)"
-              >
-                <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="text-slate-400 font-sans text-[10px] hidden xs:inline">atualizado</span>
-                <span className="font-semibold text-emerald-100">{biodivTimeOnly}</span>
-              </div>
-            </div>
+            <FooterBiodiversityTicker biodivTimeOnly={biodivTimeOnly} />
           )}
 
-          {/* CASO C: Modo Musicalidades no Mapa (Ticker Reativo Integrado ao Rádio) */}
+          {/* CASO D: Modo Musicalidades no Mapa */}
           {!activeGuardian && activeTab === 'map' && mainMode === 'musicalidades' && (
-            <div
-              id="painel-radio-ticker-rodape"
-              className="painel-radio-ticker-rodape flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/80 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-200"
-            >
-              {/* Botão Play / Pause Direto no Rodapé */}
-              <button
-                id="btn-rodape-play-pause"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  vintageRadioEngine.togglePlayPause();
-                }}
-                className="p-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 hover:text-white transition cursor-pointer shrink-0"
-                title={radioState.isPlaying ? 'Pausar Rádio' : 'Tocar Rádio'}
-              >
-                {radioState.isPlaying ? (
-                  <Pause className="w-3 h-3 text-amber-300 fill-amber-300" />
-                ) : (
-                  <Play className="w-3 h-3 text-amber-400 fill-amber-400" />
-                )}
-              </button>
-
-              {/* Informação da Emissora Ativa */}
-              <div className="flex items-center gap-1.5 text-amber-300 font-serif font-bold truncate">
-                <Radio className={`w-3.5 h-3.5 text-amber-400 shrink-0 ${radioState.isPlaying ? 'animate-pulse' : ''}`} />
-                <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                  {activeMusicStateData.stateName} ({activeMusicStateData.frequencyDialKHz} kHz)
-                </span>
-              </div>
-
-              <div className="h-3.5 w-px bg-amber-500/30 hidden sm:block" />
-
-              {/* Faixa / Hino Musical Tocando */}
-              <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono text-slate-300 truncate max-w-[160px] md:max-w-[220px]">
-                <Disc className={`w-3 h-3 text-amber-400 shrink-0 ${radioState.isPlaying ? 'animate-spin' : ''}`} />
-                <span className="truncate text-amber-200">
-                  {radioState.currentTrackTitle || activeMusicStateData.stateAnthem.title}
-                </span>
-              </div>
-
-              {/* Botão Sintonizador */}
-              {onToggleRadio && (
-                <button
-                  id="btn-toggle-radio-rodape"
-                  onClick={() => {
-                    audioEngine.playSfx('click');
-                    onToggleRadio();
-                  }}
-                  className="btn-abrir-radio px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-[10px] font-mono text-amber-200 font-bold hover:text-white transition cursor-pointer shrink-0"
-                  title="Abrir / Fechar Gabinete de Rádio"
-                >
-                  Sintonizador
-                </button>
-              )}
-            </div>
+            <FooterRadioTicker
+              radioState={radioState}
+              activeMusicStateData={activeMusicStateData}
+              onToggleRadio={onToggleRadio}
+            />
           )}
 
-          {/* CASO: Modo Geopolítica no Mapa (Legenda Coroplética Integrada ao Rodapé) */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'geopolitica' && (() => {
-            const legend = getGeopoliticsLegendData(geopoliticaMetric);
-            return (
-              <div
-                id="painel-geopolitica-legenda-rodape"
-                className="painel-geopolitica-legenda-rodape painel-legenda-coropletica flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-950/95 border border-indigo-500/50 text-xs shadow-lg animate-in fade-in duration-200 overflow-x-auto no-scrollbar shrink-0 max-w-[92vw] sm:max-w-max"
-              >
-                {/* Badge da Métrica Ativa com Ícone */}
-                <div
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-950/90 border border-indigo-400/60 text-[10px] sm:text-[11px] font-serif text-indigo-200 font-bold shrink-0 shadow-sm"
-                  title={legend.title}
-                >
-                  {legend.icon}
-                  <span className="truncate max-w-[130px] sm:max-w-none">{legend.title}</span>
-                </div>
+          {/* CASO E: Modo Geopolítica no Mapa */}
+          {!activeGuardian && activeTab === 'map' && mainMode === 'geopolitica' && (
+            <FooterGeopoliticsTicker geopoliticaMetric={geopoliticaMetric} />
+          )}
 
-                <div className="h-3.5 w-px bg-indigo-500/30 shrink-0" />
-
-                {/* Lista de Categorias / Gradientes com Bullets Coloridos */}
-                <div className="secao-itens-legenda-geopolitica flex items-center gap-1 sm:gap-1.5 shrink-0">
-                  {legend.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-900/90 border border-slate-800 text-[10px] text-slate-200 font-medium shadow-inner shrink-0"
-                    >
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm border border-black/40"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="whitespace-nowrap text-[9px] sm:text-[10px] font-sans">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* CASO D: Cena do Guardião do Estado Ativo */}
+          {/* CASO F: Cena do Guardião do Estado Ativo */}
           {activeGuardian && (
-            <div className="painel-contexto-guardiao-rodape flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-950/70 border border-amber-400/60 text-xs shadow-md animate-in fade-in duration-200">
+            <div className="painel-contexto-guardiao-rodape flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-950/70 border border-amber-400/60 text-xs shadow-md animate-in fade-in duration-150">
               <span className="text-amber-300 font-mono font-bold">{activeGuardian.id}</span>
               <span className="text-slate-300 font-serif font-bold truncate">
                 {activeGuardian.stateNamePt}
-              </span>
-              <span className="text-amber-400/80 font-serif hidden sm:inline">
-                • {activeGuardian.guardianName}
               </span>
               <button
                 onClick={() => {
@@ -529,15 +192,15 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </div>
           )}
 
-          {/* CASO E: Santuário das Insígnias */}
+          {/* CASO G: Santuário das Insígnias */}
           {!activeGuardian && activeTab === 'insignias' && (
-            <div className="painel-contexto-insignias-rodape flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-900/90 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-200">
+            <div className="painel-contexto-insignias-rodape flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-900/90 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-150">
               <Trophy className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-amber-300 font-serif font-bold">
-                Santuário das 27 Insígnias Sagradas
+                Santuário das Insígnias
               </span>
-              <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
-                • {unlockedInsigniaCount}/27 Desbloqueadas
+              <span className="text-[11px] font-mono text-slate-400">
+                • {unlockedInsigniaCount}/27
               </span>
               <button
                 onClick={() => {
@@ -550,17 +213,13 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
               </button>
             </div>
           )}
-
         </div>
 
-        {/* ========================================================================= */}
-        {/* 2. SEÇÃO DIREITA: TELEMETRIA COMPACTA (FPS ATIVO APENAS SE HABILITADO)    */}
-        {/* (Saiba +, FPS toggle e APIs migrados para o Menu Sidebar: Ambiente & Sistema) */}
-        {/* ========================================================================= */}
+        {/* Telemetria Compacta (FPS Ativo se Habilitado) */}
         {showFps && onToggleFps && (
           <div
             id="secao-controles-fixos-direita-rodape"
-            className="secao-direita-rodape flex items-center gap-1 sm:gap-1.5 shrink-0"
+            className="secao-direita-rodape flex items-center gap-1 shrink-0"
           >
             <button
               id="btn-fps-rodape"
@@ -575,9 +234,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
                   ? 'bg-amber-950/90 border-amber-400/80 text-amber-300'
                   : 'bg-rose-950/90 border-rose-400/80 text-rose-300'
               }`}
-              title={`Taxa de Atualização: ${fpsTelemetry.fps} FPS (${fpsTelemetry.frametimeMs}ms) • ${
-                fpsTelemetry.quality === 'optimal' ? 'Fluido' : fpsTelemetry.quality === 'good' ? 'Estável' : 'Otimizando'
-              }. Clique para ocultar.`}
+              title={`Taxa: ${fpsTelemetry.fps} FPS (${fpsTelemetry.frametimeMs}ms). Clique para ocultar.`}
               aria-label={`FPS: ${fpsTelemetry.fps}`}
             >
               <Activity className="w-3 h-3 animate-pulse shrink-0" />
@@ -585,7 +242,6 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
             </button>
           </div>
         )}
-
       </div>
     </footer>
   );

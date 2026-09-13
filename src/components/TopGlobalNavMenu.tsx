@@ -29,6 +29,7 @@ import {
   Bird,
   Trees,
   Users,
+  User,
   Building2,
   GraduationCap,
   HeartPulse,
@@ -146,6 +147,7 @@ interface Props {
 
   // General Settings & System Utilities
   onOpenSettings?: () => void;
+  onOpenUserProfile?: () => void;
   onResetView?: () => void;
   onResetViewIfNotCentered?: () => void;
   hoveredStateId?: string | null;
@@ -217,6 +219,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   onToggleGlobeTelemetry,
   onResetGlobeCamera,
   onOpenSettings,
+  onOpenUserProfile,
   onResetView,
   onResetViewIfNotCentered,
   hoveredStateId,
@@ -365,6 +368,11 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   const handleModeButtonClick = (mode: AppMainMode) => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
+
+    // Isolar painéis: fecha telemetria do globo se aberta ao interagir com a sidebar
+    if (isGlobeTelemetryOpen && onToggleGlobeTelemetry) {
+      onToggleGlobeTelemetry();
+    }
 
     // No modo Globo 3D, as ferramentas agora residem no Footer do aplicativo.
     // O botão na sidebar alterna o modo diretamente sem exibir subitens legados.
@@ -1098,9 +1106,35 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
           </div>
           )}
 
+          {/* Botão de Perfil do Explorador (Auth / SQLite) */}
+          {onOpenUserProfile && (
+            <div className="mt-auto pt-1 shrink-0">
+              <button
+                id="btn-perfil-usuario-sidebar"
+                type="button"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  setHoveredMenuTooltip(null);
+                  setOpenFlyoutMode(null);
+                  onOpenUserProfile();
+                }}
+                {...bindTooltip({
+                  title: 'Perfil & Preferências (SQLite)',
+                  badge: `Nível ${playerLevel || 1}`,
+                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                  description: 'Acesse seu perfil do explorador, alterne provedor de autenticação e salve preferências com persistência no SQLite.',
+                })}
+                className="btn-perfil-usuario-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
+                aria-label="Perfil do Explorador"
+              >
+                <User className="w-5 h-5 text-amber-400/90 group-hover:text-amber-300" />
+              </button>
+            </div>
+          )}
+
           {/* Botão de Configurações Gerais no rodapé da Sidebar */}
           {onOpenSettings && (
-            <div className="mt-auto pt-1 shrink-0">
+            <div className={`${onOpenUserProfile ? 'pt-1.5' : 'mt-auto pt-1'} shrink-0`}>
               <button
                 id="btn-configuracoes-sidebar"
                 onClick={() => {

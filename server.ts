@@ -2,6 +2,8 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { processGuardianChat } from './src/server/guardianChatService';
+import { userRepository } from './src/server/db/userRepository';
 
 const PORT = 3000;
 
@@ -50,7 +52,9 @@ interface ServerClimateCache {
 }
 
 const CLIMATE_TTL_MS = 15 * 60 * 1000; // 15 minutes central cache
+const CLIMATE_FORCE_COOLDOWN_MS = 15 * 1000; // 15 seconds minimum between upstream force-refreshes (Buffer de Proteção)
 let serverClimateCache: ServerClimateCache | null = null;
+let lastUpstreamCallTimestamp = 0;
 let serverTotalUpstreamCalls = 0;
 let serverTotalHits = 0;
 
@@ -60,6 +64,7 @@ const SPECIES_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Helper to fetch Open-Meteo in batch
 async function fetchUpstreamClimateTelemetry(): Promise<any> {
   serverTotalUpstreamCalls++;
+  lastUpstreamCallTimestamp = Date.now();
   const lats = BRAZIL_COORDS.map((s) => s.lat).join(',');
   const lngs = BRAZIL_COORDS.map((s) => s.lng).join(',');
 
@@ -295,12 +300,12 @@ async function startServer() {
   });
 
   // 2. Telemetria Climatológica Global (/api/climate)
-  // Aceita ?force=true para permitir ao usuário retestar conexões sob demanda:
-  // Ao forçar, uma nova referência temporal é iniciada e a janela de 15 minutos do cache é reiniciada.
+  // Aceita ?force=true com controle inteligente de buffer (cooldown de 15s para evitar spam upstream)
   app.get('/api/climate', async (req, res) => {
     const force = req.query.force === 'true' || req.query.refresh === 'true';
     const now = Date.now();
 
+    // Cache regular válido
     if (!force && serverClimateCache && now - serverClimateCache.timestamp < CLIMATE_TTL_MS) {
       serverTotalHits++;
       res.setHeader('X-Proxy-Cache', 'HIT');
@@ -312,8 +317,23 @@ async function startServer() {
       });
     }
 
+    // Buffer inteligente de proteção contra múltiplos cliques rápidos em "Forçar Atualização"
+    const isCooldownActive = force && (now - lastUpstreamCallTimestamp < CLIMATE_FORCE_COOLDOWN_MS) && serverClimateCache !== null;
+    if (isCooldownActive) {
+      serverTotalHits++;
+      res.setHeader('X-Proxy-Cache', 'COOLDOWN-BUFFERED');
+      res.setHeader('X-Cache-Age-Seconds', Math.round((now - serverClimateCache!.timestamp) / 1000));
+      return res.json({
+        ...serverClimateCache!.data,
+        cachedAt: new Date(serverClimateCache!.timestamp).toISOString(),
+        isServerCache: true,
+        cooldownActive: true,
+        cooldownRemainingSec: Math.ceil((CLIMATE_FORCE_COOLDOWN_MS - (now - lastUpstreamCallTimestamp)) / 1000),
+      });
+    }
+
     try {
-      // Se forçarmos atualização, limpamos a referência anterior e iniciamos nova contagem de 15min
+      // Se forçarmos atualização após o cooldown, limpamos a referência anterior
       if (force) {
         serverClimateCache = null;
       }
@@ -441,6 +461,220 @@ async function startServer() {
       res.status(404).json({ error: `Estado ${uf.toUpperCase()} não encontrado` });
     } catch (e: any) {
       res.status(500).json({ error: 'Erro ao carregar estado', message: e?.message });
+    }
+  });
+
+  // 7. Diálogo Inteligente com Guardiões Estaduais (Gemini API Server-Side)
+  app.post('/api/guardian-chat', async (req, res) => {
+    try {
+      const { guardianId, message, history, context } = req.body || {};
+      if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({ error: 'Mensagem obrigatória para dialogar com o Guardião.' });
+      }
+
+      const result = await processGuardianChat({
+        guardianId: guardianId || 'AM',
+        message: message.trim(),
+        history,
+        context,
+      });
+
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({
+        error: 'Falha ao processar diálogo com o Guardião',
+        message: err?.message,
+      });
+    }
+  });
+
+  // 8. Rotas de Autenticação e Usuário Desacopladas (SQLite Leve)
+  app.post('/api/auth/register', (req, res) => {
+    try {
+      const { username, displayName, email, password } = req.body || {};
+      if (!username || !username.trim()) {
+        return res.status(400).json({ error: 'Nome de usuário é obrigatório.' });
+      }
+
+      const cleanUsername = username.trim().toLowerCase();
+      const existing = userRepository.findByUsername(cleanUsername);
+      if (existing) {
+        return res.status(409).json({ error: 'Nome de usuário já está em uso.' });
+      }
+
+      const newUser = userRepository.create({
+        id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        username: cleanUsername,
+        display_name: displayName?.trim() || cleanUsername,
+        email: email?.trim() || null,
+        password_hash: password ? `hash_${password}` : null,
+        avatar_id: 'recruta',
+        is_guest: 0,
+      });
+
+      res.status(201).json({
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          displayName: newUser.display_name,
+          email: newUser.email,
+          avatarId: newUser.avatar_id,
+          isGuest: false,
+          createdAt: newUser.created_at,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao criar conta', message: err?.message });
+    }
+  });
+
+  app.post('/api/auth/login', (req, res) => {
+    try {
+      const { usernameOrEmail } = req.body || {};
+      if (!usernameOrEmail || !usernameOrEmail.trim()) {
+        return res.status(400).json({ error: 'Identificador de usuário obrigatório.' });
+      }
+
+      const user = userRepository.findByUsername(usernameOrEmail.trim().toLowerCase());
+      if (!user) {
+        return res.status(404).json({ error: 'Usuário não encontrado.' });
+      }
+
+      userRepository.updateLastLogin(user.id);
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.display_name,
+          email: user.email,
+          avatarId: user.avatar_id,
+          isGuest: Boolean(user.is_guest),
+          createdAt: user.created_at,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao autenticar', message: err?.message });
+    }
+  });
+
+  app.post('/api/auth/guest', (_req, res) => {
+    try {
+      const guestId = `guest_${Math.random().toString(36).slice(2, 8)}`;
+      const guest = userRepository.create({
+        id: guestId,
+        username: guestId,
+        display_name: 'Explorador Convidado',
+        email: null,
+        password_hash: null,
+        avatar_id: 'recruta',
+        is_guest: 1,
+      });
+
+      res.json({
+        user: {
+          id: guest.id,
+          username: guest.username,
+          displayName: guest.display_name,
+          isGuest: true,
+          createdAt: guest.created_at,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao gerar sessão de convidado', message: err?.message });
+    }
+  });
+
+  app.get('/api/user/me', (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+      const user = userRepository.findById(userId);
+      if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.display_name,
+          email: user.email,
+          avatarId: user.avatar_id,
+          isGuest: Boolean(user.is_guest),
+          createdAt: user.created_at,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao buscar dados do usuário', message: err?.message });
+    }
+  });
+
+  app.get('/api/user/preferences', (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+      const prefs = userRepository.getPreferences(userId);
+      res.json({ preferences: prefs });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao buscar preferências', message: err?.message });
+    }
+  });
+
+  app.put('/api/user/preferences', (req, res) => {
+    try {
+      const { userId, ...rest } = req.body || {};
+      if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+      userRepository.savePreferences({
+        user_id: userId,
+        sound_enabled: rest.soundEnabled ?? true,
+        default_map_mode: rest.defaultMapMode || '2d',
+        high_contrast: rest.highContrast ?? false,
+        auto_rotate_globe: rest.autoRotateGlobe ?? true,
+        theme: rest.theme || 'cartographic',
+        updated_at: new Date().toISOString(),
+      });
+
+      const updated = userRepository.getPreferences(userId);
+      res.json({ preferences: updated });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao salvar preferências', message: err?.message });
+    }
+  });
+
+  app.get('/api/user/progress', (req, res) => {
+    try {
+      const userId = req.query.userId as string;
+      if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+
+      const progress = userRepository.getProgress(userId);
+      res.json({ progress });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao buscar progresso', message: err?.message });
+    }
+  });
+
+  app.put('/api/user/progress', (req, res) => {
+    try {
+      const { userId, progress } = req.body || {};
+      if (!userId || !progress) return res.status(400).json({ error: 'userId e progress obrigatórios' });
+
+      userRepository.saveProgress({
+        user_id: userId,
+        xp: progress.xp || 0,
+        level: progress.level || 1,
+        daily_streak: progress.dailyStreak || 1,
+        unlocked_insignias: progress.unlockedInsignias || [],
+        completed_states: progress.completedStates || [],
+        read_pergaments: progress.readPergaments || [],
+        explored_dialogues: progress.exploredDialogues || [],
+        updated_at: new Date().toISOString(),
+      });
+
+      res.json({ status: 'ok' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao salvar progresso', message: err?.message });
     }
   });
 

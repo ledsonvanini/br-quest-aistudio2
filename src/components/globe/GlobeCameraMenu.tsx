@@ -18,6 +18,8 @@ export interface CameraPresetItem {
   iconType: 'sun' | 'earth-moon' | 'alignment' | 'eclipse' | 'brazil';
 }
 
+export type CameraPresetOption = CameraPresetItem;
+
 export const CAMERA_NAV_PRESETS: CameraPresetItem[] = [
   {
     id: 'sistema-ortogonal',
@@ -97,23 +99,21 @@ export const GlobeCameraMenu: React.FC<GlobeCameraMenuProps> = ({
         type="button"
         id="btn-camera-visoes-sistema"
         onClick={onToggle}
-        className={`btn-camera-visoes-sistema flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+        className={`btn-camera-visoes-sistema w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center p-2 rounded-xl border transition-all cursor-pointer shadow-sm shrink-0 ${
           isOpen || (activePresetId && activePresetId !== 'foco-brasil')
-            ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-cyan-500/20'
+            ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-cyan-500/20 ring-1 ring-cyan-400/50'
             : 'bg-slate-900/90 hover:bg-slate-800 border-cyan-500/40 hover:border-cyan-400 text-cyan-200 hover:text-white'
         }`}
         title={`Câmeras e Visões do Sistema: ${activePreset.name}`}
+        aria-label="Câmeras e Visões do Sistema"
       >
         <Camera className="w-4 h-4 text-cyan-300" />
-        <ChevronDown
-          className={`w-3 h-3 text-cyan-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
       </button>
 
       {isOpen && (
         <div
           id="popover-cameras-astronomicas"
-          className="popover-cameras-astronomicas absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 w-72 sm:w-80 rounded-2xl bg-[#030712] border border-cyan-500/50 p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+          className="popover-cameras-astronomicas fixed bottom-16 left-[56px] right-2 sm:absolute sm:bottom-full sm:mb-2.5 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-80 w-auto max-w-sm max-h-[min(480px,calc(100vh-100px))] overflow-y-auto rounded-2xl bg-[#030712] border border-cyan-500/50 p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 scrollbar-thin scrollbar-thumb-slate-700"
         >
           <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-800 px-1">
             <div className="flex items-center gap-1.5">

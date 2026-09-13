@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
 import { HeliocentricOrbitalState } from '../../lib/globeEngine/orbitalPhysics';
+import { CameraFocusMode } from '../../lib/globeEngine/cameraOrbitController';
 import { GlobeSolarLightingTab } from './GlobeSolarLightingTab';
 import { GlobeOrbitalTranslationTab } from './GlobeOrbitalTranslationTab';
 
@@ -56,8 +57,8 @@ export interface GlobeSolarSimulatorPanelProps {
   onChangeOrbitalSpeed: (speed: number) => void;
   isAxialRotationActive: boolean;
   onToggleAxialRotation: () => void;
-  cameraFocusMode: 'earth' | 'sun';
-  onChangeCameraFocusMode: (mode: 'earth' | 'sun') => void;
+  cameraFocusMode: CameraFocusMode;
+  onChangeCameraFocusMode: (mode: CameraFocusMode) => void;
   onSelectPlanetAstro?: (planetId: string) => void;
   orbitalState: HeliocentricOrbitalState;
   activeScenePresetId?: string;
@@ -115,10 +116,10 @@ export const GlobeSolarSimulatorPanel: React.FC<GlobeSolarSimulatorPanelProps> =
   return (
     <div
       id="painel-simulador-solar-container"
-      className={`painel-simulador-solar-container painel-hud-controles fixed sm:absolute top-3 sm:top-4 right-2 sm:right-4 left-2 sm:left-auto z-40 bg-slate-950/95 backdrop-blur-md rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col transition-all duration-300 overflow-hidden ${
+      className={`painel-simulador-solar-container painel-hud-controles fixed sm:absolute top-14 sm:top-14 right-2 sm:right-4 left-[56px] sm:left-auto z-40 bg-slate-950/95 backdrop-blur-md rounded-3xl border border-amber-500/30 shadow-2xl flex flex-col transition-all duration-300 overflow-hidden w-[calc(100vw-68px)] sm:w-auto max-w-[calc(100vw-68px)] max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-130px)] ${
         isExpanded
-          ? 'w-auto sm:w-[540px] max-w-[calc(100vw-16px)] sm:max-w-none max-h-[88vh]'
-          : 'w-auto sm:w-[440px] max-w-[calc(100vw-16px)] sm:max-w-none max-h-[84vh]'
+          ? 'sm:w-[580px] sm:max-w-[620px]'
+          : 'sm:w-[480px] sm:max-w-[500px]'
       }`}
     >
       {/* CABEÇALHO DO PAINEL */}
@@ -198,7 +199,7 @@ export const GlobeSolarSimulatorPanel: React.FC<GlobeSolarSimulatorPanelProps> =
       </div>
 
       {/* CORPO DE CONTEÚDO COM SCROLL SUAVE */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 p-3.5 sm:p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 p-3.5 sm:p-4">
         {activeMainTab === 'iluminacao' ? (
           <GlobeSolarLightingTab
             solarHour={solarHour}

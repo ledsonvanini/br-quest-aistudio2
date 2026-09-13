@@ -28,7 +28,7 @@ export const GlobeFilledSlider: React.FC<GlobeFilledSliderProps> = ({
     <div className="relative w-full flex items-center h-6" id={id}>
       <div className="absolute inset-x-0 h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden shadow-inner">
         <div
-          className={`h-full rounded-full transition-all duration-75 ${fillColorClass}`}
+          className={`h-full rounded-full ${fillColorClass}`}
           style={{ width: `${percentage}%` }}
         />
       </div>

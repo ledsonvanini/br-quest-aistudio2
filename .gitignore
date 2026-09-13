@@ -3,4 +3,6 @@ dist
 .env
 .env.local
 *.log
+*.db
+data/*.db
 test-results/

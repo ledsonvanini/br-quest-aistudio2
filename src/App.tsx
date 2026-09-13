@@ -6,6 +6,7 @@ import { CodexInsignias } from './components/CodexInsignias';
 import { SettingsModal } from './components/SettingsModal';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { AboutInfoModal } from './components/AboutInfoModal';
+import { UserProfileModal } from './components/auth/UserProfileModal';
 import { BrQuestHubModal } from './components/quest/BrQuestHubModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
 import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from './types';
@@ -32,6 +33,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
   const [isAboutInfoOpen, setIsAboutInfoOpen] = useState<boolean>(false);
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState<boolean>(false);
   const [isBrQuestHubOpen, setIsBrQuestHubOpen] = useState<boolean>(false);
   const [brQuestInitialPillar, setBrQuestInitialPillar] = useState<QuestThemePillar | 'nacional' | null>(null);
   const [showFps, setShowFps] = useState<boolean>(false);
@@ -532,6 +534,7 @@ export function App() {
             if (showNeighbors) setShowNeighbors(false);
           }}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenUserProfile={() => setIsUserProfileOpen(true)}
           onOpenAboutInfo={() => setIsAboutInfoOpen(true)}
           showFps={showFps}
           onToggleFps={() => setShowFps((prev) => !prev)}
@@ -669,6 +672,15 @@ export function App() {
         onOpenApiStatus={() => setIsApiStatusOpen(true)}
         showFps={showFps}
         onToggleFps={() => setShowFps((prev) => !prev)}
+      />
+
+      {/* User Profile & Auth Modal (SQLite & Desacoplado) */}
+      <UserProfileModal
+        isOpen={isUserProfileOpen}
+        onClose={() => setIsUserProfileOpen(false)}
+        playerLevel={calculateLevel(progress.xp).level}
+        playerXp={progress.xp}
+        unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
       />
 
       {/* API Telemetry & Status Modal */}

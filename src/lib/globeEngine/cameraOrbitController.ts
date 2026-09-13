@@ -124,17 +124,43 @@ export class CameraOrbitController {
       this.lastTargetMeshPos = null;
     }
 
-    // 2. Executa a interpolação suave da câmera durante o voo
+    // 2. Executa a interpolação suave e esférica da câmera durante o voo (sem mergulho através de malhas)
     if (this.glideState.active) {
       const elapsed = nowMs - this.glideState.startTime;
       const progress = Math.min(1.0, elapsed / this.glideState.durationMs);
 
-      // Easing cúbico desacelerado puro (monotônico, sem overshooting nem distorção)
+      // Easing cúbico desacelerado suave (monotônico, sem overshooting)
       const ease = 1.0 - Math.pow(1.0 - progress, 3);
 
-      // Interpolação direta e precisa do ponto de visada e da posição
+      // Interpolação do ponto de visada
       this.controls.target.lerpVectors(this.glideState.startTarget, this.glideState.endTarget, ease);
-      this.camera.position.lerpVectors(this.glideState.startPos, this.glideState.endPos, ease);
+
+      // Distâncias radiais relativas ao alvo no início e fim
+      const startDist = this.glideState.startPos.distanceTo(this.glideState.startTarget);
+      const endDist = this.glideState.endPos.distanceTo(this.glideState.endTarget);
+      const expectedDist = THREE.MathUtils.lerp(startDist, endDist, ease);
+
+      // Posição linear base
+      const pLinear = new THREE.Vector3().lerpVectors(this.glideState.startPos, this.glideState.endPos, ease);
+      const relVec = pLinear.clone().sub(this.controls.target);
+      const currentDist = relVec.length();
+
+      // Piso de segurança radial: impede terminantemente que a câmera corte o interior da Terra ou do Sol
+      const safeRadius = Math.min(startDist, endDist) * 0.96;
+      if (currentDist < safeRadius && currentDist > 0.001) {
+        relVec.setLength(Math.max(safeRadius, expectedDist));
+        this.camera.position.copy(this.controls.target).add(relVec);
+      } else {
+        this.camera.position.copy(pLinear);
+      }
+
+      // Arco de elevação parabólica para transições longas (geodésica espacial orbital)
+      const travelDist = this.glideState.startPos.distanceTo(this.glideState.endPos);
+      if (travelDist > 4.0) {
+        const archHeight = Math.sin(progress * Math.PI) * Math.min(5.5, travelDist * 0.16);
+        this.camera.position.y += archHeight;
+      }
+
       this.camera.lookAt(this.controls.target);
 
       if (progress >= 1.0) {

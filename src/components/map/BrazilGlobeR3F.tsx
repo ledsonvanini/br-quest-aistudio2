@@ -5,6 +5,7 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Hand } from 'lucide-react';
 import { BRAZIL_STATES_GEO } from '../../data/brazilGeoCoordinates';
 import { GuardianData } from '../../types';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
@@ -32,149 +33,27 @@ import {
   ASTRONOMICAL_SCENE_PRESETS,
 } from '../../lib/globeEngine';
 import { CameraOrbitController, CameraFocusMode } from '../../lib/globeEngine/cameraOrbitController';
-import { GlobeTelemetryCard } from '../globe/GlobeTelemetryCard';
-import { GlobeControlsHUD, BorderRegionFilter } from '../globe/GlobeControlsHUD';
-import { GlobeSolarSimulatorPanel } from '../globe/GlobeSolarSimulatorPanel';
-import { GlobeTextureInfoPanel } from '../globe/GlobeTextureInfoPanel';
+import {
+  buildBorderPoints,
+  buildBrazilStateOverlaysMesh,
+  BorderRegionFilter,
+} from '../../lib/globeEngine/brazilGeoMeshBuilder';
+import { createDeepSpaceStarfield } from '../../lib/globeEngine/starfieldGenerator';
+import { StateHeraldicPinsOverlay, ProjectedPin } from '../globe/StateHeraldicPinsOverlay';
+import { GlobePanelsLayer } from '../globe/GlobePanelsLayer';
 import { GlobeLoadingProgress } from '../globe/GlobeLoadingProgress';
-import { CelestialInteractiveOverlay } from '../globe/CelestialInteractiveOverlay';
 import { CompassLoadingScreen } from './CompassLoadingScreen';
-import { StateHeraldicShield } from './StateHeraldicShield';
-import { Hand } from 'lucide-react';
 import { findCityByName } from '../../data/brazilCitiesGeo';
 import {
   ProjectedCelestialPin,
   CelestialBodyInfo,
   CosmicTrajectoryTelemetry,
 } from '../../lib/globeEngine/types';
+import { useGlobeSolarCycle } from '../globe/useGlobeSolarCycle';
+import { useGlobeAstrometry, getEffectiveDate } from '../globe/useGlobeAstrometry';
+import { useGlobeCameraRig } from '../globe/useGlobeCameraRig';
 
 export type { GlobeTextureMode };
-
-function buildBorderPoints(features: any[], regionFilter: BorderRegionFilter = 'all'): number[] {
-  const points: number[] = [];
-  features.forEach((feat: any) => {
-    // Correctly extract state abbreviation handling IBGE/SimpleMaps ids like "BRRS" -> "RS"
-    const rawId = feat.properties?.id || feat.properties?.sigla || feat.id;
-    const uf = typeof rawId === 'string' ? rawId.replace(/^BR/i, '').toUpperCase() : '';
-    const stateGeo = uf ? BRAZIL_STATES_GEO[uf] : null;
-    if (regionFilter !== 'all' && stateGeo && stateGeo.region !== regionFilter) {
-      return;
-    }
-    const geom = feat.geometry;
-    if (!geom) return;
-
-    const processPolygon = (coords: number[][]) => {
-      for (let i = 0; i < coords.length - 1; i++) {
-        const [lon1, lat1] = coords[i];
-        const [lon2, lat2] = coords[i + 1];
-        // Elevation 1.012 ensures lines render crisply above terrain with zero z-fighting
-        const p1 = latLonToSphereVector3(lat1, lon1, SCENE_GLOBE_RADIUS * 1.012);
-        const p2 = latLonToSphereVector3(lat2, lon2, SCENE_GLOBE_RADIUS * 1.012);
-        points.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-      }
-    };
-
-    if (geom.type === 'Polygon') {
-      geom.coordinates.forEach((ring: any) => processPolygon(ring));
-    } else if (geom.type === 'MultiPolygon') {
-      geom.coordinates.forEach((poly: any) => {
-        poly.forEach((ring: any) => processPolygon(ring));
-      });
-    }
-  });
-  return points;
-}
-
-/**
- * Builds a discrete, subtle tinted 3D mesh overlay for Brazilian states,
- * color-coded by macro-region with gentle opacity to enhance contrast and state boundaries.
- */
-function buildBrazilStateOverlaysMesh(features: any[], regionFilter: BorderRegionFilter = 'all'): THREE.Mesh | null {
-  const positions: number[] = [];
-  const colors: number[] = [];
-
-  // Regional macro palette:
-  // Norte: Verde Floresta / Esmeralda Escuro
-  // Nordeste: Âmbar Dourado #f59e0b
-  // Centro-Oeste: Amarelo Sol #eab308
-  // Sudeste: Azul Safira #0284c7
-  // Sul: Púrpura Nobre #a855f7
-  const REGION_COLORS: Record<string, { r: number; g: number; b: number }> = {
-    'Norte': { r: 0.035, g: 0.52, b: 0.35 },       // Verde Floresta Tropical / Esmeralda Escuro
-    'Nordeste': { r: 0.96, g: 0.62, b: 0.15 },    // Warm golden amber #f59e0b
-    'Centro-Oeste': { r: 0.92, g: 0.76, b: 0.12 },// Sun wheat #eab308
-    'Sudeste': { r: 0.01, g: 0.52, b: 0.78 },     // Sapphire #0284c7
-    'Sul': { r: 0.66, g: 0.33, b: 0.97 },         // Purple #a855f7
-  };
-
-  // Verde Brasil com tom mais escuro e nobre (escurecido conforme solicitado)
-  const DEFAULT_GREEN = { r: 0.02, g: 0.38, b: 0.22 };
-
-  features.forEach((feat: any) => {
-    const rawId = feat.properties?.id || feat.properties?.sigla || feat.id;
-    const uf = typeof rawId === 'string' ? rawId.replace(/^BR/i, '').toUpperCase() : '';
-    const stateGeo = uf ? BRAZIL_STATES_GEO[uf] : null;
-    // O Mapa do Brasil deve ter preenchimento para todos os estados com cor verde e opacidade de 50%.
-    // Ao escolher regiões, agrupar por cor para cada região
-    const regionName = stateGeo?.region || 'Sudeste';
-    let c = DEFAULT_GREEN;
-    if (regionFilter !== 'all') {
-      c = REGION_COLORS[regionName] || DEFAULT_GREEN;
-    }
-
-    const geom = feat.geometry;
-    if (!geom) return;
-
-    const processRing = (ring: number[][]) => {
-      if (ring.length < 3) return;
-      const v2s = ring.map((pt) => new THREE.Vector2(pt[0], pt[1]));
-      try {
-        const triangles = THREE.ShapeUtils.triangulateShape(v2s, []);
-        for (let i = 0; i < triangles.length; i++) {
-          const tri = triangles[i];
-          for (let j = 0; j < 3; j++) {
-            const idx = tri[j];
-            const [lon, lat] = ring[idx];
-            // Elevation 1.006 sits snugly above the globe surface (1.000) and below border lines (1.012)
-            const p = latLonToSphereVector3(lat, lon, SCENE_GLOBE_RADIUS * 1.006);
-            positions.push(p.x, p.y, p.z);
-            colors.push(c.r, c.g, c.b);
-          }
-        }
-      } catch {
-        // Ignore any non-manifold ring edge
-      }
-    };
-
-    if (geom.type === 'Polygon') {
-      processRing(geom.coordinates[0]);
-    } else if (geom.type === 'MultiPolygon') {
-      geom.coordinates.forEach((poly: any) => {
-        if (poly && poly[0]) processRing(poly[0]);
-      });
-    }
-  });
-
-  if (positions.length === 0) return null;
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-
-  const mat = new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.50, // 50% opacity per user specification
-    depthTest: true,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-  });
-
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.renderOrder = 16;
-  return mesh;
-}
 
 export interface BrazilGlobeR3FProps {
   completedStateIds: Set<string>;
@@ -195,15 +74,6 @@ export interface BrazilGlobeR3FProps {
   zoomOutTrigger?: number;
   isTelemetryOpen?: boolean;
   onToggleTelemetry?: () => void;
-}
-
-interface ProjectedPin {
-  stateId: string;
-  x: number;
-  y: number;
-  visible: boolean;
-  scale: number;
-  distance: number;
 }
 
 export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
@@ -321,13 +191,15 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
   const closeAllPanelsExcept = useCallback(
     (except: 'telemetry' | 'trajectory' | 'solar_simulator' | 'texture_info' | 'none') => {
       if (except !== 'telemetry') {
-        if (isTelemetryOpenRef.current) {
+        if (isTelemetryOpenRef.current || isTelemetryOpen) {
+          isTelemetryOpenRef.current = false;
           if (onToggleTelemetry) {
-            onToggleTelemetry();
+            queueMicrotask(() => {
+              onToggleTelemetry();
+            });
           } else {
             setInternalIsTelemetryOpen(false);
           }
-          isTelemetryOpenRef.current = false;
         }
       }
       if (except !== 'trajectory') {
@@ -345,255 +217,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         isTextureInfoOpenRef.current = false;
       }
     },
-    [onToggleTelemetry]
+    [onToggleTelemetry, isTelemetryOpen]
   );
-
-  // Spherical Geodesic Camera Orbit Controller
-  const cameraOrbitControllerRef = useRef<CameraOrbitController>(new CameraOrbitController());
-
-  const smoothGlideCamera = useCallback(
-    (
-      targetPos: THREE.Vector3,
-      lookTarget: THREE.Vector3,
-      durationMs = 1300,
-      mode: CameraFocusMode = 'earth',
-      astroId: string | null = null
-    ) => {
-      cameraOrbitControllerRef.current.glideTo(targetPos, lookTarget, durationMs, mode, astroId);
-    },
-    []
-  );
-
-  useEffect(() => {
-    isTelemetryOpenRef.current = isTelemetryOpen;
-  }, [isTelemetryOpen]);
-
-  useEffect(() => {
-    showSolarSystemRef.current = showSolarSystem;
-  }, [showSolarSystem]);
-
-  useEffect(() => {
-    currentSeasonRef.current = currentSeason;
-  }, [currentSeason]);
-
-  // Astrometry & Telemetry State
-  const [telemetryData, setTelemetryData] = useState<StateAstrometryTelemetry | null>(null);
-  const [moonPhaseData, setMoonPhaseData] = useState<MoonPhaseData | null>(null);
-  const [activeRoutes, setActiveRoutes] = useState<GeodesicRoute[]>([]);
-  const [allCapitalRoutes, setAllCapitalRoutes] = useState<GeodesicRoute[]>([]);
-  const [activeAdaptedRoute, setActiveAdaptedRoute] = useState<GeodesicRoute | null>(null);
-
-  // Solar Hour & Day/Night 24h Cycle Simulation (Default to null = Ao Vivo Brasilia UTC-3)
-  const [simulatedSolarHour, setSimulatedSolarHour] = useState<number | null>(null);
-  const [isSolarCyclePlaying, setIsSolarCyclePlaying] = useState(false);
-  const simulatedSolarHourRef = useRef<number | null>(null);
-  const isSolarCyclePlayingRef = useRef<boolean>(false);
-
-  // 3-Point Planetary Lighting System & Solar Simulator State:
-  // 1. Sol: Luz Hard (Key Light)
-  // 2. Lua: Luz de Preenchimento / Soft Box Natural com leve glow (Fill Light)
-  // 3. Ambient: Luz Fake Suave para preencher pequenos gaps
-  // 4. Luzes Noturnas Urbanas (NASA VIIRS Black Marble)
-  const [sunIntensity, setSunIntensity] = useState<number>(1.25);
-  const sunIntensityRef = useRef<number>(1.25);
-  const [moonLightIntensity, setMoonLightIntensity] = useState<number>(0.65);
-  const moonLightIntensityRef = useRef<number>(0.65);
-  const [ambientLightIntensity, setAmbientLightIntensity] = useState<number>(0.16);
-  const ambientLightIntensityRef = useRef<number>(0.16);
-  const [cityLightIntensity, setCityLightIntensity] = useState<number>(1.40);
-  const cityLightIntensityRef = useRef<number>(1.40);
-  const [cloudsOpacity, setCloudsOpacity] = useState<number>(0.22);
-  const cloudsOpacityRef = useRef<number>(0.22);
-
-  // Dedicated Right Lateral Solar Simulator Panel State
-  const [isSolarSimulatorOpen, setIsSolarSimulatorOpen] = useState<boolean>(false);
-  const isSolarSimulatorOpenRef = useRef<boolean>(false);
-  isSolarSimulatorOpenRef.current = isSolarSimulatorOpen;
-  const [isSolarSimulatorExpanded, setIsSolarSimulatorExpanded] = useState<boolean>(false);
-  const isSolarSimulatorExpandedRef = useRef<boolean>(false);
-  isSolarSimulatorExpandedRef.current = isSolarSimulatorExpanded;
-  const [solarCycleSpeed, setSolarCycleSpeed] = useState<number>(1);
-  const solarCycleSpeedRef = useRef<number>(1);
-  solarCycleSpeedRef.current = solarCycleSpeed;
-  const lastSolarUiSyncRef = useRef<number>(0);
-  const lastOrbitalUiSyncRef = useRef<number>(0);
-
-  // Orbital Translation & Keplerian Physics State
-  const [orbitalDayOfYear, setOrbitalDayOfYear] = useState<number>(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 0);
-    const diff = now.getTime() - start.getTime();
-    const oneDay = 1000 * 60 * 60 * 24;
-    return Math.floor(diff / oneDay) || 172; // Default to mid-year / winter solstice in Brazil
-  });
-  const orbitalDayOfYearRef = useRef<number>(orbitalDayOfYear);
-  orbitalDayOfYearRef.current = orbitalDayOfYear;
-  const [isOrbitalPlaying, setIsOrbitalPlaying] = useState<boolean>(false);
-  const isOrbitalPlayingRef = useRef<boolean>(false);
-  isOrbitalPlayingRef.current = isOrbitalPlaying;
-  const [orbitalSpeedDaysPerSec, setOrbitalSpeedDaysPerSec] = useState<number>(7);
-  const orbitalSpeedDaysPerSecRef = useRef<number>(7);
-  orbitalSpeedDaysPerSecRef.current = orbitalSpeedDaysPerSec;
-  const [isAxialRotationActive, setIsAxialRotationActive] = useState<boolean>(false);
-  const isAxialRotationActiveRef = useRef<boolean>(false);
-  isAxialRotationActiveRef.current = isAxialRotationActive;
-  const [cameraFocusMode, setCameraFocusMode] = useState<'earth' | 'sun'>('earth');
-  const cameraFocusModeRef = useRef<'earth' | 'sun'>('earth');
-  cameraFocusModeRef.current = cameraFocusMode;
-  const [isPlanetsAligned, setIsPlanetsAligned] = useState<boolean>(false);
-  const isPlanetsAlignedRef = useRef<boolean>(false);
-  isPlanetsAlignedRef.current = isPlanetsAligned;
-  const [activeScenePresetId, setActiveScenePresetId] = useState<string>('foco-brasil');
-
-  // Live Official Brasília Clock (UTC-3)
-  const [liveBrasilia, setLiveBrasilia] = useState<{
-    formattedTime: string;
-    formattedFull: string;
-    hours: number;
-    minutes: number;
-    seconds: number;
-    floatHours: number;
-    periodName: string;
-  }>(() => {
-    const now = new Date();
-    const utcHours = now.getUTCHours();
-    const utcMinutes = now.getUTCMinutes();
-    const utcSeconds = now.getUTCSeconds();
-    const brtHours = (utcHours - 3 + 24) % 24;
-    const period =
-      brtHours >= 6 && brtHours < 12
-        ? 'Manhã'
-        : brtHours >= 12 && brtHours < 18
-        ? 'Tarde'
-        : brtHours >= 18 && brtHours < 24
-        ? 'Noite'
-        : 'Madrugada';
-    return {
-      formattedTime: `${brtHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
-      formattedFull: `${brtHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}:${utcSeconds.toString().padStart(2, '0')}`,
-      hours: brtHours,
-      minutes: utcMinutes,
-      seconds: utcSeconds,
-      floatHours: brtHours + utcMinutes / 60 + utcSeconds / 3600,
-      periodName: period,
-    };
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      const utcHours = now.getUTCHours();
-      const utcMinutes = now.getUTCMinutes();
-      const utcSeconds = now.getUTCSeconds();
-      const brtHours = (utcHours - 3 + 24) % 24;
-      const period =
-        brtHours >= 6 && brtHours < 12
-          ? 'Manhã'
-          : brtHours >= 12 && brtHours < 18
-          ? 'Tarde'
-          : brtHours >= 18 && brtHours < 24
-          ? 'Noite'
-          : 'Madrugada';
-      setLiveBrasilia({
-        formattedTime: `${brtHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}`,
-        formattedFull: `${brtHours.toString().padStart(2, '0')}:${utcMinutes.toString().padStart(2, '0')}:${utcSeconds.toString().padStart(2, '0')}`,
-        hours: brtHours,
-        minutes: utcMinutes,
-        seconds: utcSeconds,
-        floatHours: brtHours + utcMinutes / 60 + utcSeconds / 3600,
-        periodName: period,
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    simulatedSolarHourRef.current = simulatedSolarHour;
-  }, [simulatedSolarHour]);
-
-  useEffect(() => {
-    isSolarCyclePlayingRef.current = isSolarCyclePlaying;
-  }, [isSolarCyclePlaying]);
-
-  useEffect(() => {
-    sunIntensityRef.current = sunIntensity;
-    if (earthShaderMatRef.current) {
-      earthShaderMatRef.current.uniforms.u_sunIntensity.value = sunIntensity;
-    }
-  }, [sunIntensity]);
-
-  useEffect(() => {
-    ambientLightIntensityRef.current = ambientLightIntensity;
-    if (earthShaderMatRef.current) {
-      earthShaderMatRef.current.uniforms.u_ambientIntensity.value = ambientLightIntensity;
-    }
-  }, [ambientLightIntensity]);
-
-  useEffect(() => {
-    moonLightIntensityRef.current = moonLightIntensity;
-    if (earthShaderMatRef.current) {
-      earthShaderMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
-    }
-    if (cloudsMatRef.current) {
-      cloudsMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
-    }
-    if (atmosphereMatRef.current) {
-      atmosphereMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
-    }
-  }, [moonLightIntensity]);
-
-  useEffect(() => {
-    cityLightIntensityRef.current = cityLightIntensity;
-    if (earthShaderMatRef.current) {
-      earthShaderMatRef.current.uniforms.u_cityLightIntensity.value = cityLightIntensity;
-    }
-  }, [cityLightIntensity]);
-
-  useEffect(() => {
-    cloudsOpacityRef.current = cloudsOpacity;
-    if (earthShaderMatRef.current) {
-      earthShaderMatRef.current.uniforms.u_cloudsOpacity.value = cloudsOpacity;
-    }
-    if (cloudsMatRef.current) {
-      cloudsMatRef.current.uniforms.u_opacity.value = cloudsOpacity;
-    }
-  }, [cloudsOpacity]);
-
-  useEffect(() => {
-    orbitalDayOfYearRef.current = orbitalDayOfYear;
-  }, [orbitalDayOfYear]);
-
-  useEffect(() => {
-    isOrbitalPlayingRef.current = isOrbitalPlaying;
-  }, [isOrbitalPlaying]);
-
-  useEffect(() => {
-    orbitalSpeedDaysPerSecRef.current = orbitalSpeedDaysPerSec;
-  }, [orbitalSpeedDaysPerSec]);
-
-  useEffect(() => {
-    isAxialRotationActiveRef.current = isAxialRotationActive;
-  }, [isAxialRotationActive]);
-
-  useEffect(() => {
-    cameraFocusModeRef.current = cameraFocusMode;
-  }, [cameraFocusMode]);
-
-  const currentOrbitalState = useMemo<HeliocentricOrbitalState>(() => {
-    return calculateHeliocentricOrbitalState(
-      orbitalDayOfYear,
-      simulatedSolarHour !== null ? simulatedSolarHour : liveBrasilia.floatHours
-    );
-  }, [orbitalDayOfYear, simulatedSolarHour, liveBrasilia.floatHours]);
-
-  const [preloadProgress, setPreloadProgress] = useState<GlobePreloadProgress>({
-    loaded: 0,
-    total: 4,
-    percent: 0,
-    currentAsset: '',
-    isReady: false,
-    fromCache: false,
-  });
 
   // Three.js Core Refs
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -649,6 +274,155 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     });
     state3DVectors.current = vectors;
   }, []);
+
+  // 1. Solar, Planetary Lighting & Orbital Translation Hook
+  const {
+    simulatedSolarHour,
+    setSimulatedSolarHour,
+    simulatedSolarHourRef,
+    isSolarCyclePlaying,
+    setIsSolarCyclePlaying,
+    isSolarCyclePlayingRef,
+    sunIntensity,
+    setSunIntensity,
+    sunIntensityRef,
+    moonLightIntensity,
+    setMoonLightIntensity,
+    moonLightIntensityRef,
+    ambientLightIntensity,
+    setAmbientLightIntensity,
+    ambientLightIntensityRef,
+    cityLightIntensity,
+    setCityLightIntensity,
+    cityLightIntensityRef,
+    cloudsOpacity,
+    setCloudsOpacity,
+    cloudsOpacityRef,
+    isSolarSimulatorOpen,
+    setIsSolarSimulatorOpen,
+    isSolarSimulatorOpenRef,
+    isSolarSimulatorExpanded,
+    setIsSolarSimulatorExpanded,
+    isSolarSimulatorExpandedRef,
+    solarCycleSpeed,
+    setSolarCycleSpeed,
+    solarCycleSpeedRef,
+    orbitalDayOfYear,
+    setOrbitalDayOfYear,
+    orbitalDayOfYearRef,
+    isOrbitalPlaying,
+    setIsOrbitalPlaying,
+    isOrbitalPlayingRef,
+    orbitalSpeedDaysPerSec,
+    setOrbitalSpeedDaysPerSec,
+    orbitalSpeedDaysPerSecRef,
+    isAxialRotationActive,
+    setIsAxialRotationActive,
+    isAxialRotationActiveRef,
+    cameraFocusMode,
+    setCameraFocusMode,
+    cameraFocusModeRef,
+    isPlanetsAligned,
+    setIsPlanetsAligned,
+    isPlanetsAlignedRef,
+    activeScenePresetId,
+    setActiveScenePresetId,
+    liveBrasilia,
+    currentOrbitalState,
+  } = useGlobeSolarCycle();
+
+  // 2. Camera Rig Hook
+  const {
+    cameraOrbitControllerRef,
+    smoothGlideCamera,
+    handleZoomIn,
+    handleZoomOut,
+    handleRotateStep,
+    handleResetView,
+    handleSetCameraFocusMode,
+    focusStateOnGlobe,
+  } = useGlobeCameraRig({
+    cameraRef,
+    controlsRef,
+    globeGroupRef,
+    closeAllPanelsExcept,
+    setActiveSelectedAstroId,
+    setCameraFocusMode,
+    setActiveScenePresetId,
+  });
+
+  // Target State tracking
+  const currentTargetStateId = selectedStateId || focusedStateId || 'DF';
+  const currentTargetStateIdRef = useRef<string>(currentTargetStateId);
+  useEffect(() => {
+    currentTargetStateIdRef.current = currentTargetStateId;
+  }, [currentTargetStateId]);
+
+  const showCosmicBeamsRef = useRef<boolean>(showCosmicBeams);
+  useEffect(() => {
+    showCosmicBeamsRef.current = showCosmicBeams;
+  }, [showCosmicBeams]);
+
+  // 3. Astrometry & Geodesic Routes Hook
+  const {
+    telemetryData,
+    moonPhaseData,
+    activeRoutes,
+    allCapitalRoutes,
+    activeAdaptedRoute,
+    setActiveRoutes,
+    setAllCapitalRoutes,
+    setActiveAdaptedRoute,
+    handleSelectCapitalRoute,
+    handleCustomCityRoute,
+    handleResetCapitalsRoute,
+  } = useGlobeAstrometry({
+    currentTargetStateId,
+    currentSeason,
+    simulatedSolarHour,
+    globeGroupRef,
+    geodesicEngineRef,
+    cameraOrbitControllerRef,
+    smoothGlideCamera,
+    setShowGeodesicRoutes,
+  });
+
+  // Performance telemetry refs for the render loop
+  const lastSolarUiSyncRef = useRef<number>(0);
+  const lastOrbitalUiSyncRef = useRef<number>(0);
+  const lastOrbitalVisualsStateRef = useRef<{ lines: boolean; aligned: boolean }>({ lines: false, aligned: false });
+  const lastPinsCamPosRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const lastPinsCamQuatRef = useRef<THREE.Quaternion>(new THREE.Quaternion());
+  const lastPinsGlobeRotYRef = useRef<number>(-999);
+  const lastPinsWidthRef = useRef<number>(0);
+  const lastPinsHeightRef = useRef<number>(0);
+
+  // Sync lighting intensities to Three.js Shader Materials
+  useEffect(() => {
+    if (earthShaderMatRef.current) {
+      earthShaderMatRef.current.uniforms.u_sunIntensity.value = sunIntensity;
+      earthShaderMatRef.current.uniforms.u_ambientIntensity.value = ambientLightIntensity;
+      earthShaderMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
+      earthShaderMatRef.current.uniforms.u_cityLightIntensity.value = cityLightIntensity;
+      earthShaderMatRef.current.uniforms.u_cloudsOpacity.value = cloudsOpacity;
+    }
+    if (cloudsMatRef.current) {
+      cloudsMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
+      cloudsMatRef.current.uniforms.u_opacity.value = cloudsOpacity;
+    }
+    if (atmosphereMatRef.current) {
+      atmosphereMatRef.current.uniforms.u_moonIntensity.value = moonLightIntensity;
+    }
+  }, [sunIntensity, ambientLightIntensity, moonLightIntensity, cityLightIntensity, cloudsOpacity]);
+
+  const [preloadProgress, setPreloadProgress] = useState<GlobePreloadProgress>({
+    loaded: 0,
+    total: 4,
+    percent: 0,
+    currentAsset: '',
+    isReady: false,
+    fromCache: false,
+  });
 
   // Sync prop changes
   useEffect(() => {
@@ -726,67 +500,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       geodesicEngineRef.current.setVisible(showGeodesicRoutes);
     }
   }, [showGeodesicRoutes]);
-
-  // Helper to get effective date based on simulated solar hour or real time
-  const getEffectiveDate = (hour: number | null): Date => {
-    if (hour === null) return new Date();
-    // Brasília is UTC-3, so UTC = hour + 3
-    const utcHour = (hour + 3) % 24;
-    const wholeHours = Math.floor(utcHour);
-    const minutes = Math.floor((utcHour % 1) * 60);
-    const seconds = Math.floor((((utcHour % 1) * 60) % 1) * 60);
-    const d = new Date();
-    d.setUTCHours(wholeHours, minutes, seconds, 0);
-    return d;
-  };
-
-  // Recalculate Astrometric Telemetry & Routes on state selection change, season change, or solar hour change
-  const currentTargetStateId = selectedStateId || focusedStateId || 'DF';
-  const currentTargetStateIdRef = useRef<string>(currentTargetStateId);
-  currentTargetStateIdRef.current = currentTargetStateId;
-
-  const showCosmicBeamsRef = useRef<boolean>(showCosmicBeams);
-  showCosmicBeamsRef.current = showCosmicBeams;
-
-  useEffect(() => {
-    const geo = BRAZIL_STATES_GEO[currentTargetStateId];
-    if (geo) {
-      const effDate = getEffectiveDate(simulatedSolarHour);
-      const telemetry = calculateStateAstrometry(
-        currentTargetStateId,
-        geo.name,
-        geo.capital,
-        geo.lat,
-        geo.lon,
-        effDate,
-        currentSeason
-      );
-      setTelemetryData(telemetry);
-
-      const lunar = calculateLunarCoordinates(effDate);
-      setMoonPhaseData(lunar.phase);
-    }
-  }, [currentTargetStateId, currentSeason, simulatedSolarHour]);
-
-  // Update default state capital routes only when target state changes and no custom route is active
-  useEffect(() => {
-    if (geodesicEngineRef.current && !activeAdaptedRoute) {
-      const routes = geodesicEngineRef.current.updateRoutes(currentTargetStateId);
-      setAllCapitalRoutes(routes);
-      setActiveRoutes(routes);
-    }
-  }, [currentTargetStateId]);
-
-  // Periodic telemetry and UI sync during continuous 24h solar cycle animation
-  useEffect(() => {
-    if (!isSolarCyclePlaying) return;
-    const interval = setInterval(() => {
-      if (simulatedSolarHourRef.current !== null) {
-        setSimulatedSolarHour(simulatedSolarHourRef.current);
-      }
-    }, 250);
-    return () => clearInterval(interval);
-  }, [isSolarCyclePlaying]);
 
   // Preload textures progressively in background with auto-dismiss
   useEffect(() => {
@@ -883,8 +596,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     controls.zoomSpeed = 1.25;
     controls.minDistance = 2.15; // Deep zoom into Brazilian states
     controls.maxDistance = 240.0; // Amplo zoom out para visualizar todo o sistema solar heliocêntrico
-    controls.minPolarAngle = Math.PI / 6;
-    controls.maxPolarAngle = (5 * Math.PI) / 6;
+    controls.minPolarAngle = 0.04; // Permite visualização panorâmica superior do plano orbital
+    controls.maxPolarAngle = Math.PI - 0.04;
     controls.autoRotate = false;
     controls.autoRotateSpeed = 0.5;
 
@@ -929,26 +642,9 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.32);
     scene.add(ambientLight);
 
-    // 6. Deep Space Background Starfield
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 3000;
-    const starPositions = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      const r = 40 + Math.random() * 40;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      starPositions[i] = r * Math.sin(phi) * Math.cos(theta);
-      starPositions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
-      starPositions[i + 2] = r * Math.cos(phi);
-    }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starMat = new THREE.PointsMaterial({
-      color: 0x93c5fd,
-      size: 0.35,
-      transparent: true,
-      opacity: 0.85,
-    });
-    scene.add(new THREE.Points(starGeo, starMat));
+    // 6. Deep Space Background Starfield (Anti-flicker with Gaussian point sprite)
+    const starfield = createDeepSpaceStarfield();
+    scene.add(starfield);
 
     // 7. Celestial System (Sun, Moon, Solar System Planets, Cosmic Beams)
     const celestial = new CelestialSystem();
@@ -1137,8 +833,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         const nextH = (currentH + delta * 0.67 * speed) % 24;
         simulatedSolarHourRef.current = nextH;
 
-        // Synchronize React state at ~15fps so the slider and digital clock in the UI move in real time
-        if (nowMs - lastSolarUiSyncRef.current > 65) {
+        // Synchronize React state at ~10fps smoothly so the slider and digital clock in the UI update cleanly without thrashing
+        if (nowMs - lastSolarUiSyncRef.current > 100) {
           lastSolarUiSyncRef.current = nowMs;
           setSimulatedSolarHour(nextH);
         }
@@ -1151,7 +847,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         const nextD = ((currentD + delta * speed - 1) % 365.25) + 1;
         orbitalDayOfYearRef.current = nextD;
 
-        if (nowMs - lastOrbitalUiSyncRef.current > 65) {
+        if (nowMs - lastOrbitalUiSyncRef.current > 100) {
           lastOrbitalUiSyncRef.current = nowMs;
           setOrbitalDayOfYear(nextD);
         }
@@ -1205,11 +901,22 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
           isSolarCyclePlayingRef.current ||
           isPlanetsAlignedRef.current;
         const shouldShowOrbitalLines = showSolarSystemRef.current && isSimulating;
-        celestialSystemRef.current.setOrbitalVisualsVisibility(
-          shouldShowOrbitalLines,
-          0.20,
-          isPlanetsAlignedRef.current
-        );
+
+        // Cache calls to avoid redundant scene traversals and CPU stalls every frame
+        if (
+          lastOrbitalVisualsStateRef.current.lines !== shouldShowOrbitalLines ||
+          lastOrbitalVisualsStateRef.current.aligned !== isPlanetsAlignedRef.current
+        ) {
+          lastOrbitalVisualsStateRef.current = {
+            lines: shouldShowOrbitalLines,
+            aligned: isPlanetsAlignedRef.current,
+          };
+          celestialSystemRef.current.setOrbitalVisualsVisibility(
+            shouldShowOrbitalLines,
+            0.20,
+            isPlanetsAlignedRef.current
+          );
+        }
 
         // Camera Orbit Controller: Smooth Geodesic Glide & Continuous Tracking
         cameraOrbitControllerRef.current.update(nowMs, earthPos, isOrbitalPlayingRef.current);
@@ -1322,35 +1029,53 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         if (nowMs - lastPinsSyncMsRef.current > 33) {
           lastPinsSyncMsRef.current = nowMs;
           camera.getWorldPosition(cameraWorldPos);
-          const newPins: ProjectedPin[] = [];
 
-          Object.entries(state3DVectors.current).forEach(([stateId, worldPos]) => {
-            tempVec.copy(worldPos);
-            tempVec.applyMatrix4(globeGroup.matrixWorld);
+          const camMoved =
+            camera.position.distanceToSquared(lastPinsCamPosRef.current) > 0.0001 ||
+            Math.abs(camera.quaternion.dot(lastPinsCamQuatRef.current) - 1.0) > 0.0001;
+          const globeMoved =
+            Math.abs(globeGroup.rotation.y - lastPinsGlobeRotYRef.current) > 0.0001;
+          const sizeChanged =
+            currentWidth !== lastPinsWidthRef.current ||
+            currentHeight !== lastPinsHeightRef.current;
 
-            const dot = tempVec.dot(cameraWorldPos);
-            const isVisible = dot > 1.85; // Front hemisphere facing camera
+          if (camMoved || globeMoved || sizeChanged || projectedPinsRef.current.length === 0) {
+            lastPinsCamPosRef.current.copy(camera.position);
+            lastPinsCamQuatRef.current.copy(camera.quaternion);
+            lastPinsGlobeRotYRef.current = globeGroup.rotation.y;
+            lastPinsWidthRef.current = currentWidth;
+            lastPinsHeightRef.current = currentHeight;
 
-            if (isVisible) {
-              tempVec.project(camera);
-              const screenX = (tempVec.x * 0.5 + 0.5) * currentWidth;
-              const screenY = (-(tempVec.y * 0.5) + 0.5) * currentHeight;
-              const dist = cameraWorldPos.distanceTo(worldPos);
-              const scale = Math.max(0.6, Math.min(1.25, 4.8 / dist));
+            const newPins: ProjectedPin[] = [];
 
-              newPins.push({
-                stateId,
-                x: screenX,
-                y: screenY,
-                visible: true,
-                scale,
-                distance: dist,
-              });
-            }
-          });
+            Object.entries(state3DVectors.current).forEach(([stateId, worldPos]) => {
+              tempVec.copy(worldPos);
+              tempVec.applyMatrix4(globeGroup.matrixWorld);
 
-          projectedPinsRef.current = newPins;
-          setProjectedPins(newPins);
+              const dot = tempVec.dot(cameraWorldPos);
+              const isVisible = dot > 1.85; // Front hemisphere facing camera
+
+              if (isVisible) {
+                tempVec.project(camera);
+                const screenX = (tempVec.x * 0.5 + 0.5) * currentWidth;
+                const screenY = (-(tempVec.y * 0.5) + 0.5) * currentHeight;
+                const dist = cameraWorldPos.distanceTo(worldPos);
+                const scale = Math.max(0.6, Math.min(1.25, 4.8 / dist));
+
+                newPins.push({
+                  stateId,
+                  x: screenX,
+                  y: screenY,
+                  visible: true,
+                  scale,
+                  distance: dist,
+                });
+              }
+            });
+
+            projectedPinsRef.current = newPins;
+            setProjectedPins(newPins);
+          }
         }
       }
 
@@ -1390,8 +1115,8 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       atmoMat.dispose();
       cloudGeo.dispose();
       cloudMat.dispose();
-      starGeo.dispose();
-      starMat.dispose();
+      starfield.geometry?.dispose();
+      (starfield.material as THREE.Material)?.dispose();
       celestial.dispose();
       geodesicEngine.dispose();
       if (stateOverlaysMeshRef.current) {
@@ -1408,58 +1133,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       }
     };
   }, []);
-
-  // Center / Focus Controls with smooth spherical geodesic glide
-  const handleResetView = useCallback(() => {
-    closeAllPanelsExcept('none');
-    setActiveSelectedAstroId('terra');
-    setCameraFocusMode('earth');
-    cameraFocusModeRef.current = 'earth';
-    setActiveScenePresetId('foco-brasil');
-
-    const earthPos = globeGroupRef.current ? globeGroupRef.current.position.clone() : new THREE.Vector3(14, 0, 0);
-    let brazilCam = earthPos.clone().add(latLonToSphereVector3(-14.235, -51.925, 5.5));
-    if (globeGroupRef.current) {
-      const localBrazil = latLonToSphereVector3(-14.235, -51.925, SCENE_GLOBE_RADIUS);
-      globeGroupRef.current.updateMatrixWorld(true);
-      const worldBrazil = localBrazil.clone().applyMatrix4(globeGroupRef.current.matrixWorld);
-      const normal = worldBrazil.clone().sub(earthPos).normalize();
-      brazilCam = earthPos.clone().add(normal.clone().multiplyScalar(5.5));
-    }
-    cameraOrbitControllerRef.current.targetMesh = null;
-    smoothGlideCamera(brazilCam, earthPos, 1300, 'earth', null);
-  }, [closeAllPanelsExcept, smoothGlideCamera]);
-
-  const handleSetCameraFocusMode = useCallback(
-    (mode: 'earth' | 'sun') => {
-      setCameraFocusMode(mode);
-      cameraFocusModeRef.current = mode;
-
-      if (mode === 'sun') {
-        setActiveScenePresetId('sistema-solar');
-        const sunPos = new THREE.Vector3(0, 0, 0);
-        // Elevated panoramic perspective above the Sun looking across the planetary orbital disk
-        const targetCamPos = new THREE.Vector3(18, 38, 52);
-        cameraOrbitControllerRef.current.targetMesh = null;
-        smoothGlideCamera(targetCamPos, sunPos, 1600, 'sun', 'sol');
-      } else {
-        setActiveScenePresetId('foco-brasil');
-        // Return smoothly to Earth / Brazil default view with orientation towards Brazil
-        const earthPos = globeGroupRef.current ? globeGroupRef.current.position.clone() : new THREE.Vector3(14, 0, 0);
-        let brazilCam = earthPos.clone().add(latLonToSphereVector3(-14.235, -51.925, 5.5));
-        if (globeGroupRef.current) {
-          const localBrazil = latLonToSphereVector3(-14.235, -51.925, SCENE_GLOBE_RADIUS);
-          globeGroupRef.current.updateMatrixWorld(true);
-          const worldBrazil = localBrazil.clone().applyMatrix4(globeGroupRef.current.matrixWorld);
-          const normal = worldBrazil.clone().sub(earthPos).normalize();
-          brazilCam = earthPos.clone().add(normal.clone().multiplyScalar(5.5));
-        }
-        cameraOrbitControllerRef.current.targetMesh = null;
-        smoothGlideCamera(brazilCam, earthPos, 1400, 'earth', null);
-      }
-    },
-    [smoothGlideCamera]
-  );
 
   const handleSelectScenePreset = useCallback(
     (presetId: string) => {
@@ -1714,6 +1387,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         handleResetView();
         return;
       }
+      setShowSolarSystem(true);
       if (celestialSystemRef.current) {
         const bodies = celestialSystemRef.current.getAllCelestialBodies(new Date(), currentSeason);
         const targetBody = bodies.find((b) => b.id === astroId);
@@ -1726,25 +1400,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     [closeAllPanelsExcept, currentSeason, handleResetView, handleSelectAstro, handleFocusAstroCamera]
   );
 
-  const handleZoomIn = () => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    const newLen = Math.max(2.15, cameraRef.current.position.length() * 0.8);
-    cameraRef.current.position.setLength(newLen);
-    controlsRef.current.update();
-  };
-
-  const handleZoomOut = () => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    const newLen = Math.min(18.2, cameraRef.current.position.length() * 1.25);
-    cameraRef.current.position.setLength(newLen);
-    controlsRef.current.update();
-  };
-
-  const handleRotateStep = (angleDeg = 15) => {
-    if (!globeGroupRef.current) return;
-    globeGroupRef.current.rotation.y += (angleDeg * Math.PI) / 180;
-  };
-
   const handlePinClick = useCallback(
     (stateId: string) => {
       onStateClick(stateId);
@@ -1752,47 +1407,9 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         closeAllPanelsExcept('telemetry');
         handleToggleTelemetry();
       }
-      const geo = BRAZIL_STATES_GEO[stateId];
-      if (geo && globeGroupRef.current) {
-        const earthPos = globeGroupRef.current.position.clone();
-        const localVec = latLonToSphereVector3(geo.lat, geo.lon, SCENE_GLOBE_RADIUS);
-        globeGroupRef.current.updateMatrixWorld(true);
-        const worldVec = localVec.clone().applyMatrix4(globeGroupRef.current.matrixWorld);
-        const normal = worldVec.clone().sub(earthPos).normalize();
-        const targetCamPos = earthPos.clone().add(normal.clone().multiplyScalar(4.5));
-        cameraOrbitControllerRef.current.targetMesh = null;
-        smoothGlideCamera(targetCamPos, earthPos, 1100, 'earth', null);
-      }
+      focusStateOnGlobe(stateId);
     },
-    [onStateClick, isTelemetryOpen, closeAllPanelsExcept, handleToggleTelemetry, smoothGlideCamera]
-  );
-
-  const handleSelectCapitalRoute = useCallback(
-    (originUf: string, destUf: string) => {
-      if (!geodesicEngineRef.current) return;
-      const route = geodesicEngineRef.current.setAdaptedCapitalsRoute(originUf, destUf, true);
-      if (!route) return;
-
-      setActiveAdaptedRoute(route);
-      setActiveRoutes([route]);
-
-      // Orbit camera smoothly towards the midpoint of the two capitals on the rotated Earth
-      const originGeo = BRAZIL_STATES_GEO[originUf];
-      const destGeo = BRAZIL_STATES_GEO[destUf];
-      if (originGeo && destGeo && globeGroupRef.current) {
-        const midLat = (originGeo.lat + destGeo.lat) / 2;
-        const midLon = (originGeo.lon + destGeo.lon) / 2;
-        const earthPos = globeGroupRef.current.position.clone();
-        const localMid = latLonToSphereVector3(midLat, midLon, SCENE_GLOBE_RADIUS);
-        globeGroupRef.current.updateMatrixWorld(true);
-        const worldMid = localMid.clone().applyMatrix4(globeGroupRef.current.matrixWorld);
-        const normal = worldMid.clone().sub(earthPos).normalize();
-        const targetCamPos = earthPos.clone().add(normal.clone().multiplyScalar(4.6));
-        cameraOrbitControllerRef.current.targetMesh = null;
-        smoothGlideCamera(targetCamPos, earthPos, 1200, 'earth', null);
-      }
-    },
-    [smoothGlideCamera]
+    [onStateClick, isTelemetryOpen, closeAllPanelsExcept, handleToggleTelemetry, focusStateOnGlobe]
   );
 
   const handleTextureModeChange = useCallback((mode: GlobeTextureMode) => {
@@ -1801,90 +1418,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
     setIsTextureInfoOpen(true);
     isTextureInfoOpenRef.current = true;
   }, [closeAllPanelsExcept]);
-
-  const handleCustomCityRoute = useCallback(
-    (originName: string, destName: string) => {
-      const cleanOrigin = originName.replace(/\s*[-/(].*$/, '').trim();
-      const cleanDest = destName.replace(/\s*[-/(].*$/, '').trim();
-
-      let originCity = findCityByName(cleanOrigin) || findCityByName(originName);
-      if (!originCity) {
-        const stateMatch = Object.values(BRAZIL_STATES_GEO).find(
-          (s) =>
-            s.capital.toLowerCase().includes(cleanOrigin.toLowerCase()) ||
-            cleanOrigin.toLowerCase().includes(s.capital.toLowerCase()) ||
-            s.name.toLowerCase().includes(cleanOrigin.toLowerCase())
-        );
-        if (stateMatch) {
-          originCity = {
-            id: stateMatch.capital.toLowerCase(),
-            name: stateMatch.capital,
-            uf: stateMatch.id,
-            region: stateMatch.region as 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul',
-            lat: stateMatch.lat,
-            lng: stateMatch.lon,
-          };
-        }
-      }
-
-      let destCity = findCityByName(cleanDest) || findCityByName(destName);
-      if (!destCity) {
-        const stateMatch = Object.values(BRAZIL_STATES_GEO).find(
-          (s) =>
-            s.capital.toLowerCase().includes(cleanDest.toLowerCase()) ||
-            cleanDest.toLowerCase().includes(s.capital.toLowerCase()) ||
-            s.name.toLowerCase().includes(cleanDest.toLowerCase())
-        );
-        if (stateMatch) {
-          destCity = {
-            id: stateMatch.capital.toLowerCase(),
-            name: stateMatch.capital,
-            uf: stateMatch.id,
-            region: stateMatch.region as 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul',
-            lat: stateMatch.lat,
-            lng: stateMatch.lon,
-          };
-        }
-      }
-
-      if (!originCity || !destCity || !geodesicEngineRef.current) return;
-
-      // Visually activate geodesic routes immediately
-      setShowGeodesicRoutes(true);
-      geodesicEngineRef.current.setVisible(true);
-
-      const route = geodesicEngineRef.current.setCustomCityRoute(
-        { name: originCity.name, uf: originCity.uf, lat: originCity.lat, lng: originCity.lng },
-        { name: destCity.name, uf: destCity.uf, lat: destCity.lat, lng: destCity.lng },
-        true
-      );
-
-      setActiveAdaptedRoute(route);
-      setActiveRoutes([route]);
-
-      // Orbit camera smoothly towards the midpoint of the route on the rotated Earth
-      if (globeGroupRef.current) {
-        const midLat = (originCity.lat + destCity.lat) / 2;
-        const midLng = (originCity.lng + destCity.lng) / 2;
-        const earthPos = globeGroupRef.current.position.clone();
-        const localMid = latLonToSphereVector3(midLat, midLng, SCENE_GLOBE_RADIUS);
-        globeGroupRef.current.updateMatrixWorld(true);
-        const worldMid = localMid.clone().applyMatrix4(globeGroupRef.current.matrixWorld);
-        const normal = worldMid.clone().sub(earthPos).normalize();
-        const targetCamPos = earthPos.clone().add(normal.clone().multiplyScalar(4.4));
-        cameraOrbitControllerRef.current.targetMesh = null;
-        smoothGlideCamera(targetCamPos, earthPos, 1200, 'earth', null);
-      }
-    },
-    [smoothGlideCamera]
-  );
-
-  const handleResetCapitalsRoute = useCallback(() => {
-    if (!geodesicEngineRef.current) return;
-    const routes = geodesicEngineRef.current.restoreAllCapitalsRoutes();
-    setActiveAdaptedRoute(null);
-    setActiveRoutes(routes);
-  }, []);
 
   return (
     <div
@@ -1915,84 +1448,55 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
       {/* Floating Preload / Cache Progress Indicator in HUD (Auto-dismisses in 4s) */}
       <GlobeLoadingProgress progress={preloadProgress} />
 
-      {/* Top Floating Navigation Instruction Pill (Auto-dismisses after 4 seconds) */}
-      {showNavPill && (
-        <div
-          id="pill-instrucoes-navegacao"
-          className="painel-instrucao-navegacao absolute top-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-950/85 backdrop-blur-md border border-sky-500/30 text-sky-200 text-xs shadow-2xl pointer-events-none transition-opacity duration-700 animate-in fade-in"
-        >
-          <div className="flex items-center gap-1 text-sky-300">
-            <Hand className="w-3.5 h-3.5 text-sky-400" />
-            <span>Girar Terra</span>
-          </div>
-          <span className="text-slate-600">•</span>
-          <div className="flex items-center gap-1 text-slate-300">
-            <span>Scroll Zoom</span>
-          </div>
-          <span className="text-slate-600">•</span>
-          <div className="flex items-center gap-1 text-amber-300">
-            <span>Clique nos Brasões</span>
-          </div>
-        </div>
-      )}
-
-      {/* Astrometric Telemetry HUD Card (Moon, Sun, Geodesic Arcs) - Hidden in Astral Mode */}
-      {isTelemetryOpen && !isAstralMode && (
-        <GlobeTelemetryCard
-          telemetry={telemetryData}
-          moonPhase={moonPhaseData}
-          routes={activeRoutes}
-          allCapitalRoutes={allCapitalRoutes}
-          activeAdaptedRoute={activeAdaptedRoute}
-          showCosmicBeams={showCosmicBeams}
-          onToggleCosmicBeams={() => setShowCosmicBeams((prev) => !prev)}
-          selectedAstroId={activeSelectedAstroId}
-          onSelectAstroId={(astroId) => handleNavigateToAstro(astroId)}
-          onSelectRouteTarget={(targetId) => handlePinClick(targetId)}
-          onSelectCapitalRoute={handleSelectCapitalRoute}
-          onCustomCityRoute={handleCustomCityRoute}
-          onResetCapitalsRoute={handleResetCapitalsRoute}
-          onClose={() => {
-            handleToggleTelemetry();
-            handleResetView();
-          }}
-        />
-      )}
-
-      {/* Cartographic Texture Intelligence & Metadata Panel */}
-      {isTextureInfoOpen && (
-        <GlobeTextureInfoPanel
-          textureMode={activeTextureMode}
-          onChangeTextureMode={handleTextureModeChange}
-          onClose={() => setIsTextureInfoOpen(false)}
-        />
-      )}
-
-      {/* Interactive Celestial Overlay: Interplanetary Trajectory Dialogue */}
-      {showSolarSystem && (
-        <CelestialInteractiveOverlay
-          pins={[]}
-          selectedAstro={selectedAstro}
-          trajectoryTelemetry={trajectoryTelemetry}
-          onSelectAstro={handleSelectAstro}
-          onFocusAstroCamera={handleFocusAstroCamera}
-          onResetToBrazil={handleResetView}
-        />
-      )}
-
-      {/* Floating Bottom Center Minimalist Single-Line HUD Controls */}
-      <GlobeControlsHUD
-        autoRotate={isAxialRotationActive}
-        onToggleAutoRotate={() => setIsAxialRotationActive((prev) => !prev)}
-        cloudsEnabled={cloudsVisible}
-        onToggleClouds={() => setCloudsVisible((prev) => !prev)}
+      {/* Camada Centralizada de Painéis, HUD e Modais do Globo 3D */}
+      <GlobePanelsLayer
+        showNavPill={showNavPill}
+        isTelemetryOpen={isTelemetryOpen}
+        onToggleTelemetry={handleToggleTelemetry}
+        telemetryData={telemetryData}
+        moonPhaseData={moonPhaseData}
+        activeRoutes={activeRoutes}
+        allCapitalRoutes={allCapitalRoutes}
+        activeAdaptedRoute={activeAdaptedRoute}
+        showCosmicBeams={showCosmicBeams}
+        onToggleCosmicBeams={() => setShowCosmicBeams((prev) => !prev)}
+        activeSelectedAstroId={activeSelectedAstroId}
+        onNavigateToAstro={handleNavigateToAstro}
+        onPinClick={handlePinClick}
+        onSelectCapitalRoute={handleSelectCapitalRoute}
+        onCustomCityRoute={handleCustomCityRoute}
+        onResetCapitalsRoute={handleResetCapitalsRoute}
+        onResetView={handleResetView}
+        isTextureInfoOpen={isTextureInfoOpen}
+        onToggleTextureInfoPanel={() => {
+          if (!isTextureInfoOpen) {
+            closeAllPanelsExcept('texture_info');
+            setIsTextureInfoOpen(true);
+            isTextureInfoOpenRef.current = true;
+          } else {
+            setIsTextureInfoOpen(false);
+            isTextureInfoOpenRef.current = false;
+          }
+        }}
+        onCloseTextureInfoPanel={() => {
+          setIsTextureInfoOpen(false);
+          isTextureInfoOpenRef.current = false;
+        }}
+        activeTextureMode={activeTextureMode}
+        onChangeTextureMode={handleTextureModeChange}
         showSolarSystem={showSolarSystem}
         onToggleSolarSystem={() => setShowSolarSystem((prev) => !prev)}
+        selectedAstro={selectedAstro}
+        trajectoryTelemetry={trajectoryTelemetry}
+        onSelectAstro={handleSelectAstro}
+        onFocusAstroCamera={handleFocusAstroCamera}
+        isAxialRotationActive={isAxialRotationActive}
+        onToggleAxialRotation={() => setIsAxialRotationActive((prev) => !prev)}
+        cloudsVisible={cloudsVisible}
+        onToggleClouds={() => setCloudsVisible((prev) => !prev)}
         showGeodesicRoutes={showGeodesicRoutes}
         onToggleGeodesicRoutes={() => setShowGeodesicRoutes((prev) => !prev)}
-        textureMode={activeTextureMode}
-        onChangeTextureMode={handleTextureModeChange}
-        season={currentSeason}
+        currentSeason={currentSeason}
         onChangeSeason={(season) => setCurrentSeason(season)}
         showBorders={bordersVisible}
         onToggleBorders={() => setBordersVisible((prev) => !prev)}
@@ -2002,65 +1506,36 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         onTogglePinDisplayMode={() =>
           setPinDisplayMode((prev) => (prev === 'all' ? 'compact' : prev === 'compact' ? 'none' : 'all'))
         }
-        isTelemetryOpen={isTelemetryOpen}
-        onToggleTelemetry={handleToggleTelemetry}
-        isTextureInfoOpen={isTextureInfoOpen}
-        onToggleTextureInfoPanel={() => {
-          setIsTextureInfoOpen((prev) => {
-            const next = !prev;
-            if (next) {
-              closeAllPanelsExcept('texture_info');
-              return true;
-            } else {
-              isTextureInfoOpenRef.current = false;
-              return false;
-            }
-          });
-        }}
-        selectedAstroId={activeSelectedAstroId}
-        onNavigateToAstro={handleNavigateToAstro}
-        solarHour={simulatedSolarHour}
+        simulatedSolarHour={simulatedSolarHour}
         onChangeSolarHour={(h) => {
           setSimulatedSolarHour(h);
           simulatedSolarHourRef.current = h;
         }}
         isSolarCyclePlaying={isSolarCyclePlaying}
         onToggleSolarCycle={() => setIsSolarCyclePlaying((prev) => !prev)}
-        currentSolarStatus={telemetryData?.localSolarStatus || 'dia'}
         ambientLightIntensity={ambientLightIntensity}
         onChangeAmbientLightIntensity={(intensity) => setAmbientLightIntensity(intensity)}
         moonLightIntensity={moonLightIntensity}
         onChangeMoonLightIntensity={(intensity) => setMoonLightIntensity(intensity)}
         isSolarSimulatorOpen={isSolarSimulatorOpen}
         onToggleSolarSimulator={() => {
-          setIsSolarSimulatorOpen((prev) => {
-            const next = !prev;
-            if (next) {
-              closeAllPanelsExcept('solar_simulator');
-              return true;
-            } else {
-              isSolarSimulatorOpenRef.current = false;
-              return false;
-            }
-          });
+          if (!isSolarSimulatorOpen) {
+            closeAllPanelsExcept('solar_simulator');
+            setIsSolarSimulatorOpen(true);
+            isSolarSimulatorOpenRef.current = true;
+          } else {
+            setIsSolarSimulatorOpen(false);
+            isSolarSimulatorOpenRef.current = false;
+          }
+        }}
+        onCloseSolarSimulator={() => {
+          setIsSolarSimulatorOpen(false);
+          isSolarSimulatorOpenRef.current = false;
         }}
         activeScenePresetId={activeScenePresetId}
         onSelectScenePreset={handleSelectScenePreset}
-      />
-
-      {/* Dedicated Right Lateral Solar Simulator & Day/Night 24h Panel */}
-      <GlobeSolarSimulatorPanel
-        isOpen={isSolarSimulatorOpen}
-        onClose={() => setIsSolarSimulatorOpen(false)}
-        isExpanded={isSolarSimulatorExpanded}
-        onToggleExpand={(expanded) => setIsSolarSimulatorExpanded(expanded)}
-        solarHour={simulatedSolarHour}
-        onChangeSolarHour={(h) => {
-          setSimulatedSolarHour(h);
-          simulatedSolarHourRef.current = h;
-        }}
-        isSolarCyclePlaying={isSolarCyclePlaying}
-        onToggleSolarCycle={() => setIsSolarCyclePlaying((prev) => !prev)}
+        isSolarSimulatorExpanded={isSolarSimulatorExpanded}
+        onToggleExpandSolarSimulator={(expanded) => setIsSolarSimulatorExpanded(expanded)}
         solarCycleSpeed={solarCycleSpeed}
         onChangeSolarCycleSpeed={(spd) => {
           setSolarCycleSpeed(spd);
@@ -2072,28 +1547,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
           sunIntensityRef.current = intensity;
           if (earthShaderMatRef.current) {
             earthShaderMatRef.current.uniforms.u_sunIntensity.value = intensity;
-          }
-        }}
-        moonLightIntensity={moonLightIntensity}
-        onChangeMoonLightIntensity={(intensity) => {
-          setMoonLightIntensity(intensity);
-          moonLightIntensityRef.current = intensity;
-          if (earthShaderMatRef.current) {
-            earthShaderMatRef.current.uniforms.u_moonIntensity.value = intensity;
-          }
-          if (cloudsMatRef.current) {
-            cloudsMatRef.current.uniforms.u_moonIntensity.value = intensity;
-          }
-          if (atmosphereMatRef.current) {
-            atmosphereMatRef.current.uniforms.u_moonIntensity.value = intensity;
-          }
-        }}
-        ambientLightIntensity={ambientLightIntensity}
-        onChangeAmbientLightIntensity={(intensity) => {
-          setAmbientLightIntensity(intensity);
-          ambientLightIntensityRef.current = intensity;
-          if (earthShaderMatRef.current) {
-            earthShaderMatRef.current.uniforms.u_ambientIntensity.value = intensity;
           }
         }}
         cityLightIntensity={cityLightIntensity}
@@ -2115,9 +1568,7 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
             cloudsMatRef.current.uniforms.u_opacity.value = opacity;
           }
         }}
-        cloudsVisible={cloudsVisible}
-        onToggleClouds={() => setCloudsVisible((prev) => !prev)}
-        onResetDefaults={() => {
+        onResetLightingDefaults={() => {
           setSunIntensity(1.25);
           sunIntensityRef.current = 1.25;
           setMoonLightIntensity(0.65);
@@ -2144,7 +1595,6 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
           }
         }}
         liveBrasilia={liveBrasilia}
-        currentSolarStatus={telemetryData?.localSolarStatus || 'dia'}
         orbitalDayOfYear={orbitalDayOfYear}
         onChangeOrbitalDayOfYear={(d) => {
           setOrbitalDayOfYear(d);
@@ -2154,116 +1604,32 @@ export const BrazilGlobeR3F: React.FC<BrazilGlobeR3FProps> = ({
         onToggleOrbitalPlay={handleToggleOrbitalPlay}
         orbitalSpeedDaysPerSec={orbitalSpeedDaysPerSec}
         onChangeOrbitalSpeed={(spd) => setOrbitalSpeedDaysPerSec(spd)}
-        isAxialRotationActive={isAxialRotationActive}
-        onToggleAxialRotation={() => setIsAxialRotationActive((prev) => !prev)}
         cameraFocusMode={cameraFocusMode}
         onChangeCameraFocusMode={handleSetCameraFocusMode}
+        currentOrbitalState={currentOrbitalState}
+        isPlanetsAligned={isPlanetsAligned}
+        onTogglePlanetsAlignment={handleTogglePlanetsAlignment}
         onSelectPlanetAstro={(astroId) => {
           const allAstros = celestialSystemRef.current?.getAllCelestialBodies() || [];
           const astro = allAstros.find((a) => a.id === astroId);
           if (astro) handleFocusAstroCamera(astro);
         }}
-        orbitalState={currentOrbitalState}
-        activeScenePresetId={activeScenePresetId}
-        onSelectScenePreset={handleSelectScenePreset}
-        isPlanetsAligned={isPlanetsAligned}
-        onTogglePlanetsAlignment={handleTogglePlanetsAlignment}
+        isAstralMode={isAstralMode}
+        onCloseAllPanels={() => closeAllPanelsExcept('none')}
       />
 
-      {/* Screen-Space Projected Heraldic Pins Overlay - Hidden in Astral Mode */}
-      {pinDisplayMode !== 'none' && !isAstralMode && (
-        <div
-          id="camada-pins-projetados-3d"
-          className="camada-pins-projetados-3d absolute inset-0 pointer-events-none overflow-hidden z-20"
-        >
-          {projectedPins.map(({ stateId, x, y, scale, distance }) => {
-            const isCompleted = completedStateIds.has(stateId);
-            const isHovered = hoveredStateId === stateId;
-            const isSelected = selectedStateId === stateId;
-
-            // Distance-based Level of Detail (LOD) & reduced default scale
-            const isZoomedOut = distance > 5.2 && pinDisplayMode !== 'all';
-            const pinScale = scale * (isHovered || isSelected ? 1.25 : 0.60);
-
-            // Heraldic Shield rule: only show on hover, selection, or if it is an active customized route endpoint.
-            // By default, only show discrete pulsating radar circles with the UF code tag.
-            const isRouteEndpoint = !!(
-              activeAdaptedRoute &&
-              (activeAdaptedRoute.fromStateId === stateId || activeAdaptedRoute.toStateId === stateId)
-            );
-            const shouldShowShield = isHovered || isSelected || isRouteEndpoint;
-
-            return (
-              <div
-                key={stateId}
-                id={`pin-item-${stateId}`}
-                style={{
-                  left: `${x}px`,
-                  top: `${y}px`,
-                  transform: `translate(-50%, -100%) scale(${pinScale})`,
-                  transformOrigin: 'bottom center',
-                }}
-                className="pin-estado-3d-item pin-brasao-estado absolute pointer-events-auto will-change-transform"
-              >
-                <button
-                  type="button"
-                  id={`btn-pin-globo-${stateId}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePinClick(stateId);
-                  }}
-                  onMouseEnter={() => onStateHover(stateId)}
-                  onMouseLeave={() => onStateHover(null)}
-                  className="btn-pin-globo-3d group relative flex flex-col items-center justify-center focus:outline-none cursor-pointer"
-                  aria-label={`Estado ${stateId}`}
-                >
-                  {/* Radar Pulse Ring */}
-                  <div className="circulo-radar-3d absolute -inset-2.5 pointer-events-none flex items-center justify-center">
-                    <div
-                      className={`absolute w-10 h-10 rounded-full border transition-all duration-300 ${
-                        isSelected
-                          ? 'border-2 border-sky-300 bg-sky-400/30 animate-ping opacity-90'
-                          : isCompleted
-                          ? 'border border-emerald-300/80 bg-emerald-500/20 animate-ping opacity-75'
-                          : isHovered
-                          ? 'border-2 border-sky-400 bg-sky-400/25 animate-ping opacity-85'
-                          : 'border border-sky-400/30 opacity-30 group-hover:opacity-80 group-hover:animate-ping'
-                      }`}
-                      style={{ animationDuration: isSelected ? '1.4s' : '2.8s' }}
-                    />
-                  </div>
-
-                  {/* Heraldic Shield: Only rendered when hovered, selected, or on an active route endpoint */}
-                  {shouldShowShield && !isZoomedOut && (
-                    <StateHeraldicShield
-                      stateId={stateId}
-                      isCompleted={isCompleted}
-                      isSelected={isSelected}
-                      isHovered={isHovered}
-                      size={isHovered || isSelected ? 'md' : 'sm'}
-                    />
-                  )}
-
-                  {/* State UF Tag Badge */}
-                  <div
-                    className={`pill-sigla-uf-3d mt-0.5 px-2 py-0.2 ${
-                      isHovered || isSelected ? 'text-[10px]' : 'text-[8px]'
-                    } font-black rounded-full shadow-md whitespace-nowrap z-20 border transition-all ${
-                      isCompleted
-                        ? 'bg-emerald-500 text-white border-emerald-300 font-bold'
-                        : isSelected || isHovered
-                        ? 'bg-sky-400 text-slate-950 border-sky-200 font-bold'
-                        : 'bg-black/70 backdrop-blur-sm text-sky-200 border-sky-500/60'
-                    }`}
-                  >
-                    {stateId}
-                  </div>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Camada de Brasões Heráldicos e Pins dos Estados Brasileiros */}
+      <StateHeraldicPinsOverlay
+        projectedPins={projectedPins}
+        completedStateIds={completedStateIds}
+        hoveredStateId={hoveredStateId}
+        selectedStateId={selectedStateId}
+        activeAdaptedRoute={activeAdaptedRoute}
+        pinDisplayMode={pinDisplayMode}
+        isAstralMode={isAstralMode}
+        onPinClick={handlePinClick}
+        onStateHover={onStateHover}
+      />
     </div>
   );
 };

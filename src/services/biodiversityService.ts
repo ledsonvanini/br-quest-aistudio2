@@ -49,6 +49,8 @@ export interface WikipediaSummaryResponse {
 
 class BiodiversityService {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
+  private inFlightGbif: Map<string, Promise<GbifTaxonMatch | null>> = new Map();
+  private inFlightWiki: Map<string, Promise<WikipediaSummaryResponse | null>> = new Map();
   private readonly DEFAULT_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours (1 dia)
 
   constructor() {
@@ -175,48 +177,59 @@ class BiodiversityService {
       return cached;
     }
 
-    const t0 = performance.now();
-    try {
-      // 1. Tentar primeiro via Proxy Backend (/api/species/...)
-      try {
-        const proxyUrl = `/api/species/${encodeURIComponent(scientificName)}`;
-        const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(3000) });
-        if (proxyRes.ok) {
-          const proxyJson = await proxyRes.json();
-          const isHit = proxyRes.headers.get('X-Proxy-Cache') === 'HIT';
-          this.setCache(cacheKey, proxyJson);
-          apiTracker.trackCall(
-            'gbif-biodiversity',
-            isHit ? `/api/species/${scientificName} (Server Cache 24h)` : `/api/species/${scientificName} (Server Proxy)`,
-            performance.now() - t0,
-            isHit ? 'cached' : 'success',
-            200,
-            `Taxonomia GBIF via Proxy: ${proxyJson.scientificName || scientificName}`,
-            JSON.stringify(proxyJson).length / 1024
-          );
-          return proxyJson;
-        }
-      } catch {
-        // Fallback para chamada direta
-      }
-
-      // 2. Chamada direta ao GBIF caso o proxy backend não responda
-      const endpoint = `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(scientificName)}&country=BR`;
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(4000) });
-      const dur = performance.now() - t0;
-
-      if (res.ok) {
-        const json: GbifTaxonMatch = await res.json();
-        this.setCache(cacheKey, json);
-        apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, dur, 'success', 200, `Taxonomia GBIF validada: ${json.scientificName || scientificName}`, JSON.stringify(json).length / 1024);
-        return json;
-      } else {
-        apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, dur, 'fallback', res.status, 'GBIF indisponível');
-      }
-    } catch (e: any) {
-      apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, performance.now() - t0, 'fallback', 200, 'Taxonomia local utilizada');
+    if (this.inFlightGbif.has(cacheKey)) {
+      return this.inFlightGbif.get(cacheKey)!;
     }
-    return null;
+
+    const promise = (async () => {
+      const t0 = performance.now();
+      try {
+        // 1. Tentar primeiro via Proxy Backend (/api/species/...)
+        try {
+          const proxyUrl = `/api/species/${encodeURIComponent(scientificName)}`;
+          const proxyRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(3000) });
+          if (proxyRes.ok) {
+            const proxyJson = await proxyRes.json();
+            const isHit = proxyRes.headers.get('X-Proxy-Cache') === 'HIT';
+            this.setCache(cacheKey, proxyJson);
+            apiTracker.trackCall(
+              'gbif-biodiversity',
+              isHit ? `/api/species/${scientificName} (Server Cache 24h)` : `/api/species/${scientificName} (Server Proxy)`,
+              performance.now() - t0,
+              isHit ? 'cached' : 'success',
+              200,
+              `Taxonomia GBIF via Proxy: ${proxyJson.scientificName || scientificName}`,
+              JSON.stringify(proxyJson).length / 1024
+            );
+            return proxyJson;
+          }
+        } catch {
+          // Fallback para chamada direta
+        }
+
+        // 2. Chamada direta ao GBIF caso o proxy backend não responda
+        const endpoint = `https://api.gbif.org/v1/species/match?name=${encodeURIComponent(scientificName)}&country=BR`;
+        const res = await fetch(endpoint, { signal: AbortSignal.timeout(4000) });
+        const dur = performance.now() - t0;
+
+        if (res.ok) {
+          const json: GbifTaxonMatch = await res.json();
+          this.setCache(cacheKey, json);
+          apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, dur, 'success', 200, `Taxonomia GBIF validada: ${json.scientificName || scientificName}`, JSON.stringify(json).length / 1024);
+          return json;
+        } else {
+          apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, dur, 'fallback', res.status, 'GBIF indisponível');
+        }
+      } catch (e: any) {
+        apiTracker.trackCall('gbif-biodiversity', `/species/match?name=${encodeURIComponent(scientificName)}`, performance.now() - t0, 'fallback', 200, 'Taxonomia local utilizada');
+      } finally {
+        this.inFlightGbif.delete(cacheKey);
+      }
+      return null;
+    })();
+
+    this.inFlightGbif.set(cacheKey, promise);
+    return promise;
   }
 
   /**
@@ -230,30 +243,41 @@ class BiodiversityService {
       return cached;
     }
 
-    const t0 = performance.now();
-    try {
-      const cleanName = encodeURIComponent(specimenName.replace(/\s+/g, '_'));
-      const endpoint = `https://pt.wikipedia.org/api/rest_v1/page/summary/${cleanName}`;
-      const res = await fetch(endpoint, { signal: AbortSignal.timeout(3500) });
-      const dur = performance.now() - t0;
-
-      if (res.ok) {
-        const json = await res.json();
-        const summary: WikipediaSummaryResponse = {
-          title: json.title,
-          extract: json.extract,
-          thumbnail: json.thumbnail,
-          originalimage: json.originalimage,
-          description: json.description,
-        };
-        this.setCache(cacheKey, summary);
-        apiTracker.trackCall('wikipedia-commons', `/summary/${cleanName}`, dur, 'success', 200, `Verbete enciclopédico de ${specimenName}`, JSON.stringify(json).length / 1024);
-        return summary;
-      }
-    } catch (e: any) {
-      // Ignore
+    if (this.inFlightWiki.has(cacheKey)) {
+      return this.inFlightWiki.get(cacheKey)!;
     }
-    return null;
+
+    const promise = (async () => {
+      const t0 = performance.now();
+      try {
+        const cleanName = encodeURIComponent(specimenName.replace(/\s+/g, '_'));
+        const endpoint = `https://pt.wikipedia.org/api/rest_v1/page/summary/${cleanName}`;
+        const res = await fetch(endpoint, { signal: AbortSignal.timeout(3500) });
+        const dur = performance.now() - t0;
+
+        if (res.ok) {
+          const json = await res.json();
+          const summary: WikipediaSummaryResponse = {
+            title: json.title,
+            extract: json.extract,
+            thumbnail: json.thumbnail,
+            originalimage: json.originalimage,
+            description: json.description,
+          };
+          this.setCache(cacheKey, summary);
+          apiTracker.trackCall('wikipedia-commons', `/summary/${cleanName}`, dur, 'success', 200, `Verbete enciclopédico de ${specimenName}`, JSON.stringify(json).length / 1024);
+          return summary;
+        }
+      } catch (e: any) {
+        // Ignore
+      } finally {
+        this.inFlightWiki.delete(cacheKey);
+      }
+      return null;
+    })();
+
+    this.inFlightWiki.set(cacheKey, promise);
+    return promise;
   }
 
   /**

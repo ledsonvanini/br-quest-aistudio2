@@ -10,6 +10,7 @@ import {
   AstronomicalMilestone,
 } from '../../lib/globeEngine/orbitalMilestones';
 import { HeliocentricOrbitalState } from '../../lib/globeEngine/orbitalPhysics';
+import { CameraFocusMode } from '../../lib/globeEngine/cameraOrbitController';
 import { audioEngine } from '../../lib/audioSynth';
 import { AstronomicalScenesSelector } from './AstronomicalScenesSelector';
 import { PlanetaryOrderList } from './PlanetaryOrderList';
@@ -26,8 +27,8 @@ interface GlobeOrbitalTranslationTabProps {
   onChangeOrbitalSpeed: (speed: number) => void;
   isAxialRotationActive: boolean;
   onToggleAxialRotation: () => void;
-  cameraFocusMode: 'earth' | 'sun';
-  onChangeCameraFocusMode: (mode: 'earth' | 'sun') => void;
+  cameraFocusMode: CameraFocusMode;
+  onChangeCameraFocusMode: (mode: CameraFocusMode) => void;
   onSelectPlanetAstro?: (astroId: string) => void;
   orbitalState: HeliocentricOrbitalState;
   activeScenePresetId?: string;

@@ -69,7 +69,7 @@ export const FullYearSimulationCard: React.FC<FullYearSimulationCardProps> = ({
           }}
           className={`btn-acao-ano-completo col-span-3 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all border shadow-lg ${
             isOrbitalPlaying
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/30 animate-pulse'
+              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/30 ring-2 ring-amber-300/60'
               : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 border-amber-300 shadow-amber-500/20 hover:scale-[1.01]'
           }`}
         >
@@ -106,7 +106,7 @@ export const FullYearSimulationCard: React.FC<FullYearSimulationCardProps> = ({
         {/* Barra de Progresso do Ano com Marcadores dos Solstícios / Equinócios */}
         <div className="relative w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 transition-all duration-100 rounded-full"
+            className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 rounded-full"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

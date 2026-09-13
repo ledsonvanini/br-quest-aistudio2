@@ -29,6 +29,7 @@ import {
   createSunPhotosphereMaterial,
   createSunChromosphereMaterial,
   createSunCoronaGlowMaterial,
+  createSunVolumetricHaloMaterial,
 } from './shaders/sunShader';
 import { getPlanetPBRMaps } from './celestialPBR';
 import { createPlanetAtmosphereMesh } from './shaders/planetAtmosphereShader';
@@ -93,6 +94,7 @@ export class CelestialSystem {
   public sunPointLight: THREE.PointLight;
   public sunMesh: THREE.Mesh;
   public sunChromosphere: THREE.Mesh;
+  public sunHalo: THREE.Mesh;
   public sunCorona: THREE.Mesh;
   public moonMesh: THREE.Mesh;
   public planetsGroup: THREE.Group;
@@ -142,8 +144,16 @@ export class CelestialSystem {
     this.sunChromosphere.renderOrder = 2;
     this.group.add(this.sunChromosphere);
 
+    // 3D Omnidirectional Volumetric Solar Halo (Seamless spherical gradient, eliminates 2D planar seam)
+    const haloGeo = new THREE.SphereGeometry(3.6 * 1.35, 48, 48);
+    const haloMat = createSunVolumetricHaloMaterial();
+    this.sunHalo = new THREE.Mesh(haloGeo, haloMat);
+    this.sunHalo.name = 'astro-sol-halo';
+    this.sunHalo.renderOrder = 2;
+    this.group.add(this.sunHalo);
+
     // Volumetric Outer Solar Corona Streamers & Deep-Space Rays (Attached to group in world space)
-    const coronaQuadGeo = new THREE.PlaneGeometry(32, 32);
+    const coronaQuadGeo = new THREE.PlaneGeometry(28, 28);
     const coronaMat = createSunCoronaGlowMaterial();
     this.sunCorona = new THREE.Mesh(coronaQuadGeo, coronaMat);
     this.sunCorona.name = 'astro-sol-corona';
@@ -538,6 +548,7 @@ export class CelestialSystem {
     this.sunPointLight.position.copy(sunPos);
     this.sunMesh.position.copy(sunPos);
     this.sunChromosphere.position.copy(sunPos);
+    this.sunHalo.position.copy(sunPos);
     this.sunCorona.position.copy(sunPos);
     this.planetsGroup.position.copy(sunPos);
 
@@ -920,6 +931,7 @@ export class CelestialSystem {
   public setSunVisible(visible: boolean): void {
     if (this.sunMesh) this.sunMesh.visible = visible;
     if (this.sunChromosphere) this.sunChromosphere.visible = visible;
+    if (this.sunHalo) this.sunHalo.visible = visible;
     if (this.sunCorona) this.sunCorona.visible = visible;
   }
 
@@ -928,6 +940,10 @@ export class CelestialSystem {
     (this.sunMesh.material as THREE.Material).dispose();
     this.sunChromosphere.geometry.dispose();
     (this.sunChromosphere.material as THREE.Material).dispose();
+    if (this.sunHalo) {
+      this.sunHalo.geometry.dispose();
+      (this.sunHalo.material as THREE.Material).dispose();
+    }
     this.sunCorona.geometry.dispose();
     (this.sunCorona.material as THREE.Material).dispose();
     this.moonMesh.geometry.dispose();

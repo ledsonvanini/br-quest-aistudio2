@@ -39,23 +39,21 @@ export const GlobeCosmosAtmosphereMenu: React.FC<GlobeCosmosAtmosphereMenuProps>
         type="button"
         id="btn-menu-cosmos-atmosfera"
         onClick={onToggle}
-        className={`btn-menu-cosmos-atmosfera flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+        className={`btn-menu-cosmos-atmosfera w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center p-2 rounded-xl border transition-all cursor-pointer shadow-sm shrink-0 ${
           isOpen || isAnyActive
-            ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200 shadow-indigo-500/20'
+            ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200 shadow-indigo-500/20 ring-1 ring-indigo-400/50'
             : 'bg-slate-900/90 hover:bg-slate-800 border-indigo-500/40 hover:border-indigo-400 text-slate-300 hover:text-indigo-200'
         }`}
         title="Cosmos & Atmosfera (Astros do Sistema Solar e Manto de Nuvens)"
+        aria-label="Cosmos e Atmosfera"
       >
         <Sparkles className="w-4 h-4 text-indigo-400" />
-        <ChevronDown
-          className={`w-3 h-3 text-indigo-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
       </button>
 
       {isOpen && (
         <div
           id="popover-cosmos-atmosfera"
-          className="popover-cosmos-atmosfera absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 w-76 sm:w-80 rounded-2xl bg-[#030712] border border-indigo-500/50 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 space-y-2.5"
+          className="popover-cosmos-atmosfera fixed bottom-16 left-[56px] right-2 sm:absolute sm:bottom-full sm:mb-2.5 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-80 w-auto max-w-sm max-h-[min(480px,calc(100vh-100px))] overflow-y-auto rounded-2xl bg-[#030712] border border-indigo-500/50 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 space-y-2.5 scrollbar-thin scrollbar-thumb-slate-700"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 px-1">

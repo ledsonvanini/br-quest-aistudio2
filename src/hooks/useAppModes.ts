@@ -34,7 +34,7 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
   const [isBiodiversityPanelOpen, setIsBiodiversityPanelOpen] = useState<boolean>(false);
   const [isGeopoliticaPanelOpen, setIsGeopoliticaPanelOpen] = useState<boolean>(false);
   const [isRadioOpen, setIsRadioOpen] = useState<boolean>(false);
-  const [isGlobeTelemetryOpen, setIsGlobeTelemetryOpen] = useState<boolean>(true);
+  const [isGlobeTelemetryOpen, setIsGlobeTelemetryOpen] = useState<boolean>(false);
 
   // Filters & Selection
   const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('todos');
@@ -65,8 +65,8 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
     setSelectedRegionFilter('todos');
     setShowNeighbors(false);
     setCenterMapTrigger((prev) => prev + 1);
-    if (newMode === 'globo3d') {
-      setIsGlobeTelemetryOpen(true);
+    if (newMode !== 'globo3d') {
+      setIsGlobeTelemetryOpen(false);
     }
 
     // Apply mode-specific default configurations

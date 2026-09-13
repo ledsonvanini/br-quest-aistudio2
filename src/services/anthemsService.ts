@@ -21,6 +21,7 @@ export interface ExternalAnthemMetadata {
 
 class AnthemsService {
   private cache = new Map<string, ExternalAnthemMetadata>();
+  private inFlightPromises = new Map<string, Promise<ExternalAnthemMetadata | null>>();
 
   /**
    * Retorna os dados oficiais e letra integral local (100% confiável, imediato e offline).
@@ -41,7 +42,7 @@ class AnthemsService {
 
   /**
    * Busca complementar aberta via Wikimedia / Wikisource API pública (sem necessidade de chave de API).
-   * Complementa dados históricos com resumos enciclopédicos e artigos públicos.
+   * Implementa deduplicação in-flight e timeout resiliente para buffer inteligente de requisições.
    */
   public async fetchOpenDataMetadata(stateNameOrTitle: string): Promise<ExternalAnthemMetadata | null> {
     const key = stateNameOrTitle.toLowerCase().trim();
@@ -49,46 +50,63 @@ class AnthemsService {
       return this.cache.get(key) || null;
     }
 
-    try {
-      // Normalização do termo de busca
-      const pageTitle = encodeURIComponent(`Hino_do_${stateNameOrTitle.replace(/\s+/g, '_')}`);
-      const res = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${pageTitle}`, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
+    if (this.inFlightPromises.has(key)) {
+      return this.inFlightPromises.get(key)!;
+    }
 
-      if (!res.ok) {
-        // Fallback: tentar busca genérica com Hino_de_
-        const altPageTitle = encodeURIComponent(`Hino_de_${stateNameOrTitle.replace(/\s+/g, '_')}`);
-        const altRes = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${altPageTitle}`);
-        if (!altRes.ok) return null;
-        const altData = await altRes.json();
+    const promise = (async () => {
+      try {
+        // Normalização do termo de busca
+        const pageTitle = encodeURIComponent(`Hino_do_${stateNameOrTitle.replace(/\s+/g, '_')}`);
+        const res = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${pageTitle}`, {
+          headers: {
+            'Accept': 'application/json',
+          },
+          signal: AbortSignal.timeout(4000),
+        });
+
+        if (!res.ok) {
+          // Fallback: tentar busca genérica com Hino_de_
+          const altPageTitle = encodeURIComponent(`Hino_de_${stateNameOrTitle.replace(/\s+/g, '_')}`);
+          const altRes = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${altPageTitle}`, {
+            headers: {
+              'Accept': 'application/json',
+            },
+            signal: AbortSignal.timeout(4000),
+          });
+          if (!altRes.ok) return null;
+          const altData = await altRes.json();
+          const meta: ExternalAnthemMetadata = {
+            title: altData.title || stateNameOrTitle,
+            extract: altData.extract,
+            description: altData.description,
+            sourceUrl: altData.content_urls?.desktop?.page,
+            thumbnailUrl: altData.thumbnail?.source,
+          };
+          this.cache.set(key, meta);
+          return meta;
+        }
+
+        const data = await res.json();
         const meta: ExternalAnthemMetadata = {
-          title: altData.title || stateNameOrTitle,
-          extract: altData.extract,
-          description: altData.description,
-          sourceUrl: altData.content_urls?.desktop?.page,
-          thumbnailUrl: altData.thumbnail?.source,
+          title: data.title || stateNameOrTitle,
+          extract: data.extract,
+          description: data.description,
+          sourceUrl: data.content_urls?.desktop?.page,
+          thumbnailUrl: data.thumbnail?.source,
         };
         this.cache.set(key, meta);
         return meta;
+      } catch {
+        // Resiliente a falhas de rede / offline
+        return null;
+      } finally {
+        this.inFlightPromises.delete(key);
       }
+    })();
 
-      const data = await res.json();
-      const meta: ExternalAnthemMetadata = {
-        title: data.title || stateNameOrTitle,
-        extract: data.extract,
-        description: data.description,
-        sourceUrl: data.content_urls?.desktop?.page,
-        thumbnailUrl: data.thumbnail?.source,
-      };
-      this.cache.set(key, meta);
-      return meta;
-    } catch {
-      // Resiliente a falhas de rede / offline
-      return null;
-    }
+    this.inFlightPromises.set(key, promise);
+    return promise;
   }
 }
 

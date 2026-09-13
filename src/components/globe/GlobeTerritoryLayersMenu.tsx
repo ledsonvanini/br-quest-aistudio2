@@ -7,7 +7,9 @@
  */
 import React from 'react';
 import { Layers, Navigation, Eye, Check, ChevronDown } from 'lucide-react';
-import { BorderRegionFilter } from './GlobeControlsHUD';
+import { BorderRegionFilter } from '../../lib/globeEngine/brazilGeoMeshBuilder';
+
+export type { BorderRegionFilter };
 
 export const REGIONS_LIST: { id: BorderRegionFilter; name: string; color: string; count: number }[] = [
   { id: 'all', name: 'Todas as Regiões (27 UFs)', color: '#f59e0b', count: 27 },
@@ -55,23 +57,21 @@ export const GlobeTerritoryLayersMenu: React.FC<GlobeTerritoryLayersMenuProps> =
         type="button"
         id="btn-menu-camadas-brasil"
         onClick={onToggle}
-        className={`btn-menu-camadas-brasil flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer shadow-sm ${
+        className={`btn-menu-camadas-brasil w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center p-2 rounded-xl border transition-all cursor-pointer shadow-sm shrink-0 ${
           isOpen || hasActiveLayers
-            ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 shadow-amber-500/10'
+            ? 'bg-amber-500/25 border-amber-400 text-amber-200 shadow-amber-500/20 ring-1 ring-amber-400/50'
             : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-amber-200'
         }`}
         title="Camadas do Território (Rotas, Brasões e Fronteiras Regionais)"
+        aria-label="Camadas do Território"
       >
         <Layers className="w-4 h-4 text-amber-400" />
-        <ChevronDown
-          className={`w-3 h-3 text-amber-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
       </button>
 
       {isOpen && (
         <div
           id="popover-camadas-brasil"
-          className="popover-camadas-brasil absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 w-80 rounded-2xl bg-[#030712] border border-amber-500/50 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 space-y-3"
+          className="popover-camadas-brasil fixed bottom-16 left-[56px] right-2 sm:absolute sm:bottom-full sm:mb-2.5 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-80 w-auto max-w-sm max-h-[min(480px,calc(100vh-100px))] overflow-y-auto rounded-2xl bg-[#030712] border border-amber-500/50 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.98)] z-50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 space-y-3 scrollbar-thin scrollbar-thumb-slate-700"
         >
           {/* Header */}
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 px-1">

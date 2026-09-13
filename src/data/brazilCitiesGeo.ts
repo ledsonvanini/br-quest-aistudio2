@@ -268,6 +268,9 @@ export function calculateCityRouteDistance(
 /**
  * Search city by name with optional fallback to Nominatim / OpenStreetMap
  */
+const nominatimCache = new Map<string, BrazilianCityGeo | null>();
+const nominatimInFlight = new Map<string, Promise<BrazilianCityGeo | null>>();
+
 export async function resolveCityCoordinates(cityName: string, ufHint?: string): Promise<BrazilianCityGeo | null> {
   // First check local catalog
   const query = cityName.toLowerCase().trim();
@@ -278,31 +281,52 @@ export async function resolveCityCoordinates(cityName: string, ufHint?: string):
   );
   if (local) return local;
 
-  // Fallback to open geocoder Nominatim
-  try {
-    const q = encodeURIComponent(`${cityName} ${ufHint || ''} Brasil`);
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=1&q=${q}`, {
-      headers: {
-        'Accept-Language': 'pt-BR,pt;q=0.9',
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const item = data[0];
-        return {
-          id: `custom-${Date.now()}`,
-          name: item.name || cityName,
-          uf: ufHint?.toUpperCase() || 'BR',
-          region: 'Sudeste',
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Geocoder fallback failed:', err);
+  const cacheKey = `${query}_${(ufHint || '').toLowerCase()}`;
+  if (nominatimCache.has(cacheKey)) {
+    return nominatimCache.get(cacheKey) || null;
   }
 
-  return null;
+  if (nominatimInFlight.has(cacheKey)) {
+    return nominatimInFlight.get(cacheKey)!;
+  }
+
+  const promise = (async () => {
+    // Fallback to open geocoder Nominatim with timeout and cache
+    try {
+      const q = encodeURIComponent(`${cityName} ${ufHint || ''} Brasil`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=1&q=${q}`, {
+        headers: {
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const item = data[0];
+          const result: BrazilianCityGeo = {
+            id: `custom-${Date.now()}`,
+            name: item.name || cityName,
+            uf: ufHint?.toUpperCase() || 'BR',
+            region: 'Sudeste',
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+          };
+          nominatimCache.set(cacheKey, result);
+          return result;
+        }
+      }
+      nominatimCache.set(cacheKey, null);
+    } catch (err) {
+      console.warn('Geocoder fallback failed:', err);
+      nominatimCache.set(cacheKey, null);
+    } finally {
+      nominatimInFlight.delete(cacheKey);
+    }
+
+    return null;
+  })();
+
+  nominatimInFlight.set(cacheKey, promise);
+  return promise;
 }

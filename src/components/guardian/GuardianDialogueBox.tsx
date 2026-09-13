@@ -5,6 +5,7 @@ import { getStateFlagUrl } from '../../data/brazilStatesRegistry';
 import { STATE_CAPITAL_GEO_DATA } from '../../data/stateCapitalGeoData';
 import { getGuardianSpeech } from '../../data/guardianPhrases';
 import { audioEngine } from '../../lib/audioSynth';
+import { GuardianAIChatPanel } from './GuardianAIChatPanel';
 import {
   Compass,
   MessageSquare,
@@ -29,6 +30,7 @@ import {
   Coffee,
   CheckCircle2,
   Trophy,
+  Bot,
 } from 'lucide-react';
 import {
   getStateDialogueTopics,
@@ -109,7 +111,7 @@ export const GuardianDialogueBox: React.FC<Props> = ({
   userProgress,
   totalUserXp,
 }) => {
-  const [activeTab, setActiveTab] = useState<'geral' | 'historia' | 'cultura' | 'natureza'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'historia' | 'cultura' | 'natureza' | 'ia_chat'>('geral');
   const speech = useMemo(() => getGuardianSpeech(guardian.id), [guardian.id]);
   const coatUrl = useMemo(() => getCoatOfArmsUrl(guardian.id), [guardian.id]);
   const flagUrl = useMemo(() => getStateFlagUrl(guardian.id), [guardian.id]);
@@ -161,7 +163,7 @@ export const GuardianDialogueBox: React.FC<Props> = ({
     onSpeak(topic.speechText);
   };
 
-  const handleTabChange = (tab: 'geral' | 'historia' | 'cultura' | 'natureza') => {
+  const handleTabChange = (tab: 'geral' | 'historia' | 'cultura' | 'natureza' | 'ia_chat') => {
     audioEngine.playSfx('click');
     setActiveTab(tab);
     if (tab === 'geral') {
@@ -176,6 +178,8 @@ export const GuardianDialogueBox: React.FC<Props> = ({
     } else if (tab === 'natureza') {
       setDialogueNode('natureza');
       onSpeak(`“${speech.welcomeDetails.natureText}”`);
+    } else if (tab === 'ia_chat') {
+      onSpeak(`“Aproxime-se, viajante! Pergunte-me qualquer mistério sobre a história, geografia, clima ou lendas de ${guardian.stateNamePt}!”`);
     }
   };
 
@@ -495,8 +499,8 @@ export const GuardianDialogueBox: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* 2. ABAS DE TÓPICOS DO DIÁLOGO (Boas-Vindas, História & Heróis, Cultura & Sabores, Natureza & Bioma) */}
-      <div className="abas-dialogo-guardiao grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* 2. ABAS DE TÓPICOS DO DIÁLOGO (Boas-Vindas, História & Heróis, Cultura & Sabores, Natureza & Bioma, Oráculo IA) */}
+      <div className="abas-dialogo-guardiao grid grid-cols-2 sm:grid-cols-5 gap-2">
         <button
           onClick={() => handleTabChange('geral')}
           className={`px-3 py-2 sm:py-2.5 rounded-xl font-serif text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer border ${
@@ -541,148 +545,166 @@ export const GuardianDialogueBox: React.FC<Props> = ({
           <Leaf className="w-4 h-4 shrink-0" />
           <span className="truncate">Natureza & Bioma</span>
         </button>
+        <button
+          onClick={() => handleTabChange('ia_chat')}
+          className={`btn-aba-oraculo-ia col-span-2 sm:col-span-1 px-3 py-2 sm:py-2.5 rounded-xl font-serif text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+            activeTab === 'ia_chat'
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 border-yellow-200 shadow-md font-black ring-1 ring-amber-300'
+              : 'text-amber-300 hover:text-amber-200 bg-slate-900/90 border-amber-500/40 hover:border-amber-400 shadow-sm'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
+          <span className="truncate">Oráculo IA</span>
+        </button>
       </div>
 
-      {/* 3. BALÃO DE FALA COM DIGITAÇÃO DINÂMICA */}
-      <div className="balao-fala-ativa bg-slate-900/90 border border-amber-500/40 p-3.5 sm:p-4 rounded-2xl min-h-[70px] flex items-center shadow-inner relative">
-        <p className="texto-fala-guardiao font-serif text-xs sm:text-sm md:text-base text-amber-100 italic leading-relaxed">
-          {displayedSpeech}
-          {isTyping && (
-            <span className="inline-block w-1.5 h-4 bg-amber-400 ml-1.5 animate-pulse" />
-          )}
-        </p>
-      </div>
+      {/* 3. CONTEÚDO PRINCIPAL: CHAT IA OU ÁRVORE DE DIÁLOGO CLÁSSICA */}
+      {activeTab === 'ia_chat' ? (
+        <GuardianAIChatPanel guardian={guardian} onGuardianSpeech={onSpeak} />
+      ) : (
+        <>
+          {/* BALÃO DE FALA COM DIGITAÇÃO DINÂMICA */}
+          <div className="balao-fala-ativa bg-slate-900/90 border border-amber-500/40 p-3.5 sm:p-4 rounded-2xl min-h-[70px] flex items-center shadow-inner relative">
+            <p className="texto-fala-guardiao font-serif text-xs sm:text-sm md:text-base text-amber-100 italic leading-relaxed">
+              {displayedSpeech}
+              {isTyping && (
+                <span className="inline-block w-1.5 h-4 bg-amber-400 ml-1.5 animate-pulse" />
+              )}
+            </p>
+          </div>
 
-      {/* 4. OPÇÕES CONTEXTUAIS OU BOTÕES PRINCIPAIS DE AÇÃO RPG */}
-      {contextualOptions.length > 0 ? (
-        <div className="opcoes-dialogo-subtopicos grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[35vh] overflow-y-auto custom-scrollbar-gold pr-1">
-          {contextualOptions.map((opt) => {
-            const OptIcon = opt.icon;
-            return (
-              <button
-                key={opt.id}
-                onClick={opt.action}
-                className={`btn-escolha-dialogo group w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer hover:translate-x-0.5 shadow-sm ${
-                  opt.highlight
-                    ? 'bg-gradient-to-r from-amber-950/80 to-slate-900 border-amber-500/80 hover:border-amber-400 hover:from-amber-900/90'
-                    : 'bg-slate-900/90 hover:bg-amber-500/15 border-slate-800 hover:border-amber-400/80'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+          {/* 4. OPÇÕES CONTEXTUAIS OU BOTÕES PRINCIPAIS DE AÇÃO RPG */}
+          {contextualOptions.length > 0 ? (
+            <div className="opcoes-dialogo-subtopicos grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[35vh] overflow-y-auto custom-scrollbar-gold pr-1">
+              {contextualOptions.map((opt) => {
+                const OptIcon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={opt.action}
+                    className={`btn-escolha-dialogo group w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer hover:translate-x-0.5 shadow-sm ${
                       opt.highlight
-                        ? 'bg-amber-500 text-slate-950 shadow'
-                        : 'bg-amber-500/20 border border-amber-400/40 group-hover:bg-amber-500 group-hover:text-slate-950'
+                        ? 'bg-gradient-to-r from-amber-950/80 to-slate-900 border-amber-500/80 hover:border-amber-400 hover:from-amber-900/90'
+                        : 'bg-slate-900/90 hover:bg-amber-500/15 border-slate-800 hover:border-amber-400/80'
                     }`}
                   >
-                    <OptIcon
-                      className={`w-4 h-4 ${
-                        opt.highlight
-                          ? 'text-slate-950'
-                          : 'text-amber-300 group-hover:text-slate-950'
-                      }`}
-                    />
-                  </div>
-                  <div className="truncate flex-1">
-                    <div
-                      className={`text-xs sm:text-sm font-serif font-bold ${
-                        opt.highlight
-                          ? 'text-amber-300 group-hover:text-yellow-200'
-                          : 'text-slate-200 group-hover:text-amber-200'
-                      }`}
-                    >
-                      {opt.label}
-                    </div>
-                    {opt.desc && (
-                      <div className="text-[11px] text-slate-400 font-serif truncate">
-                        {opt.desc}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          opt.highlight
+                            ? 'bg-amber-500 text-slate-950 shadow'
+                            : 'bg-amber-500/20 border border-amber-400/40 group-hover:bg-amber-500 group-hover:text-slate-950'
+                        }`}
+                      >
+                        <OptIcon
+                          className={`w-4 h-4 ${
+                            opt.highlight
+                              ? 'text-slate-950'
+                              : 'text-amber-300 group-hover:text-slate-950'
+                          }`}
+                        />
                       </div>
-                    )}
-                    {opt.category && opt.xpReward !== undefined && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="badge-classificacao-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-400/30 font-bold">
-                          [{opt.category}]
-                        </span>
-                        <span
-                          className={`badge-xp-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold flex items-center gap-1 ${
-                            opt.isExplored
-                              ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
-                              : 'bg-amber-400 text-slate-950 border-yellow-200 shadow-sm'
+                      <div className="truncate flex-1">
+                        <div
+                          className={`text-xs sm:text-sm font-serif font-bold ${
+                            opt.highlight
+                              ? 'text-amber-300 group-hover:text-yellow-200'
+                              : 'text-slate-200 group-hover:text-amber-200'
                           }`}
                         >
-                          {opt.isExplored ? (
-                            <>
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              <span>Conhecido (+{opt.xpReward} XP)</span>
-                            </>
-                          ) : (
-                            <span>+{opt.xpReward} XP</span>
-                          )}
-                        </span>
+                          {opt.label}
+                        </div>
+                        {opt.desc && (
+                          <div className="text-[11px] text-slate-400 font-serif truncate">
+                            {opt.desc}
+                          </div>
+                        )}
+                        {opt.category && opt.xpReward !== undefined && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="badge-classificacao-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-400/30 font-bold">
+                              [{opt.category}]
+                            </span>
+                            <span
+                              className={`badge-xp-dialogo text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold flex items-center gap-1 ${
+                                opt.isExplored
+                                  ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+                                  : 'bg-amber-400 text-slate-950 border-yellow-200 shadow-sm'
+                              }`}
+                            >
+                              {opt.isExplored ? (
+                                <>
+                                  <CheckCircle2 className="w-2.5 h-2.5" />
+                                  <span>Conhecido (+{opt.xpReward} XP)</span>
+                                </>
+                              ) : (
+                                <span>+{opt.xpReward} XP</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <ChevronRight
+                      className={`w-4 h-4 shrink-0 ml-2 ${
+                        opt.highlight
+                          ? 'text-amber-300 group-hover:translate-x-0.5'
+                          : 'text-amber-400/70 group-hover:text-amber-300'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* 5. AÇÕES PRINCIPAIS DE RPG: DESAFIAR (+300 XP) & ABRIR BAÚ (+50 XP) */
+            <div className="acoes-principais-rpg grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('travel');
+                  onStartQuiz();
+                }}
+                className="btn-desafio-honra group relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-serif font-bold text-left shadow-lg hover:shadow-amber-500/30 transition-all duration-300 hover:scale-[1.01] border-2 border-yellow-300 cursor-pointer"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">
+                    <Award className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+                    Desafio de Honra
                   </div>
+                  <span className="text-xs bg-slate-950 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-black shadow border border-amber-400/30">
+                    +300 XP
+                  </span>
                 </div>
-                <ChevronRight
-                  className={`w-4 h-4 shrink-0 ml-2 ${
-                    opt.highlight
-                      ? 'text-amber-300 group-hover:translate-x-0.5'
-                      : 'text-amber-400/70 group-hover:text-amber-300'
-                  }`}
-                />
+                <p className="text-xs sm:text-sm text-slate-950/95 font-medium leading-snug">
+                  Responda ao Quiz do Guardião e conquiste a Insígnia Sagrada!
+                </p>
               </button>
-            );
-          })}
-        </div>
-      ) : (
-        /* 5. AÇÕES PRINCIPAIS DE RPG: DESAFIAR (+300 XP) & ABRIR BAÚ (+50 XP) */
-        <div className="acoes-principais-rpg grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          <button
-            onClick={() => {
-              audioEngine.playSfx('travel');
-              onStartQuiz();
-            }}
-            className="btn-desafio-honra group relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-serif font-bold text-left shadow-lg hover:shadow-amber-500/30 transition-all duration-300 hover:scale-[1.01] border-2 border-yellow-300 cursor-pointer"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-black uppercase tracking-wider text-slate-950">
-                <Award className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
-                Desafio de Honra
-              </div>
-              <span className="text-xs bg-slate-950 text-amber-300 px-2.5 py-0.5 rounded-full font-mono font-black shadow border border-amber-400/30">
-                +300 XP
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-950/95 font-medium leading-snug">
-              Responda ao Quiz do Guardião e conquiste a Insígnia Sagrada!
-            </p>
-          </button>
 
-          <button
-            onClick={() => {
-              audioEngine.playSfx('click');
-              onOpenChest();
-            }}
-            className="btn-abrir-bau-reliquias group relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 hover:bg-amber-950/40 border-2 border-amber-500/50 hover:border-amber-400 text-white font-serif text-left shadow-md transition-all duration-300 hover:scale-[1.01] cursor-pointer"
-          >
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-300">
-                <Package className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                Baú de Relíquias
-              </div>
-              <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full font-mono font-bold">
-                {chestEarnedXp !== undefined && chestTotalXp !== undefined
-                  ? `XP ${chestEarnedXp}/${chestTotalXp}`
-                  : '+50 XP / Doc'}
-              </span>
+              <button
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  onOpenChest();
+                }}
+                className="btn-abrir-bau-reliquias group relative overflow-hidden p-3.5 sm:p-4 rounded-2xl bg-slate-900/90 hover:bg-amber-950/40 border-2 border-amber-500/50 hover:border-amber-400 text-white font-serif text-left shadow-md transition-all duration-300 hover:scale-[1.01] cursor-pointer"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-amber-300">
+                    <Package className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                    Baú de Relíquias
+                  </div>
+                  <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full font-mono font-bold">
+                    {chestEarnedXp !== undefined && chestTotalXp !== undefined
+                      ? `XP ${chestEarnedXp}/${chestTotalXp}`
+                      : '+50 XP / Doc'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-300 font-medium leading-snug">
+                  Examine os pergaminhos históricos, tradições e patrimônios IPHAN.
+                </p>
+              </button>
             </div>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium leading-snug">
-              Examine os pergaminhos históricos, tradições e patrimônios IPHAN.
-            </p>
-          </button>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
