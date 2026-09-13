@@ -1,5 +1,5 @@
 import React from 'react';
-import { LocateFixed, Plus, Minus, Sparkles } from 'lucide-react';
+import { LocateFixed, Plus, Minus, Sparkles, GraduationCap } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
 import { SpeechBubbleTooltip } from '../common/SpeechBubbleTooltip';
 
@@ -10,6 +10,7 @@ interface TopRightNavigationDockProps {
   zoom: number;
   onOpenDailyTips?: () => void;
   dailyTipsUnreadCount?: number;
+  onOpenEducatorPortal?: () => void;
 }
 
 export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
@@ -19,6 +20,7 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
   zoom,
   onOpenDailyTips,
   dailyTipsUnreadCount,
+  onOpenEducatorPortal,
 }) => {
   return (
     <div
@@ -128,6 +130,34 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
                   : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
               }
               description="Pílulas de curiosidades geográficas oficiais com bônus de XP e teletransporte imediato."
+              align="right"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Portal do Educador: BR Quest Edu (BNCC & ENEM) */}
+      {onOpenEducatorPortal && (
+        <>
+          <div className="h-5 w-[1px] bg-slate-800 shrink-0" />
+          <div className="relative group">
+            <button
+              id="btn-abrir-portal-educador"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                onOpenEducatorPortal();
+              }}
+              className="btn-abrir-portal-educador w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:text-amber-100 hover:bg-amber-500/25 hover:border-amber-400 flex items-center justify-center transition cursor-pointer group/btn shadow-md"
+              aria-label="BR Quest Edu - Portal do Educador"
+            >
+              <GraduationCap className="w-4 h-4 text-amber-400 group-hover/btn:scale-110 transition-transform" />
+            </button>
+
+            <SpeechBubbleTooltip
+              title="BR Quest Edu"
+              badge="BNCC & ENEM"
+              badgeColor="bg-amber-500/20 text-amber-300 border-amber-400/40"
+              description="Portal do Educador: Trilhas pedagógicas por bioma, acompanhamento de turmas e simulados."
               align="right"
             />
           </div>

@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (usernameOrEmail: string, password?: string) => Promise<AuthUser>;
   register: (username: string, displayName: string, email?: string, password?: string) => Promise<AuthUser>;
+  loginWithGoogle: (googleData?: { email: string; displayName: string; avatarUrl?: string; googleId?: string }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   updatePreferences: (prefs: Partial<AuthPreferences>) => Promise<AuthPreferences>;
   vendorName: string;
@@ -69,6 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return regUser;
   };
 
+  const loginWithGoogle = async (googleData?: { email: string; displayName: string; avatarUrl?: string; googleId?: string }) => {
+    if (activeAuthAdapter.loginWithGoogle) {
+      const loggedUser = await activeAuthAdapter.loginWithGoogle(googleData);
+      const prefs = await activeAuthAdapter.getPreferences();
+      setPreferences(prefs);
+      return loggedUser;
+    }
+    throw new Error('Login com Google não suportado pelo adaptador atual.');
+  };
+
   const logout = async () => {
     await activeAuthAdapter.logout();
     setPreferences(null);
@@ -89,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        loginWithGoogle,
         logout,
         updatePreferences,
         vendorName: activeAuthAdapter.vendorName,

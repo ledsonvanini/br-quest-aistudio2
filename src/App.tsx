@@ -731,6 +731,8 @@ export function App() {
         playerLevel={calculateLevel(progress.xp).level}
         playerXp={progress.xp}
         unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
+        completedStatesCount={progress.completedStateIds.length}
+        dailyStreak={progress.dailyStreak || 1}
       />
 
       {/* API Telemetry & Status Modal */}

@@ -1,10 +1,11 @@
 import { IAuthAdapter } from './authTypes';
-import { LocalSqliteAuthAdapter } from './adapters/localSqliteAuthAdapter';
+import { FirebaseAuthAdapter } from './adapters/firebaseAuthAdapter';
 
 /**
  * Ponto Único de Injeção de Dependência de Autenticação.
- * Para trocar de provedor (ex: Firebase, Supabase, OAuth), basta substituir
- * a instância de activeAuthAdapter aqui. Nenhum componente da UI precisará
- * ser alterado.
+ * Agora conectado diretamente ao projeto oficial Google Cloud / Firebase provisionado:
+ * - Projeto: grounded-yardage-txctm
+ * - Firebase Auth (Google Sign-In, Email/Senha e Convidado Anônimo)
+ * - Cloud Firestore (user_preferences e user_progress)
  */
-export const activeAuthAdapter: IAuthAdapter = new LocalSqliteAuthAdapter();
+export const activeAuthAdapter: IAuthAdapter = new FirebaseAuthAdapter();

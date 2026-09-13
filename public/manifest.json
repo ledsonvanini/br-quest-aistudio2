@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "name": "BR Quest - Geografia do Brasil",
+  "short_name": "BR Quest",
+  "description": "Sistema gamificado em visão isométrica para explorar a geografia, biomas, relevo e símbolos dos 27 estados do Brasil.",
+  "display": "standalone",
+  "theme_color": "#020617",
+  "background_color": "#020617",
+  "orientation": "any",
+  "categories": ["education", "games", "travel"],
+  "icons": [
+    {
+      "src": "/flags/br.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

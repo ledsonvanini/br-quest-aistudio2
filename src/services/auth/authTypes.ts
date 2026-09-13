@@ -1,9 +1,12 @@
+import { UserFavorites, UserScoreHistoryItem } from '../../types/userPreferences';
+
 export interface AuthUser {
   id: string;
   username: string;
   displayName: string;
   email?: string | null;
   avatarId?: string;
+  avatarUrl?: string;
   isGuest: boolean;
   createdAt: string;
 }
@@ -14,6 +17,9 @@ export interface AuthPreferences {
   highContrast: boolean;
   autoRotateGlobe: boolean;
   theme: 'cartographic' | 'dark' | 'satellite';
+  musicVolume?: number;
+  sfxVolume?: number;
+  favorites?: UserFavorites;
 }
 
 export interface AuthProgress {
@@ -24,6 +30,7 @@ export interface AuthProgress {
   completedStates: string[];
   readPergaments: string[];
   exploredDialogues: string[];
+  scoreHistory?: UserScoreHistoryItem[];
 }
 
 /**
@@ -36,6 +43,7 @@ export interface IAuthAdapter {
   init(): Promise<AuthUser | null>;
   login(usernameOrEmail: string, password?: string): Promise<AuthUser>;
   register(username: string, displayName: string, email?: string, password?: string): Promise<AuthUser>;
+  loginWithGoogle?(googleData?: { email: string; displayName: string; avatarUrl?: string; googleId?: string }): Promise<AuthUser>;
   loginAsGuest(): Promise<AuthUser>;
   logout(): Promise<void>;
   getCurrentUser(): AuthUser | null;

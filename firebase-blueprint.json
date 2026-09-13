@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "user_preferences": {
+      "$userId": {
+        ".read": "request.auth != null && request.auth.uid == $userId",
+        ".write": "request.auth != null && request.auth.uid == $userId"
+      }
+    },
+    "user_progress": {
+      "$userId": {
+        ".read": "request.auth != null && request.auth.uid == $userId",
+        ".write": "request.auth != null && request.auth.uid == $userId"
+      }
+    }
+  }
+}

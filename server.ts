@@ -535,7 +535,8 @@ async function startServer() {
         return res.status(400).json({ error: 'Identificador de usuário obrigatório.' });
       }
 
-      const user = userRepository.findByUsername(usernameOrEmail.trim().toLowerCase());
+      const user = userRepository.findByUsername(usernameOrEmail.trim().toLowerCase()) 
+        || userRepository.findByEmail(usernameOrEmail.trim().toLowerCase());
       if (!user) {
         return res.status(404).json({ error: 'Usuário não encontrado.' });
       }
@@ -555,6 +556,53 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ error: 'Erro ao autenticar', message: err?.message });
+    }
+  });
+
+  app.post('/api/auth/google', (req, res) => {
+    try {
+      const { email, displayName, avatarUrl, googleId } = req.body || {};
+      if (!email || !email.trim()) {
+        return res.status(400).json({ error: 'E-mail obrigatório para Login com Google.' });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      let user = userRepository.findByEmail(cleanEmail);
+
+      if (!user) {
+        // Cria usuário autenticado via Google
+        const generatedUsername = cleanEmail.split('@')[0] || `google_${Math.random().toString(36).slice(2, 6)}`;
+        let uniqueUsername = generatedUsername;
+        if (userRepository.findByUsername(uniqueUsername)) {
+          uniqueUsername = `${generatedUsername}_${Math.random().toString(36).slice(2, 5)}`;
+        }
+
+        user = userRepository.create({
+          id: `goog_${googleId || Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          username: uniqueUsername,
+          display_name: displayName?.trim() || uniqueUsername,
+          email: cleanEmail,
+          password_hash: null,
+          avatar_id: avatarUrl || 'recruta',
+          is_guest: 0,
+        });
+      } else {
+        userRepository.updateLastLogin(user.id);
+      }
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.display_name,
+          email: user.email,
+          avatarId: user.avatar_id,
+          isGuest: Boolean(user.is_guest),
+          createdAt: user.created_at,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Erro ao autenticar via Google', message: err?.message });
     }
   });
 
@@ -633,6 +681,9 @@ async function startServer() {
         high_contrast: rest.highContrast ?? false,
         auto_rotate_globe: rest.autoRotateGlobe ?? true,
         theme: rest.theme || 'cartographic',
+        music_volume: rest.musicVolume ?? 80,
+        sfx_volume: rest.sfxVolume ?? 85,
+        favorites: rest.favorites,
         updated_at: new Date().toISOString(),
       });
 
@@ -669,6 +720,7 @@ async function startServer() {
         completed_states: progress.completedStates || [],
         read_pergaments: progress.readPergaments || [],
         explored_dialogues: progress.exploredDialogues || [],
+        score_history: progress.scoreHistory || [],
         updated_at: new Date().toISOString(),
       });
 

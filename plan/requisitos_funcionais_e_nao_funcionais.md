@@ -57,6 +57,12 @@
   - Simular visualmente fenômenos atmosféricos: ZCAS, correntes de jato e rios voadores amazônicos.
 - **[RF11] Quizzes dos Guardiões e Progressão**:
   - Disponibilizar desafios com perguntas históricas e geográficas para cada estado, concedendo insígnias ao jogador.
+- **[RF15] Painel do Explorador: Favoritos, Histórico de Progresso e Preferências Avançadas**:
+  - Prover interface centralizada dividida em abas dedicadas:
+    - *Favoritos*: Seleção rápida e persistência de biomas favoritos (Amazônia, Cerrado, etc.), espécies de fauna/flora catalogadas (GBIF/ICMBio) e UFs prediletas.
+    - *Histórico & Pontuações*: Registro de conquistas com data, histórico de XP e missões diárias, distribuição regional de exploração e pontuações de simulados/quizzes.
+    - *Preferências & Acessibilidade*: Configurações visuais (modo de mapa preferido, rotação do globo, alto contraste) e controle de áudio (volume dos hinos e efeitos sonoros).
+    - *Identidade & Nuvem*: Perfil do jogador, login federado e sincronização multi-dispositivo.
 
 ---
 

@@ -44,7 +44,7 @@ function initSchema(db: DatabaseSync): void {
     );
   `);
 
-  // 2. Tabela de Preferências do Usuário
+  // 2. Tabela de Preferências do Usuário (com Favoritos e Volume)
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_preferences (
       user_id TEXT PRIMARY KEY,
@@ -53,12 +53,26 @@ function initSchema(db: DatabaseSync): void {
       high_contrast INTEGER DEFAULT 0,
       auto_rotate_globe INTEGER DEFAULT 1,
       theme TEXT DEFAULT 'cartographic',
+      music_volume INTEGER DEFAULT 80,
+      sfx_volume INTEGER DEFAULT 85,
+      favorites_json TEXT DEFAULT '{"biomes":["Amazônia","Mata Atlântica"],"speciesIds":["onca-pintada","mico-leao-dourado","pau-brasil"],"stateIds":["AM","RJ","BA"]}',
       updated_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
 
-  // 3. Tabela de Progresso Gamificado do Usuário
+  // Migração defensiva caso a tabela já exista sem as novas colunas
+  try {
+    db.exec(`ALTER TABLE user_preferences ADD COLUMN music_volume INTEGER DEFAULT 80;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE user_preferences ADD COLUMN sfx_volume INTEGER DEFAULT 85;`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE user_preferences ADD COLUMN favorites_json TEXT DEFAULT '{"biomes":["Amazônia","Mata Atlântica"],"speciesIds":["onca-pintada","mico-leao-dourado","pau-brasil"],"stateIds":["AM","RJ","BA"]}';`);
+  } catch {}
+
+  // 3. Tabela de Progresso Gamificado do Usuário (com Histórico de Pontuação)
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_progress (
       user_id TEXT PRIMARY KEY,
@@ -69,8 +83,14 @@ function initSchema(db: DatabaseSync): void {
       completed_states_json TEXT DEFAULT '[]',
       read_pergaments_json TEXT DEFAULT '[]',
       explored_dialogues_json TEXT DEFAULT '[]',
+      score_history_json TEXT DEFAULT '[]',
       updated_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  // Migração defensiva para score_history_json
+  try {
+    db.exec(`ALTER TABLE user_progress ADD COLUMN score_history_json TEXT DEFAULT '[]';`);
+  } catch {}
 }

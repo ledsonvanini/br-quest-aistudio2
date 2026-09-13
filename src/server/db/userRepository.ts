@@ -19,6 +19,13 @@ export interface UserPreferencesEntity {
   high_contrast: boolean;
   auto_rotate_globe: boolean;
   theme: string;
+  music_volume?: number;
+  sfx_volume?: number;
+  favorites?: {
+    biomes: string[];
+    speciesIds: string[];
+    stateIds: string[];
+  };
   updated_at: string;
 }
 
@@ -31,6 +38,7 @@ export interface UserProgressEntity {
   completed_states: string[];
   read_pergaments: string[];
   explored_dialogues: string[];
+  score_history?: any[];
   updated_at: string;
 }
 
@@ -50,6 +58,13 @@ export class SqliteUserRepository {
     const db = getDatabase();
     const stmt = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE');
     const row = stmt.get(username) as UserEntity | undefined;
+    return row || null;
+  }
+
+  public findByEmail(email: string): UserEntity | null {
+    const db = getDatabase();
+    const stmt = db.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE');
+    const row = stmt.get(email) as UserEntity | undefined;
     return row || null;
   }
 
@@ -116,13 +131,27 @@ export class SqliteUserRepository {
     const row = stmt.get(userId) as any;
     if (!row) return null;
 
+    let favorites = {
+      biomes: ['Amazônia', 'Mata Atlântica'],
+      speciesIds: ['onca-pintada', 'mico-leao-dourado', 'pau-brasil'],
+      stateIds: ['AM', 'RJ', 'BA'],
+    };
+    if (row.favorites_json) {
+      try {
+        favorites = JSON.parse(row.favorites_json);
+      } catch {}
+    }
+
     return {
       user_id: row.user_id,
       sound_enabled: Boolean(row.sound_enabled),
-      default_map_mode: row.default_map_mode,
+      default_map_mode: row.default_map_mode || '2d',
       high_contrast: Boolean(row.high_contrast),
       auto_rotate_globe: Boolean(row.auto_rotate_globe),
-      theme: row.theme,
+      theme: row.theme || 'cartographic',
+      music_volume: row.music_volume ?? 80,
+      sfx_volume: row.sfx_volume ?? 85,
+      favorites,
       updated_at: row.updated_at,
     };
   }
@@ -130,15 +159,24 @@ export class SqliteUserRepository {
   public savePreferences(prefs: UserPreferencesEntity): void {
     const db = getDatabase();
     const now = new Date().toISOString();
+    const favoritesJson = prefs.favorites ? JSON.stringify(prefs.favorites) : JSON.stringify({
+      biomes: ['Amazônia', 'Mata Atlântica'],
+      speciesIds: ['onca-pintada', 'mico-leao-dourado', 'pau-brasil'],
+      stateIds: ['AM', 'RJ', 'BA'],
+    });
+
     const stmt = db.prepare(`
-      INSERT INTO user_preferences (user_id, sound_enabled, default_map_mode, high_contrast, auto_rotate_globe, theme, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO user_preferences (user_id, sound_enabled, default_map_mode, high_contrast, auto_rotate_globe, theme, music_volume, sfx_volume, favorites_json, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         sound_enabled = excluded.sound_enabled,
         default_map_mode = excluded.default_map_mode,
         high_contrast = excluded.high_contrast,
         auto_rotate_globe = excluded.auto_rotate_globe,
         theme = excluded.theme,
+        music_volume = excluded.music_volume,
+        sfx_volume = excluded.sfx_volume,
+        favorites_json = excluded.favorites_json,
         updated_at = excluded.updated_at
     `);
 
@@ -149,6 +187,9 @@ export class SqliteUserRepository {
       prefs.high_contrast ? 1 : 0,
       prefs.auto_rotate_globe ? 1 : 0,
       prefs.theme || 'cartographic',
+      prefs.music_volume ?? 80,
+      prefs.sfx_volume ?? 85,
+      favoritesJson,
       now
     );
   }
@@ -159,6 +200,13 @@ export class SqliteUserRepository {
     const row = stmt.get(userId) as any;
     if (!row) return null;
 
+    let scoreHistory: any[] = [];
+    if (row.score_history_json) {
+      try {
+        scoreHistory = JSON.parse(row.score_history_json);
+      } catch {}
+    }
+
     return {
       user_id: row.user_id,
       xp: row.xp || 0,
@@ -168,6 +216,7 @@ export class SqliteUserRepository {
       completed_states: JSON.parse(row.completed_states_json || '[]'),
       read_pergaments: JSON.parse(row.read_pergaments_json || '[]'),
       explored_dialogues: JSON.parse(row.explored_dialogues_json || '[]'),
+      score_history: scoreHistory,
       updated_at: row.updated_at,
     };
   }
@@ -176,8 +225,8 @@ export class SqliteUserRepository {
     const db = getDatabase();
     const now = new Date().toISOString();
     const stmt = db.prepare(`
-      INSERT INTO user_progress (user_id, xp, level, daily_streak, unlocked_insignias_json, completed_states_json, read_pergaments_json, explored_dialogues_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO user_progress (user_id, xp, level, daily_streak, unlocked_insignias_json, completed_states_json, read_pergaments_json, explored_dialogues_json, score_history_json, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         xp = excluded.xp,
         level = excluded.level,
@@ -186,6 +235,7 @@ export class SqliteUserRepository {
         completed_states_json = excluded.completed_states_json,
         read_pergaments_json = excluded.read_pergaments_json,
         explored_dialogues_json = excluded.explored_dialogues_json,
+        score_history_json = excluded.score_history_json,
         updated_at = excluded.updated_at
     `);
 
@@ -198,6 +248,7 @@ export class SqliteUserRepository {
       JSON.stringify(progress.completed_states),
       JSON.stringify(progress.read_pergaments),
       JSON.stringify(progress.explored_dialogues),
+      JSON.stringify(progress.score_history || []),
       now
     );
   }

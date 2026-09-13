@@ -73,6 +73,7 @@ import { StateBiodiversityDialog } from './map/StateBiodiversityDialog';
 import { GeopoliticsMapLayer } from './map/GeopoliticsMapLayer';
 import { GeopoliticsControlPanel } from './map/GeopoliticsControlPanel';
 import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
+import { EducatorPortalModal } from './educator/EducatorPortalModal';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
 import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
@@ -241,6 +242,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const showNeighbors = propShowNeighbors !== undefined ? propShowNeighbors : internalShowNeighbors;
   const [hoveredCountryId, setHoveredCountryId] = useState<string | null>(null);
   const [selectedCountry, setSelectedCountry] = useState<NeighborCountryData | null>(null);
+  const [isEducatorPortalOpen, setIsEducatorPortalOpen] = useState<boolean>(false);
 
   // Climate Phenomena & Live Meteorological Telemetry (Open-Meteo API)
   const [isClimateActive, setIsClimateActive] = useState<boolean>(mainMode === 'clima');
@@ -1636,6 +1638,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         zoom={isGlobe3DActive ? 1.0 : zoom}
         onOpenDailyTips={onOpenDailyTips}
         dailyTipsUnreadCount={dailyTipsUnreadCount}
+        onOpenEducatorPortal={() => setIsEducatorPortalOpen(true)}
       />
 
       {/* 4.5. Top HUD Celestial Orb (Sol / Lua de Brasília na HUD de Topo - apenas nos modos 2D/isométrico, oculto no Globo 3D) */}
@@ -2297,6 +2300,16 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           }
           setInternalIsGeopoliticaPanelOpen(false);
           setSelectedGeopoliticaStateId(stateId);
+          handleStateClick(stateId);
+        }}
+      />
+
+      {/* 13.5. Portal do Educador (BR Quest Edu - BNCC, Gestão de Turmas e Simulados ENEM) */}
+      <EducatorPortalModal
+        isOpen={isEducatorPortalOpen}
+        onClose={() => setIsEducatorPortalOpen(false)}
+        onSelectTrackState={(stateId: string) => {
+          setSelectedStateId(stateId);
           handleStateClick(stateId);
         }}
       />

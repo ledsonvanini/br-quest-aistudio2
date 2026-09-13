@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../services/auth/AuthContext';
-import { User, Shield, Volume2, VolumeX, Sparkles, LogIn, LogOut, UserPlus, CheckCircle2, AlertCircle, X, Layers, Globe } from 'lucide-react';
+import { User, X, Star, TrendingUp, Settings, Shield } from 'lucide-react';
+import { ExplorerFavoritesTab } from './tabs/ExplorerFavoritesTab';
+import { ExplorerHistoryTab } from './tabs/ExplorerHistoryTab';
+import { ExplorerPreferencesTab } from './tabs/ExplorerPreferencesTab';
+import { ExplorerIdentityTab } from './tabs/ExplorerIdentityTab';
+import { BrazilBiome } from '../../types';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -8,7 +13,11 @@ interface UserProfileModalProps {
   playerLevel: number;
   playerXp: number;
   unlockedInsigniaCount: number;
+  completedStatesCount?: number;
+  dailyStreak?: number;
 }
+
+type ExplorerTabId = 'favorites' | 'history' | 'preferences' | 'identity';
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
@@ -16,352 +25,184 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   playerLevel,
   playerXp,
   unlockedInsigniaCount,
+  completedStatesCount = 0,
+  dailyStreak = 1,
 }) => {
-  const { user, isGuest, preferences, login, register, logout, updatePreferences, vendorName } = useAuth();
-
-  const [mode, setMode] = useState<'profile' | 'login' | 'register'>(isGuest ? 'profile' : 'profile');
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { preferences, updatePreferences, vendorName } = useAuth();
+  const [activeTab, setActiveTab] = useState<ExplorerTabId>('favorites');
 
   if (!isOpen) return null;
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setIsSubmitting(true);
-    try {
-      await login(username, password);
-      setSuccessMsg('Conectado com sucesso!');
-      setTimeout(() => {
-        setSuccessMsg(null);
-        setMode('profile');
-      }, 1000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Falha no login');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const currentFavorites = preferences?.favorites || {
+    biomes: ['Amazônia', 'Mata Atlântica'] as BrazilBiome[],
+    speciesIds: ['onca-pintada', 'mico-leao-dourado', 'pau-brasil'],
+    stateIds: ['AM', 'RJ', 'BA'],
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-    setIsSubmitting(true);
-    try {
-      await register(username, displayName || username, email, password);
-      setSuccessMsg('Conta criada com sucesso no SQLite!');
-      setTimeout(() => {
-        setSuccessMsg(null);
-        setMode('profile');
-      }, 1000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao registrar');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleToggleBiome = async (biome: BrazilBiome) => {
+    const list = currentFavorites.biomes.includes(biome)
+      ? currentFavorites.biomes.filter((b) => b !== biome)
+      : [...currentFavorites.biomes, biome];
+
+    await updatePreferences({
+      favorites: { ...currentFavorites, biomes: list },
+    });
   };
 
-  const handleToggleSound = async () => {
-    const current = preferences?.soundEnabled ?? true;
-    await updatePreferences({ soundEnabled: !current });
+  const handleToggleSpecies = async (speciesId: string) => {
+    const list = currentFavorites.speciesIds.includes(speciesId)
+      ? currentFavorites.speciesIds.filter((s) => s !== speciesId)
+      : [...currentFavorites.speciesIds, speciesId];
+
+    await updatePreferences({
+      favorites: { ...currentFavorites, speciesIds: list },
+    });
   };
 
-  const handleToggleMapMode = async (modeVal: '2d' | '2.5d' | 'globo3d') => {
-    await updatePreferences({ defaultMapMode: modeVal });
+  const handleToggleState = async (stateId: string) => {
+    const list = currentFavorites.stateIds.includes(stateId)
+      ? currentFavorites.stateIds.filter((st) => st !== stateId)
+      : [...currentFavorites.stateIds, stateId];
+
+    await updatePreferences({
+      favorites: { ...currentFavorites, stateIds: list },
+    });
   };
 
   return (
     <div
       id="modal-auth-backdrop"
-      className="modal-auth-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="modal-auth-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         id="modal-auth-container"
-        className="modal-auth-container relative w-full max-w-md bg-stone-900/95 border border-amber-500/30 rounded-2xl shadow-2xl p-6 text-stone-100 font-sans"
+        className="modal-auth-container painel-explorador-unificado relative w-[92vw] sm:w-[85vw] max-w-5xl h-[85vh] max-h-[85vh] bg-stone-900/95 border border-amber-500/30 rounded-2xl shadow-2xl p-5 sm:p-7 text-stone-100 font-sans flex flex-col"
       >
         {/* Botão Fechar */}
         <button
           id="btn-fechar-modal-auth"
           onClick={onClose}
-          className="btn-fechar-modal-auth absolute top-4 right-4 text-stone-400 hover:text-stone-100 p-1 rounded-lg hover:bg-stone-800 transition"
+          className="btn-fechar-modal-auth absolute top-4 right-4 text-stone-400 hover:text-stone-100 p-1.5 rounded-lg hover:bg-stone-800 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Cabeçalho */}
-        <div className="flex items-center gap-3 mb-5 border-b border-stone-800 pb-4">
+        <div className="flex items-center gap-3 border-b border-stone-800 pb-3 flex-shrink-0">
           <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            <User className="w-6 h-6" />
+            <User className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-wide text-amber-300">
-              {mode === 'login' ? 'Entrar na Conta' : mode === 'register' ? 'Criar Identidade' : 'Perfil & Preferências'}
+            <h2 className="text-base sm:text-lg font-bold tracking-wide text-amber-300">
+              Painel do Explorador
             </h2>
             <div className="flex items-center gap-2 text-xs text-stone-400">
-              <span>Provedor Ativo:</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 font-mono">
+              <span>Persistência Ativa:</span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 font-mono text-[11px]">
                 {vendorName}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Mensagens de Feedback */}
-        {errorMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-red-950/70 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-        {successMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
-            <span>{successMsg}</span>
-          </div>
-        )}
+        {/* Barra de Abas (Tabs) */}
+        <div className="menu-abas-explorador grid grid-cols-4 gap-1.5 my-3.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800 flex-shrink-0 text-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('favorites')}
+            className={`btn-aba-favoritos py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+              activeTab === 'favorites'
+                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                : 'text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Favoritos</span>
+            <span className="sm:hidden">Favs</span>
+          </button>
 
-        {/* Modo Perfil & Preferências */}
-        {mode === 'profile' && (
-          <div className="space-y-5">
-            {/* Cartão do Usuário */}
-            <div className="card-perfil-usuario p-4 rounded-xl bg-stone-800/70 border border-stone-700/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-stone-100">{user?.displayName || 'Explorador Convidado'}</span>
-                    {isGuest ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-stone-700 text-stone-300 uppercase tracking-wider">
-                        Convidado
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
-                        Verificado
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-stone-400 mt-0.5">@{user?.username || 'guest'}</div>
-                </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`btn-aba-historico py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+              activeTab === 'history'
+                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                : 'text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Progresso</span>
+            <span className="sm:hidden">Hist</span>
+          </button>
 
-                <div className="text-right">
-                  <div className="text-sm font-bold text-amber-400">Nível {playerLevel}</div>
-                  <div className="text-xs text-stone-400">{playerXp.toLocaleString('pt-BR')} XP</div>
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('preferences')}
+            className={`btn-aba-preferencias py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+              activeTab === 'preferences'
+                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                : 'text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Preferências</span>
+            <span className="sm:hidden">Prefs</span>
+          </button>
 
-              <div className="mt-3 pt-3 border-t border-stone-700/60 flex justify-between text-xs text-stone-400">
-                <span>Insígnias Coletadas:</span>
-                <span className="font-semibold text-amber-300">{unlockedInsigniaCount} / 27 UFs</span>
-              </div>
-            </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('identity')}
+            className={`btn-aba-identidade py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+              activeTab === 'identity'
+                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                : 'text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Identidade</span>
+            <span className="sm:hidden">Conta</span>
+          </button>
+        </div>
 
-            {/* Preferências do Usuário (Persistidas no SQLite) */}
-            <div className="painel-preferencias-sqlite space-y-3">
-              <div className="text-xs font-semibold text-stone-300 uppercase tracking-wider">
-                Preferências do Explorador (Salvas no SQLite)
-              </div>
+        {/* Conteúdo da Aba Ativa */}
+        <div className="conteudo-aba flex-1 overflow-y-auto pr-1">
+          {activeTab === 'favorites' && (
+            <ExplorerFavoritesTab
+              favoriteBiomes={currentFavorites.biomes}
+              favoriteSpeciesIds={currentFavorites.speciesIds}
+              favoriteStateIds={currentFavorites.stateIds}
+              onToggleBiome={handleToggleBiome}
+              onToggleSpecies={handleToggleSpecies}
+              onToggleState={handleToggleState}
+            />
+          )}
 
-              {/* Toggle de Áudio */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-800/40 border border-stone-700/40 text-sm">
-                <div className="flex items-center gap-2.5">
-                  {preferences?.soundEnabled ?? true ? (
-                    <Volume2 className="w-4 h-4 text-amber-400" />
-                  ) : (
-                    <VolumeX className="w-4 h-4 text-stone-500" />
-                  )}
-                  <span>Efeitos Sonoros & Hinos</span>
-                </div>
-                <button
-                  id="btn-toggle-audio-pref"
-                  onClick={handleToggleSound}
-                  className={`btn-toggle-audio-pref px-3 py-1 rounded-lg text-xs font-medium transition ${
-                    preferences?.soundEnabled ?? true
-                      ? 'bg-amber-500 text-stone-950 hover:bg-amber-400'
-                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-                  }`}
-                >
-                  {preferences?.soundEnabled ?? true ? 'Ativado' : 'Mudo'}
-                </button>
-              </div>
+          {activeTab === 'history' && (
+            <ExplorerHistoryTab
+              playerLevel={playerLevel}
+              playerXp={playerXp}
+              unlockedInsigniaCount={unlockedInsigniaCount}
+              completedStatesCount={completedStatesCount}
+              dailyStreak={dailyStreak}
+            />
+          )}
 
-              {/* Modo de Mapa Padrão */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-stone-800/40 border border-stone-700/40 text-sm">
-                <div className="flex items-center gap-2.5">
-                  <Layers className="w-4 h-4 text-amber-400" />
-                  <span>Modo Inicial do Mapa</span>
-                </div>
-                <div className="flex items-center gap-1 bg-stone-900/60 p-1 rounded-lg border border-stone-700/60 text-xs">
-                  <button
-                    onClick={() => handleToggleMapMode('2d')}
-                    className={`px-2 py-0.5 rounded transition ${
-                      (preferences?.defaultMapMode || '2d') === '2d'
-                        ? 'bg-amber-500 text-stone-950 font-bold'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    2D
-                  </button>
-                  <button
-                    onClick={() => handleToggleMapMode('globo3d')}
-                    className={`px-2 py-0.5 rounded transition ${
-                      preferences?.defaultMapMode === 'globo3d'
-                        ? 'bg-amber-500 text-stone-950 font-bold'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    3D
-                  </button>
-                </div>
-              </div>
-            </div>
+          {activeTab === 'preferences' && (
+            <ExplorerPreferencesTab
+              preferences={preferences}
+              onUpdatePreferences={updatePreferences}
+            />
+          )}
 
-            {/* Ações de Conta */}
-            <div className="pt-2 flex flex-col gap-2">
-              {isGuest ? (
-                <div className="flex gap-2">
-                  <button
-                    id="btn-abrir-login"
-                    onClick={() => setMode('login')}
-                    className="btn-abrir-login flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold transition"
-                  >
-                    <LogIn className="w-4 h-4 text-amber-400" />
-                    Entrar
-                  </button>
-                  <button
-                    id="btn-abrir-registro"
-                    onClick={() => setMode('register')}
-                    className="btn-abrir-registro flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold transition shadow-md"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Criar Conta
-                  </button>
-                </div>
-              ) : (
-                <button
-                  id="btn-desconectar-auth"
-                  onClick={logout}
-                  className="btn-desconectar-auth flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-800/80 hover:bg-stone-800 border border-stone-700 text-stone-300 hover:text-red-300 text-xs font-semibold transition"
-                >
-                  <LogOut className="w-4 h-4 text-stone-400" />
-                  Sair da Conta
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Formulário de Login */}
-        {mode === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Nome de Usuário</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="ex: explorador_br"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Senha (Opcional no modo local)</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              id="btn-submit-login"
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-submit-login w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-semibold transition shadow-md disabled:opacity-50"
-            >
-              {isSubmitting ? 'Verificando...' : 'Acessar Conta'}
-            </button>
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setMode('register')}
-                className="text-xs text-amber-400 hover:underline"
-              >
-                Não tem conta? Crie uma agora
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Formulário de Registro */}
-        {mode === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Nome de Usuário (único)</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="ex: viajante_pantaneiro"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Nome de Exibição</label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="ex: Carlos Silva"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">E-mail (Opcional)</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="seu@email.com"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-400"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              id="btn-submit-registro"
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-submit-registro w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-sm font-semibold transition shadow-md disabled:opacity-50"
-            >
-              {isSubmitting ? 'Gravando no SQLite...' : 'Criar e Salvar Perfil'}
-            </button>
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setMode('login')}
-                className="text-xs text-amber-400 hover:underline"
-              >
-                Já possui conta? Faça login
-              </button>
-            </div>
-          </form>
-        )}
+          {activeTab === 'identity' && (
+            <ExplorerIdentityTab
+              playerLevel={playerLevel}
+              playerXp={playerXp}
+              unlockedInsigniaCount={unlockedInsigniaCount}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
