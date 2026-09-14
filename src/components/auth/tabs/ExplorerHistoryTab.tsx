@@ -111,7 +111,7 @@ export const ExplorerHistoryTab: React.FC<ExplorerHistoryTabProps> = ({
             <TrendingUp className="w-4 h-4 text-amber-400" />
             <span>Histórico de Atividades & Pontuação</span>
           </div>
-          <span className="text-[11px] text-stone-400 font-mono">SQLite Local</span>
+          <span className="text-[11px] text-stone-400 font-mono">Sincronizado</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">

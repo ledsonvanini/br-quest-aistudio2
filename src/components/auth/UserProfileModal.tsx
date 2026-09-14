@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../services/auth/AuthContext';
-import { User, X, Star, TrendingUp, Settings, Shield } from 'lucide-react';
+import { X, Sparkles, Star, TrendingUp, Settings, Shield, Compass } from 'lucide-react';
+import { ExplorerWelcomeBanner } from './tabs/ExplorerWelcomeBanner';
+import { ExplorerOverviewTab } from './tabs/ExplorerOverviewTab';
 import { ExplorerFavoritesTab } from './tabs/ExplorerFavoritesTab';
 import { ExplorerHistoryTab } from './tabs/ExplorerHistoryTab';
 import { ExplorerPreferencesTab } from './tabs/ExplorerPreferencesTab';
@@ -15,9 +17,10 @@ interface UserProfileModalProps {
   unlockedInsigniaCount: number;
   completedStatesCount?: number;
   dailyStreak?: number;
+  onNavigateToState?: (stateId: string) => void;
 }
 
-type ExplorerTabId = 'favorites' | 'history' | 'preferences' | 'identity';
+export type ExplorerTabId = 'overview' | 'favorites' | 'history' | 'preferences' | 'identity';
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
@@ -27,9 +30,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   unlockedInsigniaCount,
   completedStatesCount = 0,
   dailyStreak = 1,
+  onNavigateToState,
 }) => {
-  const { preferences, updatePreferences, vendorName } = useAuth();
-  const [activeTab, setActiveTab] = useState<ExplorerTabId>('favorites');
+  const { user, isGuest, preferences, updatePreferences, vendorName } = useAuth();
+  const [activeTab, setActiveTab] = useState<ExplorerTabId>('overview');
 
   if (!isOpen) return null;
 
@@ -72,101 +76,124 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   return (
     <div
       id="modal-auth-backdrop"
-      className="modal-auth-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+      className="modal-auth-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         id="modal-auth-container"
-        className="modal-auth-container painel-explorador-unificado relative w-[92vw] sm:w-[85vw] max-w-5xl h-[85vh] max-h-[85vh] bg-stone-900/95 border border-amber-500/30 rounded-2xl shadow-2xl p-5 sm:p-7 text-stone-100 font-sans flex flex-col"
+        className="modal-auth-container painel-explorador-unificado relative w-[96vw] max-w-6xl h-[92vh] max-h-[94vh] bg-stone-900/98 border border-amber-500/40 rounded-3xl shadow-2xl p-4 sm:p-6 text-stone-100 font-sans flex flex-col overflow-hidden"
       >
-        {/* Botão Fechar */}
+        {/* Botão Fechar no Topo Direito */}
         <button
           id="btn-fechar-modal-auth"
           onClick={onClose}
-          className="btn-fechar-modal-auth absolute top-4 right-4 text-stone-400 hover:text-stone-100 p-1.5 rounded-lg hover:bg-stone-800 transition"
+          className="btn-fechar-modal-auth absolute top-4 right-4 text-stone-400 hover:text-stone-100 p-2 rounded-xl hover:bg-stone-800 transition z-20"
+          title="Fechar painel"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Cabeçalho */}
-        <div className="flex items-center gap-3 border-b border-stone-800 pb-3 flex-shrink-0">
-          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold tracking-wide text-amber-300">
-              Painel do Explorador
-            </h2>
-            <div className="flex items-center gap-2 text-xs text-stone-400">
-              <span>Persistência Ativa:</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 font-mono text-[11px]">
-                {vendorName}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* 1. Banner Superior de Boas-Vindas & Status Pessoal */}
+        <ExplorerWelcomeBanner
+          user={user}
+          isGuest={isGuest}
+          playerLevel={playerLevel}
+          playerXp={playerXp}
+          unlockedInsigniaCount={unlockedInsigniaCount}
+          completedStatesCount={completedStatesCount}
+          dailyStreak={dailyStreak}
+          vendorName={vendorName}
+        />
 
-        {/* Barra de Abas (Tabs) */}
-        <div className="menu-abas-explorador grid grid-cols-4 gap-1.5 my-3.5 p-1 bg-stone-950/80 rounded-xl border border-stone-800 flex-shrink-0 text-xs">
+        {/* 2. Menu de Navegação em Abas com Ícones Claros */}
+        <div className="menu-abas-explorador grid grid-cols-5 gap-1.5 p-1.5 bg-stone-950/90 rounded-2xl border border-stone-800 flex-shrink-0 text-xs mb-3.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`btn-aba-visao-geral py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ${
+              activeTab === 'overview'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
+                : 'text-stone-400 hover:text-stone-200'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Visão Geral</span>
+            <span className="sm:hidden">Início</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('favorites')}
-            className={`btn-aba-favoritos py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+            className={`btn-aba-favoritos py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ${
               activeTab === 'favorites'
-                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <Star className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Favoritos</span>
-            <span className="sm:hidden">Favs</span>
+            <span className="hidden sm:inline">Fauna, Flora & UFs</span>
+            <span className="sm:hidden">Afinidades</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`btn-aba-historico py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+            className={`btn-aba-historico py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ${
               activeTab === 'history'
-                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Progresso</span>
-            <span className="sm:hidden">Hist</span>
+            <span className="hidden sm:inline">Jornada & XP</span>
+            <span className="sm:hidden">Progresso</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('preferences')}
-            className={`btn-aba-preferencias py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+            className={`btn-aba-preferencias py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ${
               activeTab === 'preferences'
-                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <Settings className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Preferências</span>
-            <span className="sm:hidden">Prefs</span>
+            <span className="hidden sm:inline">Ajustes & Som</span>
+            <span className="sm:hidden">Ajustes</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('identity')}
-            className={`btn-aba-identidade py-2 px-1 rounded-lg flex items-center justify-center gap-1.5 font-medium transition ${
+            className={`btn-aba-identidade py-2 px-1.5 rounded-xl flex items-center justify-center gap-1.5 font-bold transition ${
               activeTab === 'identity'
-                ? 'bg-amber-500 text-stone-950 font-bold shadow-sm'
+                ? 'bg-amber-500 text-stone-950 shadow-sm'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Identidade</span>
+            <span className="hidden sm:inline">Minha Conta</span>
             <span className="sm:hidden">Conta</span>
           </button>
         </div>
 
-        {/* Conteúdo da Aba Ativa */}
-        <div className="conteudo-aba flex-1 overflow-y-auto pr-1">
+        {/* 3. Área de Conteúdo da Aba Ativa com Scroll Suave */}
+        <div className="conteudo-aba flex-1 overflow-y-auto pr-1.5 custom-scrollbar">
+          {activeTab === 'overview' && (
+            <ExplorerOverviewTab
+              favorites={currentFavorites}
+              playerLevel={playerLevel}
+              completedStatesCount={completedStatesCount}
+              unlockedInsigniaCount={unlockedInsigniaCount}
+              onNavigateToState={(stateId) => {
+                onClose();
+                onNavigateToState?.(stateId);
+              }}
+              onSwitchTab={setActiveTab}
+            />
+          )}
+
           {activeTab === 'favorites' && (
             <ExplorerFavoritesTab
               favoriteBiomes={currentFavorites.biomes}
@@ -175,6 +202,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               onToggleBiome={handleToggleBiome}
               onToggleSpecies={handleToggleSpecies}
               onToggleState={handleToggleState}
+              onNavigateToState={(stateId) => {
+                onClose();
+                onNavigateToState?.(stateId);
+              }}
             />
           )}
 

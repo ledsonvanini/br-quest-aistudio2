@@ -733,6 +733,10 @@ export function App() {
         unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
         completedStatesCount={progress.completedStateIds.length}
         dailyStreak={progress.dailyStreak || 1}
+        onNavigateToState={(stateId) => {
+          const g = GUARDIANS_DATA.find((item) => item.id === stateId);
+          if (g) handleSelectGuardian(g);
+        }}
       />
 
       {/* API Telemetry & Status Modal */}

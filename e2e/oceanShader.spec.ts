@@ -18,9 +18,7 @@ test.describe.serial('Mini-Engine de Shader do Oceano Atlântico - Testes E2E e 
   });
 
   test.afterAll(async () => {
-    if (page) {
-      await page.close();
-    }
+    // Teardown automático do contexto pelo runner do Playwright
   });
 
   test('1. deve renderizar a camada desacoplada do Shader do Oceano com classes semânticas', async () => {
