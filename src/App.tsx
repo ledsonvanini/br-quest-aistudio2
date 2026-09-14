@@ -194,6 +194,26 @@ export function App() {
     saveUserProgress(progress);
   }, [progress]);
 
+  // Auto-exibição do modal "5 Dicas do Dia" a cada 6 horas
+  useEffect(() => {
+    try {
+      const STORAGE_KEY = 'brquest_daily_tips_last_auto_open';
+      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+      const lastOpenStr = localStorage.getItem(STORAGE_KEY);
+      const now = Date.now();
+
+      if (!lastOpenStr || now - Number(lastOpenStr) >= SIX_HOURS_MS) {
+        const timer = setTimeout(() => {
+          setIsDailyTipsOpen(true);
+          localStorage.setItem(STORAGE_KEY, String(now));
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // Ignora erro se localStorage indisponível
+    }
+  }, []);
+
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => {
@@ -722,6 +742,10 @@ export function App() {
         onOpenApiStatus={() => setIsApiStatusOpen(true)}
         showFps={showFps}
         onToggleFps={() => setShowFps((prev) => !prev)}
+        onOpenDailyTips={() => {
+          setIsSettingsOpen(false);
+          setIsDailyTipsOpen(true);
+        }}
       />
 
       {/* User Profile & Auth Modal (SQLite & Desacoplado) */}

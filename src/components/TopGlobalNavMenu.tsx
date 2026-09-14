@@ -852,38 +852,29 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 7. DICAS DO DIA: VOCÊ SABIA? */}
-                {onOpenDailyTips && (
+                {/* 7. PERFIL DO EXPLORADOR (Posicionado imediatamente sob Aventura) */}
+                {onOpenUserProfile && (
                   <div className="relative pt-0.5">
                     <button
-                      id="btn-sidebar-dicas-do-dia"
+                      id="btn-perfil-usuario-sidebar"
                       type="button"
                       onClick={() => {
                         audioEngine.playSfx('click');
                         setHoveredMenuTooltip(null);
                         setOpenFlyoutMode(null);
-                        onOpenDailyTips();
+                        onOpenUserProfile();
                       }}
                       {...bindTooltip({
-                        title: '5 Dicas do Dia: Você Sabia?',
-                        badge:
-                          dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0
-                            ? `${dailyTipsUnreadCount} Novas`
-                            : '5/5 Lidas',
-                        badgeColor:
-                          dailyTipsUnreadCount && dailyTipsUnreadCount > 0
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
+                        title: 'Perfil & Jornada do Explorador',
+                        badge: `Nível ${playerLevel || 1}`,
+                        badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
                         description:
-                          'Pílulas diárias de curiosidades com dados abertos oficiais (IBGE, INPE, NASA, ICMBio), ganho de XP e teletransporte instantâneo.',
+                          'Acesse seu perfil do explorador, insígnias de conquistas, progresso e dados sincronizados no SQLite.',
                       })}
-                      className="btn-sidebar-dicas-do-dia relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 hover:text-amber-100 shadow-md group"
-                      aria-label="5 Dicas do Dia: Você Sabia?"
+                      className="btn-perfil-usuario-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
+                      aria-label="Perfil do Explorador"
                     >
-                      <Sparkles className="w-5 h-5 text-amber-400 group-hover:rotate-12 transition-transform" />
-                      {dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-slate-950 shadow-[0_0_8px_#f59e0b] animate-pulse pointer-events-none" />
-                      )}
+                      <User className="w-5 h-5 text-amber-400/90 group-hover:text-amber-300" />
                     </button>
                   </div>
                 )}
@@ -918,7 +909,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   ? 'Clique para recolher os controles ambientais e utilitários do sistema, reabrindo o Menu Principal.'
                   : 'Clique para expandir os fenômenos climáticos (chuva, nuvens, ondas, astro solar) e utilitários (Saiba +, FPS, APIs).',
               })}
-              className="btn-toggle-expansao-ambiente w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              data-testid="btn-toggle-expansao-atmosfera"
+              className="btn-toggle-expansao-ambiente btn-toggle-expansao-atmosfera w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
               aria-label={isToolsSectionExpanded ? 'Recolher Ambiente & Sistema' : 'Expandir Ambiente & Sistema'}
               aria-expanded={isToolsSectionExpanded}
             >
@@ -928,6 +920,31 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                 <ChevronDown className="w-4 h-4 text-sky-300 animate-pulse transition-transform" />
               )}
             </button>
+
+            {/* Botão de Configurações Gerais agrupado com Ambiente e Sistema */}
+            {onOpenSettings && (
+              <button
+                id="btn-configuracoes-sidebar"
+                type="button"
+                onClick={() => {
+                  audioEngine.playSfx('click');
+                  setHoveredMenuTooltip(null);
+                  setOpenFlyoutMode(null);
+                  onOpenSettings();
+                }}
+                {...bindTooltip({
+                  title: 'Configurações Gerais',
+                  badge: 'Sistema',
+                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                  description:
+                    'Ajuste o volume da música ambiente, efeitos sonoros (SFX), reset da câmera, Dicas do Dia e diagnósticos.',
+                })}
+                className="btn-configuracoes-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
+                aria-label="Configurações Gerais"
+              >
+                <Settings className="w-5 h-5 text-slate-300 group-hover:text-amber-300 group-hover:rotate-45 transition-transform" />
+              </button>
+            )}
 
             {/* Controles expansíveis (Chuva, Nuvens, Ondas, Astro, Saiba+, FPS, APIs) com tamanho padronizado */}
             {isToolsSectionExpanded && (
@@ -1145,57 +1162,6 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </div>
             )}
           </div>
-          )}
-
-          {/* Botão de Perfil do Explorador (Auth / SQLite) */}
-          {onOpenUserProfile && (
-            <div className="mt-auto pt-1 shrink-0">
-              <button
-                id="btn-perfil-usuario-sidebar"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  setOpenFlyoutMode(null);
-                  onOpenUserProfile();
-                }}
-                {...bindTooltip({
-                  title: 'Perfil & Preferências (SQLite)',
-                  badge: `Nível ${playerLevel || 1}`,
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description: 'Acesse seu perfil do explorador, alterne provedor de autenticação e salve preferências com persistência no SQLite.',
-                })}
-                className="btn-perfil-usuario-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
-                aria-label="Perfil do Explorador"
-              >
-                <User className="w-5 h-5 text-amber-400/90 group-hover:text-amber-300" />
-              </button>
-            </div>
-          )}
-
-          {/* Botão de Configurações Gerais no rodapé da Sidebar */}
-          {onOpenSettings && (
-            <div className={`${onOpenUserProfile ? 'pt-1.5' : 'mt-auto pt-1'} shrink-0`}>
-              <button
-                id="btn-configuracoes-sidebar"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  setOpenFlyoutMode(null);
-                  onOpenSettings();
-                }}
-                {...bindTooltip({
-                  title: 'Configurações Gerais',
-                  badge: 'Sistema',
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description: 'Ajuste volume da música ambiente, efeitos sonoros (SFX), reset de câmera e diagnóstico.',
-                })}
-                className="btn-configuracoes-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md"
-                aria-label="Configurações Gerais"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
           )}
         </div>
 

@@ -97,45 +97,6 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
         />
       </div>
 
-      {/* 5 Dicas do Dia: Você Sabia? */}
-      {onOpenDailyTips && (
-        <>
-          <div className="h-5 w-[1px] bg-slate-800 shrink-0" />
-          <div className="relative group">
-            <button
-              id="btn-dicas-do-dia-topo-dock"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onOpenDailyTips();
-              }}
-              className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 hover:text-amber-100 hover:bg-amber-500/35 hover:border-amber-400 flex items-center justify-center transition cursor-pointer group/btn shadow-md relative"
-              aria-label="5 Dicas do Dia: Você Sabia?"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400 group-hover/btn:rotate-12 transition-transform" />
-              {dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-slate-950 shadow-[0_0_8px_#f59e0b] animate-pulse" />
-              )}
-            </button>
-
-            <SpeechBubbleTooltip
-              title="5 Dicas do Dia: Você Sabia?"
-              badge={
-                dailyTipsUnreadCount !== undefined && dailyTipsUnreadCount > 0
-                  ? `${dailyTipsUnreadCount} Novas Hoje`
-                  : '5/5 Concluídas'
-              }
-              badgeColor={
-                dailyTipsUnreadCount && dailyTipsUnreadCount > 0
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
-              }
-              description="Pílulas de curiosidades geográficas oficiais com bônus de XP e teletransporte imediato."
-              align="right"
-            />
-          </div>
-        </>
-      )}
-
       {/* Portal do Educador: BR Quest Edu (BNCC & ENEM) */}
       {onOpenEducatorPortal && (
         <>

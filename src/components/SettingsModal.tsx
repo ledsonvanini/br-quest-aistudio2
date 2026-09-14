@@ -24,6 +24,7 @@ interface Props {
   onClose: () => void;
   onResetCamera?: () => void;
   onOpenApiStatus?: () => void;
+  onOpenDailyTips?: () => void;
   showFps?: boolean;
   onToggleFps?: () => void;
 }
@@ -33,6 +34,7 @@ export const SettingsModal: React.FC<Props> = ({
   onClose,
   onResetCamera,
   onOpenApiStatus,
+  onOpenDailyTips,
   showFps = false,
   onToggleFps,
 }) => {
@@ -198,6 +200,36 @@ export const SettingsModal: React.FC<Props> = ({
                   <span>{sfxOn ? 'Ativado' : 'Silenciado'}</span>
                 </button>
               </div>
+
+              {/* Dicas do Dia: Você Sabia? */}
+              {onOpenDailyTips && (
+                <div className="card-config-dicas-do-dia bg-slate-900/90 rounded-2xl p-3 sm:p-3.5 border border-amber-500/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-400/40 shrink-0">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-serif font-bold text-amber-300">
+                        5 Dicas do Dia: Você Sabia?
+                      </div>
+                      <div className="text-[10px] text-slate-400">Pílulas diárias e bônus de XP</div>
+                    </div>
+                  </div>
+
+                  <button
+                    id="btn-abrir-dicas-via-config"
+                    onClick={() => {
+                      audioEngine.playSfx('click');
+                      onClose();
+                      onOpenDailyTips();
+                    }}
+                    className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-slate-950 border border-amber-500/40 text-xs font-bold font-serif transition cursor-pointer flex items-center gap-1"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Abrir</span>
+                  </button>
+                </div>
+              )}
 
               {/* Camera / View Action */}
               {onResetCamera && (

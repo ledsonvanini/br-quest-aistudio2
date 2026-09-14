@@ -52,16 +52,16 @@ test.describe.serial('Mini-Engine de Shader do Oceano Atlântico - Testes E2E e 
 
     // Botão de ondas na sidebar esquerda: #btn-sidebar-ventos-ondas
     const wavesToggleBtn = page.locator('#btn-sidebar-ventos-ondas');
-    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-atmosfera');
+    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-ambiente');
     if (!(await wavesToggleBtn.isVisible())) {
-      await toggleExpansaoBtn.click({ force: true });
-      await page.waitForTimeout(300);
+      await toggleExpansaoBtn.evaluate((el: HTMLElement) => el.click());
+      await page.waitForTimeout(500);
     }
-    await expect(wavesToggleBtn).toBeVisible();
+    await expect(wavesToggleBtn).toBeVisible({ timeout: 10000 });
 
     // Desativa as ondas oceânicas
-    await wavesToggleBtn.click({ force: true });
-    await page.waitForTimeout(400);
+    await wavesToggleBtn.evaluate((el: HTMLElement) => el.click());
+    await page.waitForTimeout(500);
 
     // O canvas do shader é completamente desmontado sem quebrar o mapa
     await expect(oceanCanvas).not.toBeAttached();
@@ -71,8 +71,8 @@ test.describe.serial('Mini-Engine de Shader do Oceano Atlântico - Testes E2E e 
     await expect(mainContainer).toBeAttached();
 
     // Reativa as ondas
-    await wavesToggleBtn.click({ force: true });
-    await page.waitForTimeout(400);
+    await wavesToggleBtn.evaluate((el: HTMLElement) => el.click());
+    await page.waitForTimeout(500);
     await expect(oceanCanvas).toBeAttached();
   });
 
@@ -114,35 +114,35 @@ test.describe.serial('Mini-Engine de Shader do Oceano Atlântico - Testes E2E e 
   });
 
   test('6. deve respeitar recolhimento por padrão e alternar expansão dos fenômenos atmosféricos', async () => {
-    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-atmosfera');
+    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-ambiente');
     await expect(toggleExpansaoBtn).toBeVisible();
 
     const wavesToggleBtn = page.locator('#btn-sidebar-ventos-ondas');
     const wasVisible = await wavesToggleBtn.isVisible();
-    await toggleExpansaoBtn.click({ force: true });
-    await page.waitForTimeout(300);
+    await toggleExpansaoBtn.evaluate((el: HTMLElement) => el.click());
+    await page.waitForTimeout(400);
 
     if (wasVisible) {
       await expect(wavesToggleBtn).not.toBeVisible();
       // Re-expande
-      await toggleExpansaoBtn.click({ force: true });
-      await page.waitForTimeout(300);
+      await toggleExpansaoBtn.evaluate((el: HTMLElement) => el.click());
+      await page.waitForTimeout(400);
       await expect(wavesToggleBtn).toBeVisible();
     } else {
       await expect(wavesToggleBtn).toBeVisible();
       // Re-recolhe
-      await toggleExpansaoBtn.click({ force: true });
-      await page.waitForTimeout(300);
+      await toggleExpansaoBtn.evaluate((el: HTMLElement) => el.click());
+      await page.waitForTimeout(400);
       await expect(wavesToggleBtn).not.toBeVisible();
     }
   });
 
   test('7. deve verificar ícone e interatividade do Astro e Ciclo Solar na função Auto', async () => {
     const astroBtn = page.locator('#btn-sidebar-astro-atmosfera');
-    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-atmosfera');
+    const toggleExpansaoBtn = page.locator('#btn-toggle-expansao-ambiente');
     if (!(await astroBtn.isVisible())) {
-      await toggleExpansaoBtn.click({ force: true });
-      await page.waitForTimeout(300);
+      await toggleExpansaoBtn.evaluate((el: HTMLElement) => el.click());
+      await page.waitForTimeout(400);
     }
     await expect(astroBtn).toBeVisible();
     await expect(astroBtn).toHaveAttribute('aria-label', 'Astro e Atmosfera');

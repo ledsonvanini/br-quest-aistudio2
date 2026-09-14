@@ -65,15 +65,22 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
         return;
       }
 
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      if (!cachedRect) {
+        cachedRect = container.getBoundingClientRect();
+      }
+      const x = e.clientX - cachedRect.left;
+      const y = e.clientY - cachedRect.top;
 
       targetPosRef.current = { x, y };
 
       if (!cursorRef.current?.style.display || cursorRef.current.style.display === 'none') {
         if (cursorRef.current) cursorRef.current.style.display = 'block';
         setIsVisible(true);
+      }
+
+      if (!isAnimating) {
+        isAnimating = true;
+        rafId = requestAnimationFrame(animate);
       }
 
       // Throttled hit test (max 10x/sec) to avoid layout thrashing while moving cursor
@@ -102,27 +109,49 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
       }
     };
 
+    let cachedRect: DOMRect | null = container.getBoundingClientRect();
+    let isAnimating = false;
+
+    const updateCachedRect = () => {
+      if (container) {
+        cachedRect = container.getBoundingClientRect();
+      }
+    };
+
     const handleMouseDown = () => setIsMouseDown(true);
     const handleMouseUp = () => setIsMouseDown(false);
 
     const handleMouseEnter = () => {
+      updateCachedRect();
       setIsVisible(true);
+      if (!isAnimating) {
+        isAnimating = true;
+        rafId = requestAnimationFrame(animate);
+      }
     };
 
     const handleMouseLeave = () => {
       setIsVisible(false);
       setIsMouseDown(false);
+      isAnimating = false;
+      cancelAnimationFrame(rafId);
     };
 
-    // Direct 60fps GPU transform update without triggering React render passes
+    // Direct GPU transform update without triggering React render passes or layout thrashing
     const animate = () => {
+      if (!cachedRect) {
+        cachedRect = container.getBoundingClientRect();
+      }
       const target = targetPosRef.current;
       const current = currentPosRef.current;
 
-      if (isDwellActiveRef.current && container) {
-        const rect = container.getBoundingClientRect();
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (isDwellActiveRef.current) {
+        const centerX = cachedRect.width / 2;
+        const centerY = cachedRect.height / 2;
 
         const blendedTargetX = target.x * 0.82 + centerX * 0.18;
         const blendedTargetY = target.y * 0.82 + centerY * 0.18;
@@ -131,31 +160,44 @@ export const CustomCanvasCursor: React.FC<CustomCanvasCursorProps> = ({
         current.y += (blendedTargetY - current.y) * 0.35;
       } else {
         // High-precision immediate tracking
-        current.x += (target.x - current.x) * 0.88;
-        current.y += (target.y - current.y) * 0.88;
+        current.x += dx * 0.88;
+        current.y += dy * 0.88;
       }
 
-      if (cursorRef.current && container) {
-        const containerRect = container.getBoundingClientRect();
-        const screenX = Math.round(containerRect.left + current.x);
-        const screenY = Math.round(containerRect.top + current.y);
+      if (cursorRef.current) {
+        const screenX = Math.round(cachedRect.left + current.x);
+        const screenY = Math.round(cachedRect.top + current.y);
         const isOffsetFingertip = isOverRadioRef.current || isOverClickableRef.current;
         const offsetTransform = isOffsetFingertip ? 'translate(-4px, -2px)' : 'translate(-50%, -50%)';
 
         cursorRef.current.style.transform = `translate3d(${screenX}px, ${screenY}px, 0px) ${offsetTransform}`;
       }
 
+      // Se convergiu (parado no mesmo ponto com dist < 0.15px), hiberna o RAF para zerar o uso de CPU
+      if (distSq < 0.05 && !isDwellActiveRef.current) {
+        current.x = target.x;
+        current.y = target.y;
+        isAnimating = false;
+        return;
+      }
+
       rafId = requestAnimationFrame(animate);
     };
 
+    window.addEventListener('resize', updateCachedRect, { passive: true });
+    window.addEventListener('scroll', updateCachedRect, { passive: true });
     container.addEventListener('mousemove', handleMouseMove, { passive: true });
     container.addEventListener('mousedown', handleMouseDown, { passive: true });
     window.addEventListener('mouseup', handleMouseUp, { passive: true });
     container.addEventListener('mouseenter', handleMouseEnter, { passive: true });
     container.addEventListener('mouseleave', handleMouseLeave, { passive: true });
+    
+    isAnimating = true;
     rafId = requestAnimationFrame(animate);
 
     return () => {
+      window.removeEventListener('resize', updateCachedRect);
+      window.removeEventListener('scroll', updateCachedRect);
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);

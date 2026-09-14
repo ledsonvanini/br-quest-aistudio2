@@ -105,8 +105,19 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
     });
 
     let animationFrameId: number;
+    let lastRenderTime = performance.now();
+    const FRAME_INTERVAL = 1000 / 30; // 30 FPS para pássaros costeiros economiza ciclos de CPU/GPU
 
-    const render = () => {
+    const render = (now: number) => {
+      animationFrameId = requestAnimationFrame(render);
+
+      const elapsed = now - lastRenderTime;
+      if (elapsed < FRAME_INTERVAL) {
+        return;
+      }
+      const timeScale = Math.min(elapsed / 16.666, 3.0);
+      lastRenderTime = now - (elapsed % FRAME_INTERVAL);
+
       ctx.clearRect(0, 0, w, h);
 
       // =========================================================================
@@ -114,10 +125,10 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
       // =========================================================================
       for (let i = 0; i < BIRD_POOL_SIZE; i++) {
         const b = birds[i];
-        b.age++;
+        b.age += timeScale;
 
         if (b.age < 50) {
-          b.opacity = Math.min(b.targetOpacity, b.opacity + 0.025);
+          b.opacity = Math.min(b.targetOpacity, b.opacity + 0.025 * timeScale);
         } else if (
           b.age > b.maxLife ||
           b.x < -80 ||
@@ -125,24 +136,24 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
           b.y < -80 ||
           b.y > h + 80
         ) {
-          b.opacity = Math.max(0, b.opacity - 0.025);
+          b.opacity = Math.max(0, b.opacity - 0.025 * timeScale);
           if (b.opacity <= 0.005) {
             resetBird(b, false);
             continue;
           }
         }
 
-        b.x += b.vx;
-        b.y += b.vy;
+        b.x += b.vx * timeScale;
+        b.y += b.vy * timeScale;
 
-        b.glideTimer--;
+        b.glideTimer -= timeScale;
         if (b.glideTimer <= 0) {
           b.isGliding = !b.isGliding;
           b.glideTimer = b.isGliding ? 80 + Math.random() * 120 : 40 + Math.random() * 60;
         }
 
         if (!b.isGliding) {
-          b.wingPhase += b.wingSpeed;
+          b.wingPhase += b.wingSpeed * timeScale;
         }
 
         const wingSpan = b.size;
@@ -174,8 +185,6 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
 
         ctx.restore();
       }
-
-      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);

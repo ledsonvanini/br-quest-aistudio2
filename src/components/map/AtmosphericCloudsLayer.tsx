@@ -198,20 +198,31 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
     }
 
     let animId: number;
+    let lastRenderTime = performance.now();
+    const FRAME_INTERVAL = 1000 / 30; // 30 FPS para nuvens é extremamente suave e economiza 50% de processamento
 
-    const render = () => {
+    const render = (now: number) => {
+      animId = requestAnimationFrame(render);
+
+      const elapsed = now - lastRenderTime;
+      if (elapsed < FRAME_INTERVAL) {
+        return;
+      }
+      const timeScale = Math.min(elapsed / 16.666, 3.0);
+      lastRenderTime = now - (elapsed % FRAME_INTERVAL);
+
       ctx.clearRect(0, 0, w, h);
 
       for (let i = clouds.length - 1; i >= 0; i--) {
         const c = clouds[i];
-        c.life++;
+        c.life += timeScale;
 
-        c.x += c.vx * speedMultiplier;
-        c.y += c.vy * speedMultiplier;
-        c.rotation += c.vRot;
+        c.x += c.vx * speedMultiplier * timeScale;
+        c.y += c.vy * speedMultiplier * timeScale;
+        c.rotation += c.vRot * timeScale;
 
         if (c.opacity < c.targetOpacity) {
-          c.opacity = Math.min(c.targetOpacity, c.opacity + 0.008);
+          c.opacity = Math.min(c.targetOpacity, c.opacity + 0.008 * timeScale);
         }
 
         if (c.x < -c.width - 250 || c.y > h + 250 || c.y < -250 || c.life > c.maxLife) {
@@ -241,8 +252,6 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         ctx.drawImage(sprite, -180, -100, 360, 200);
         ctx.restore();
       }
-
-      animId = requestAnimationFrame(render);
     };
 
     animId = requestAnimationFrame(render);

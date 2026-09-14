@@ -248,6 +248,13 @@ void main() {
     return;
   }
 
+  // Otimização extrema de GPU: se o pixel está no mar aberto profundo além da plataforma
+  // costeira, onde coastalAlpha é 0.0, descarta o fragmento imediatamente sem calcular FBMs.
+  if (shelfFactor < 0.002 && beachFactor < 0.002) {
+    fragColor = vec4(0.0);
+    return;
+  }
+
   // Paleta de cores temática do oceano
   vec3 deepAbyss, midOcean, lightAzure, causticHighlight, shallowWater, beachSand;
   getOceanPalette(u_theme_mode, deepAbyss, midOcean, lightAzure, causticHighlight, shallowWater, beachSand);
