@@ -169,37 +169,45 @@ export function useOceanWebGL({
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    // 6. Loop de Renderização a 60 FPS na GPU
+    // 6. Loop de Renderização otimizado na GPU:
+    // Em telas 60Hz, o RAF oscila entre 14.2ms e 17.5ms. O limiar de 10.5ms garante 60 FPS sólidos sem descartar
+    // frames por jitter de VSync (eliminando a queda para 40-42 FPS), enquanto limita telas de 120Hz/144Hz.
+    let lastRenderMs = 0;
+    const MIN_FRAME_INTERVAL_MS = 10.5;
+
     const render = (timeMs: number) => {
       if (!gl || !programRef.current) return;
 
       if (!document.hidden) {
-        const elapsedSec = ((timeMs - startTimeRef.current) / 1000) * waveSpeed;
+        if (timeMs - lastRenderMs >= MIN_FRAME_INTERVAL_MS) {
+          lastRenderMs = timeMs;
+          const elapsedSec = ((timeMs - startTimeRef.current) / 1000) * waveSpeed;
 
-        gl.useProgram(programRef.current);
+          gl.useProgram(programRef.current);
 
-        if (uniformsRef.current.u_time) {
-          gl.uniform1f(uniformsRef.current.u_time, elapsedSec);
-        }
-        if (uniformsRef.current.u_resolution) {
-          gl.uniform2f(uniformsRef.current.u_resolution, canvas.width, canvas.height);
-        }
-        if (uniformsRef.current.u_theme_mode) {
-          gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode));
-        }
-        if (uniformsRef.current.u_sun_pos) {
-          gl.uniform2f(uniformsRef.current.u_sun_pos, 0.82, 0.15);
-        }
-        if (uniformsRef.current.u_coast_distance_tex) {
-          gl.uniform1i(uniformsRef.current.u_coast_distance_tex, 0);
-        }
-        if (uniformsRef.current.u_map_scale) {
-          gl.uniform2f(uniformsRef.current.u_map_scale, mapScale[0], mapScale[1]);
-        }
+          if (uniformsRef.current.u_time) {
+            gl.uniform1f(uniformsRef.current.u_time, elapsedSec);
+          }
+          if (uniformsRef.current.u_resolution) {
+            gl.uniform2f(uniformsRef.current.u_resolution, canvas.width, canvas.height);
+          }
+          if (uniformsRef.current.u_theme_mode) {
+            gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode));
+          }
+          if (uniformsRef.current.u_sun_pos) {
+            gl.uniform2f(uniformsRef.current.u_sun_pos, 0.82, 0.15);
+          }
+          if (uniformsRef.current.u_coast_distance_tex) {
+            gl.uniform1i(uniformsRef.current.u_coast_distance_tex, 0);
+          }
+          if (uniformsRef.current.u_map_scale) {
+            gl.uniform2f(uniformsRef.current.u_map_scale, mapScale[0], mapScale[1]);
+          }
 
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(render);

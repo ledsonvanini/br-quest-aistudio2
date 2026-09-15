@@ -24,6 +24,10 @@ interface BirdEntity {
   maxLife: number;
 }
 
+// Resolução interna balanceada para aves procedurais (economiza 75% de memória do canvas 2D)
+const ATMOSPHERE_BUFFER_WIDTH = 1280;
+const ATMOSPHERE_BUFFER_HEIGHT = 720;
+
 export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps> = ({
   enabled = true,
   timeOverride = 'auto',
@@ -52,8 +56,8 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    const w = MAP_CANVAS_WIDTH;
-    const h = MAP_CANVAS_HEIGHT;
+    const w = ATMOSPHERE_BUFFER_WIDTH;
+    const h = ATMOSPHERE_BUFFER_HEIGHT;
 
     // Helper para aves costeiras cartográficas (Gaivotas com física e sombras de relevo)
     const resetBird = (bird: BirdEntity, initialSpawn = false): BirdEntity => {
@@ -63,15 +67,15 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
       ];
       const zone = spawnZones[Math.floor(Math.random() * spawnZones.length)];
 
-      const speed = 0.8 + Math.random() * 0.8;
+      const speed = 0.6 + Math.random() * 0.6;
       const angle = -Math.PI * 0.65 + (Math.random() - 0.5) * 0.6;
 
-      bird.x = initialSpawn ? zone.x : zone.x + (Math.random() - 0.5) * 100;
-      bird.y = initialSpawn ? zone.y : zone.y + (Math.random() - 0.5) * 100;
+      bird.x = initialSpawn ? zone.x : zone.x + (Math.random() - 0.5) * 80;
+      bird.y = initialSpawn ? zone.y : zone.y + (Math.random() - 0.5) * 80;
       bird.vx = Math.cos(angle) * speed;
       bird.vy = Math.sin(angle) * speed;
-      bird.size = 8 + Math.random() * 5;
-      bird.altitude = 12 + Math.random() * 14;
+      bird.size = 5 + Math.random() * 3;
+      bird.altitude = 8 + Math.random() * 9;
       bird.wingPhase = Math.random() * Math.PI * 2;
       bird.wingSpeed = 0.08 + Math.random() * 0.04;
       bird.isGliding = Math.random() > 0.45;
@@ -209,13 +213,9 @@ export const ProceduralAtmosphereLayer: React.FC<ProceduralAtmosphereLayerProps>
     >
       <canvas
         ref={canvasRef}
-        width={MAP_CANVAS_WIDTH}
-        height={MAP_CANVAS_HEIGHT}
-        className="camada-atmosfera-canvas absolute inset-0 pointer-events-none"
-        style={{
-          width: MAP_CANVAS_WIDTH,
-          height: MAP_CANVAS_HEIGHT,
-        }}
+        width={ATMOSPHERE_BUFFER_WIDTH}
+        height={ATMOSPHERE_BUFFER_HEIGHT}
+        className="camada-atmosfera-canvas absolute inset-0 w-full h-full pointer-events-none"
       />
     </div>
   );

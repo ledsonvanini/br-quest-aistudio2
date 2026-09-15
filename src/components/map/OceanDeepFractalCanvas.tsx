@@ -130,8 +130,10 @@ export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
     gl.viewport(0, 0, canvas.width, canvas.height);
 
     lastTimeRef.current = performance.now();
+    let lastRenderTime = performance.now();
+    const TARGET_FPS_INTERVAL = 1000 / 30; // 30 FPS é ideal para ondulação abissal lenta de 9s
 
-    // Render loop 60 FPS
+    // Render loop otimizado com pacing de 30 FPS na GPU
     const render = () => {
       if (!gl || !programRef.current) return;
 
@@ -141,23 +143,28 @@ export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
 
       if (!document.hidden && isPlayingAnimation) {
         accumulatedTimeRef.current += deltaSec * waveSpeed;
-        const currentSec = accumulatedTimeRef.current;
 
-        gl.useProgram(programRef.current);
+        // Limita a execução do shader para 30 FPS, economizando 50% de ciclos de GPU
+        if (now - lastRenderTime >= TARGET_FPS_INTERVAL) {
+          lastRenderTime = now - ((now - lastRenderTime) % TARGET_FPS_INTERVAL);
+          const currentSec = accumulatedTimeRef.current;
 
-        if (uniformsRef.current.u_time) {
-          gl.uniform1f(uniformsRef.current.u_time, currentSec);
-        }
-        if (uniformsRef.current.u_resolution) {
-          gl.uniform2f(uniformsRef.current.u_resolution, canvas.width, canvas.height);
-        }
-        if (uniformsRef.current.u_theme_mode) {
-          gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode));
-        }
+          gl.useProgram(programRef.current);
 
-        gl.clearColor(0, 0, 0, 0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+          if (uniformsRef.current.u_time) {
+            gl.uniform1f(uniformsRef.current.u_time, currentSec);
+          }
+          if (uniformsRef.current.u_resolution) {
+            gl.uniform2f(uniformsRef.current.u_resolution, canvas.width, canvas.height);
+          }
+          if (uniformsRef.current.u_theme_mode) {
+            gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode));
+          }
+
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(render);
@@ -183,8 +190,8 @@ export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
       <canvas
         id="canva-shader-oceano-profundo"
         ref={canvasRef}
-        width={2240}
-        height={1600}
+        width={960}
+        height={600}
         className="canva-shader-oceano-profundo absolute inset-0 w-full h-full pointer-events-none"
         style={{
           mixBlendMode: 'normal',

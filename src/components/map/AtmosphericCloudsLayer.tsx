@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { MAP_CANVAS_WIDTH, MAP_CANVAS_HEIGHT } from '../../lib/mapProjections';
 
 interface AtmosphericCloudsLayerProps {
   enabled?: boolean;
@@ -8,29 +7,23 @@ interface AtmosphericCloudsLayerProps {
 
 interface CloudParticle {
   id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  scaleX: number;
-  scaleY: number;
-  opacity: number;
-  targetOpacity: number;
-  imageIndex: number;
-  width: number;
-  height: number;
-  altitude: number;
-  rotation: number;
-  vRot: number;
-  life: number;
-  maxLife: number;
-  shadowOffsetX: number;
-  shadowOffsetY: number;
+  x: number; y: number;
+  vx: number; vy: number;
+  scaleX: number; scaleY: number;
+  opacity: number; targetOpacity: number;
+  imageIndex: number; width: number; height: number;
+  altitude: number; rotation: number; vRot: number;
+  life: number; maxLife: number;
+  shadowOffsetX: number; shadowOffsetY: number;
 }
 
-// Ultra-wide boundless canvas coverage exceeding stage and ocean boundaries to eliminate edge masks
-const CLOUD_CANVAS_WIDTH = 5120;
-const CLOUD_CANVAS_HEIGHT = 3600;
+// Dimensões do container visual para cobertura ultra-ampla contínua
+const CLOUD_CONTAINER_WIDTH = 5120;
+const CLOUD_CONTAINER_HEIGHT = 3600;
+
+// Buffer de renderização ultra-otimizado (2048x1440 = 2.9M pixels ao invés de 18.4M pixels, economiza 84% de memória e CPU)
+const CLOUD_BUFFER_WIDTH = 2048;
+const CLOUD_BUFFER_HEIGHT = 1440;
 
 export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
   enabled = true,
@@ -45,8 +38,8 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    const w = CLOUD_CANVAS_WIDTH;
-    const h = CLOUD_CANVAS_HEIGHT;
+    const w = CLOUD_BUFFER_WIDTH;
+    const h = CLOUD_BUFFER_HEIGHT;
 
     // Pre-bake 3 distinct high-res cumulus cloud textures in offscreen buffers
     const cachedSprites: HTMLCanvasElement[] = [];
@@ -69,31 +62,16 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
 
         const puffConfigs = [
           [
-            { ox: 0, oy: 0, r: 65 },
-            { ox: -60, oy: 12, r: 52 },
-            { ox: 60, oy: 8, r: 54 },
-            { ox: -105, oy: 24, r: 38 },
-            { ox: 105, oy: 22, r: 38 },
-            { ox: -25, oy: -22, r: 46 },
-            { ox: 30, oy: -20, r: 48 },
+            { ox: 0, oy: 0, r: 65 }, { ox: -60, oy: 12, r: 52 }, { ox: 60, oy: 8, r: 54 },
+            { ox: -105, oy: 24, r: 38 }, { ox: 105, oy: 22, r: 38 }, { ox: -25, oy: -22, r: 46 }, { ox: 30, oy: -20, r: 48 },
           ],
           [
-            { ox: -10, oy: -5, r: 70 },
-            { ox: -75, oy: 10, r: 46 },
-            { ox: 45, oy: 12, r: 55 },
-            { ox: 100, oy: 20, r: 40 },
-            { ox: -115, oy: 22, r: 34 },
-            { ox: 18, oy: -26, r: 44 },
-            { ox: -45, oy: -18, r: 42 },
+            { ox: -10, oy: -5, r: 70 }, { ox: -75, oy: 10, r: 46 }, { ox: 45, oy: 12, r: 55 },
+            { ox: 100, oy: 20, r: 40 }, { ox: -115, oy: 22, r: 34 }, { ox: 18, oy: -26, r: 44 }, { ox: -45, oy: -18, r: 42 },
           ],
           [
-            { ox: 12, oy: -8, r: 64 },
-            { ox: -45, oy: 8, r: 58 },
-            { ox: 75, oy: 12, r: 48 },
-            { ox: -95, oy: 20, r: 40 },
-            { ox: 115, oy: 24, r: 34 },
-            { ox: -12, oy: -24, r: 48 },
-            { ox: 40, oy: -22, r: 44 },
+            { ox: 12, oy: -8, r: 64 }, { ox: -45, oy: 8, r: 58 }, { ox: 75, oy: 12, r: 48 },
+            { ox: -95, oy: 20, r: 40 }, { ox: 115, oy: 24, r: 34 }, { ox: -12, oy: -24, r: 48 }, { ox: 40, oy: -22, r: 44 },
           ],
         ][s];
 
@@ -267,8 +245,8 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
     <div
       className="camada-nuvens-atmosfericas-wrapper absolute pointer-events-none overflow-visible will-change-transform"
       style={{
-        width: CLOUD_CANVAS_WIDTH,
-        height: CLOUD_CANVAS_HEIGHT,
+        width: CLOUD_CONTAINER_WIDTH,
+        height: CLOUD_CONTAINER_HEIGHT,
         left: '50%',
         top: '50%',
         transform: 'translate(-50%, -50%) translateZ(95px)',
@@ -278,13 +256,9 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
     >
       <canvas
         ref={canvasRef}
-        width={CLOUD_CANVAS_WIDTH}
-        height={CLOUD_CANVAS_HEIGHT}
-        className="camada-nuvens-spawner-canvas absolute inset-0 pointer-events-none"
-        style={{
-          width: CLOUD_CANVAS_WIDTH,
-          height: CLOUD_CANVAS_HEIGHT,
-        }}
+        width={CLOUD_BUFFER_WIDTH}
+        height={CLOUD_BUFFER_HEIGHT}
+        className="camada-nuvens-spawner-canvas absolute inset-0 w-full h-full pointer-events-none"
       />
     </div>
   );

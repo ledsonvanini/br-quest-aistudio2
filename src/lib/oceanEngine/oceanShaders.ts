@@ -91,7 +91,7 @@ float smoothNoise(vec2 p) {
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-// Fractal Brownian Motion (FBM) de 3 oitavas ultra-otimizado
+// Fractal Brownian Motion (FBM) de 3 oitavas para relevo base e espuma
 float fbm(vec2 p) {
   float v = 0.0;
   v += 0.55 * smoothNoise(p);
@@ -99,6 +99,13 @@ float fbm(vec2 p) {
   v += 0.30 * smoothNoise(p);
   p = p * 2.08 + vec2(42.1, 11.8);
   v += 0.15 * smoothNoise(p);
+  return v;
+}
+
+// FBM de 2 oitavas para Domain Warping e marolas (reduz drasticamente o consumo de GPU)
+float fbmFast(vec2 p) {
+  float v = 0.65 * smoothNoise(p);
+  v += 0.35 * smoothNoise(p * 2.05 + vec2(13.5, 27.2));
   return v;
 }
 
@@ -124,19 +131,19 @@ float getLiquidCausticFractal(vec2 uv, float t) {
   // Flow Field orgânico para deriva da massa d'água
   vec2 flow = getOceanFlowField(p * 0.4, t);
 
-  // Domain Warping contínuo (Seção 8 do Plano): UV -> Noise -> Domain Warp -> Caustics
+  // Domain Warping contínuo ultra-otimizado com fbmFast
   vec2 q = vec2(
-    fbm(p + flow + vec2(0.0, 0.0) + swell * 0.20),
-    fbm(p + flow + vec2(4.3, 1.7) - swell * 0.20)
+    fbmFast(p + flow + vec2(0.0, 0.0) + swell * 0.20),
+    fbmFast(p + flow + vec2(4.3, 1.7) - swell * 0.20)
   );
 
   vec2 r = vec2(
-    fbm(p + 1.8 * q + vec2(1.7, 7.4) + vec2(0.04, -0.03) * t),
-    fbm(p + 1.8 * q + vec2(6.2, 3.1) - vec2(0.03, 0.05) * t)
+    fbmFast(p + 1.8 * q + vec2(1.7, 7.4) + vec2(0.04, -0.03) * t),
+    fbmFast(p + 1.8 * q + vec2(6.2, 3.1) - vec2(0.03, 0.05) * t)
   );
 
-  // Campo base de relevo líquido profundo em movimento suave
-  float baseDepth = fbm(p + 1.5 * r + vec2(0.02, 0.03) * t);
+  // Campo base de relevo líquido profundo em movimento suave com fbmFast
+  float baseDepth = fbmFast(p + 1.5 * r + vec2(0.02, 0.03) * t);
 
   // Véu suave de filamentos cáusticos de luz líquida sob a superfície
   float caustics1 = sin((baseDepth + q.x * 0.65) * 4.2 + t * 0.65);
@@ -148,35 +155,22 @@ float getLiquidCausticFractal(vec2 uv, float t) {
   return clamp(baseDepth * 0.55 + causticLuminance * 0.45, 0.0, 1.0);
 }
 
-// Partículas marinhas desfocadas discretas (Bokeh Plâncton / Luz fora de foco)
+// Partículas marinhas desfocadas discretas com amostragem direta (sem loop 3x3 pesado)
 float getBlurredParticles(vec2 uv, float t) {
-  float particles = 0.0;
-  vec2 gridUV = uv * 10.0;
+  vec2 gridUV = uv * 6.0;
   vec2 id = floor(gridUV);
   vec2 gv = fract(gridUV) - 0.5;
-
-  for (int y = -1; y <= 1; y++) {
-    for (int x = -1; x <= 1; x++) {
-      vec2 neighbor = vec2(float(x), float(y));
-      vec2 cellId = id + neighbor;
-      float h1 = hash21(cellId);
-      float h2 = hash21(cellId + 31.7);
-      
-      vec2 drift = vec2(
-        sin(t * 0.50 + h1 * 6.28) * 0.22 + sin(t * 0.20) * 0.10,
-        cos(t * 0.45 + h2 * 6.28) * 0.22 + cos(t * 0.25) * 0.10
-      );
-      
-      vec2 pPos = neighbor + (vec2(h1, h2) - 0.5) + drift;
-      float d = length(gv - pPos);
-      
-      float radius = mix(0.14, 0.32, hash21(cellId + 17.8));
-      float blur = smoothstep(radius, 0.0, d);
-      float pulse = 0.5 + 0.5 * sin(t * 0.75 + h1 * 6.28);
-      particles += blur * blur * pulse * 0.22;
-    }
-  }
-  return particles;
+  float h1 = hash21(id);
+  float h2 = hash21(id + 31.7);
+  vec2 drift = vec2(
+    sin(t * 0.50 + h1 * 6.28) * 0.22,
+    cos(t * 0.45 + h2 * 6.28) * 0.22
+  );
+  float d = length(gv - drift);
+  float radius = mix(0.16, 0.34, hash21(id + 17.8));
+  float blur = smoothstep(radius, 0.0, d);
+  float pulse = 0.5 + 0.5 * sin(t * 0.75 + h1 * 6.28);
+  return blur * blur * pulse * 0.22;
 }
 
 // Ondas e Marolas Costeiras Orgânicas
@@ -185,9 +179,9 @@ float getBlurredParticles(vec2 uv, float t) {
 float getTidePulses(float distNorm, vec2 worldUV, float t) {
   if (distNorm >= 1.0) return 0.0;
 
-  // Perturbação líquida orgânica com FBM para eliminar anéis circulares
+  // Perturbação líquida orgânica com fbmFast para eliminar anéis circulares sem peso na GPU
   vec2 waveNoiseCoord = worldUV * 4.0 + vec2(t * 0.12, -t * 0.09);
-  float wavePerturb = (fbm(waveNoiseCoord) - 0.5) * 0.18;
+  float wavePerturb = (fbmFast(waveNoiseCoord) - 0.5) * 0.18;
   float fluidDist = clamp(distNorm + wavePerturb * (1.0 - distNorm * 0.5), 0.0, 1.0);
 
   float totalTide = 0.0;
@@ -283,7 +277,7 @@ void main() {
   // 2. TRANSIÇÃO CONTÍNUA: COSTA, MAR RASO E PLATAFORMA EXPANDIDA
   // =========================================================================
   vec2 depthCoord = worldUV * 2.8 + vec2(u_time * 0.02, -u_time * 0.015);
-  float depthNoise = (fbm(depthCoord) - 0.5) * 0.16;
+  float depthNoise = (fbmFast(depthCoord) - 0.5) * 0.16;
   
   // Relevo batimétrico orgânico suave
   float organicShelf = clamp(shelfFactor + depthNoise * smoothstep(0.02, 0.50, shelfFactor), 0.0, 1.0);
@@ -301,7 +295,7 @@ void main() {
 
   // 3. Espuma viva da arrebentação (apenas nos primeiros pixels da orla, SEM drop shadow amarelo)
   vec2 foamUV = worldUV * 12.0 + vec2(u_time * 0.20, u_time * 0.14);
-  float foamNoise = fbm(foamUV);
+  float foamNoise = fbmFast(foamUV);
   float coastalFoam = smoothstep(0.10, 0.85, beachFactor) * smoothstep(0.35, 0.78, foamNoise) * basinFactor;
   waterColor = mix(waterColor, beachSand, coastalFoam * 0.70);
 
