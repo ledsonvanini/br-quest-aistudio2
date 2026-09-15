@@ -84,7 +84,9 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
     setShowNeighbors((prev) => {
       const next = !prev;
       if (next) {
-        setIsGeopoliticaPanelOpen(false);
+        if (mainMode !== 'geopolitica') {
+          setIsGeopoliticaPanelOpen(false);
+        }
         setIsBiodiversityPanelOpen(false);
         setIsObservatorioOpen(false);
         setFocusedStateId(null);
@@ -93,7 +95,7 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
       }
       return next;
     });
-  }, []);
+  }, [mainMode]);
 
   return {
     mainMode,

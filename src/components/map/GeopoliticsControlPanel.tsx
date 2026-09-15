@@ -42,6 +42,8 @@ import {
 } from '../../data/geopoliticaData';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
 import { audioEngine } from '../../lib/audioSynth';
+import { GeopoliticaTerritorialToolbar } from './geopolitica/GeopoliticaTerritorialToolbar';
+import { GeopoliticaCompareModal } from './geopolitica/GeopoliticaCompareModal';
 
 interface GeopoliticsControlPanelProps {
   isOpen: boolean;
@@ -56,6 +58,8 @@ interface GeopoliticsControlPanelProps {
   onSelectState?: (stateId: string) => void;
   selectedStateId?: string | null;
   onToggleExpand?: (expanded: boolean) => void;
+  showNeighbors?: boolean;
+  onToggleNeighbors?: () => void;
 }
 
 export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = ({
@@ -71,12 +75,15 @@ export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = (
   onSelectState,
   selectedStateId,
   onToggleExpand,
+  showNeighbors = false,
+  onToggleNeighbors,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [selectedStateRegion, setSelectedStateRegion] = useState<string>('todos');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(true);
   const [sortByMetric, setSortByMetric] = useState<boolean>(true);
+  const [isCompareOpen, setIsCompareOpen] = useState<boolean>(false);
   const metricsScrollRef = useRef<HTMLDivElement>(null);
 
   // Sincronizar abertura e rolagem suave para a métrica ativa quando alterada via TopMenu ou externamente
@@ -349,6 +356,19 @@ export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = (
               ))}
             </div>
           </div>
+
+          {/* BARRA DE FERRAMENTAS TERRITORIAIS (América do Sul / Vizinhos, Comparador A/B, Filtro Macrorregional) */}
+          <GeopoliticaTerritorialToolbar
+            showNeighbors={showNeighbors}
+            onToggleNeighbors={onToggleNeighbors}
+            isCompareOpen={isCompareOpen}
+            onToggleCompare={() => setIsCompareOpen((prev) => !prev)}
+            selectedRegionFilter={selectedStateRegion}
+            onSelectRegionFilter={(reg) => {
+              setSelectedStateRegion(reg);
+              onSelectRegionFilter?.(reg);
+            }}
+          />
 
           {/* BARRA DE SELEÇÃO DE MÉTRICAS (Submenus Otimizados com Rolagem Suave) */}
           <div className="menu-seletor-metricas relative px-2.5 sm:px-3 py-2 bg-slate-950/90 border-b border-slate-800 flex items-center gap-1.5 shrink-0">
@@ -971,6 +991,14 @@ export const GeopoliticsControlPanel: React.FC<GeopoliticsControlPanelProps> = (
           </div>
         </div>
       )}
+
+      {/* Modal Comparador Interestadual A/B */}
+      <GeopoliticaCompareModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        initialStateA={selectedStateId || 'SP'}
+        initialStateB="BA"
+      />
     </>
   );
 };

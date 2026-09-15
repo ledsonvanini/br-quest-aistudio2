@@ -2258,7 +2258,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 13.10. Painel Flutuante de Controle e Métricas Geopolíticas (Nacional, Regional, Estadual) */}
       <GeopoliticsControlPanel
-        isOpen={!showNeighbors && !selectedGeopoliticaStateId && !selectedStateId && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
+        isOpen={!selectedGeopoliticaStateId && !selectedStateId && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
         onClose={() => {
           if (onToggleGeopoliticaPanel) {
             onToggleGeopoliticaPanel();
@@ -2294,6 +2294,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         scope={geopoliticaScope}
         onScopeChange={setGeopoliticaScope}
         selectedStateId={selectedGeopoliticaStateId || selectedStateId}
+        showNeighbors={showNeighbors}
+        onToggleNeighbors={onToggleNeighbors}
         onSelectState={(stateId: string) => {
           if (onToggleGeopoliticaPanel) {
             onToggleGeopoliticaPanel();
