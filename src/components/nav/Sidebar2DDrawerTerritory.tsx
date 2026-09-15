@@ -40,7 +40,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
   return (
     <div
       id="secao-gaveta-territorio-sidebar"
-      className="secao-gaveta-territorio-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-emerald-500/35 shrink-0 shadow-lg transition-all duration-300"
+      className="secao-gaveta-territorio-sidebar flex flex-col items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-emerald-500/35 shrink-0 shadow-lg transition-all duration-300"
     >
       {/* Botão Seta Retrátil (Chevron) */}
       <button
@@ -60,7 +60,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
             ? 'Clique para recolher as camadas de território e hidrografia do Brasil.'
             : 'Clique para expandir as camadas cartográficas: Bacias Hidrográficas, Biomas em Relevo, Rotas de Integração e Estatísticas.',
         })}
-        className="btn-toggle-expansao-territorio w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+        className="btn-toggle-expansao-territorio w-9 h-6 sm:w-10 sm:h-6 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
         aria-label={isExpanded ? 'Recolher Território & Camadas' : 'Expandir Território & Camadas'}
         aria-expanded={isExpanded}
       >
@@ -71,18 +71,9 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
         )}
       </button>
 
-      {/* Ícone Indicador de Camadas quando recolhido ou aberto */}
-      <div
-        id="badge-indicador-territorio"
-        className="badge-indicador-territorio flex items-center justify-center w-10 h-6 sm:w-11 sm:h-6 text-[10px] font-mono font-bold text-emerald-300/80 uppercase tracking-tighter"
-        title="Módulo de Território e Camadas"
-      >
-        GEO
-      </div>
-
       {/* Conteúdo Expansível: Camadas Cartográficas */}
       {isExpanded && (
-        <div className="flex flex-col items-center gap-1.5 transition-all duration-200">
+        <div className="flex flex-col items-center gap-1 transition-all duration-200">
           {/* 1. Bacias Hidrográficas */}
           <button
             id="btn-camada-hidrografia"
@@ -95,14 +86,14 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
               description:
                 'Traçado das grandes bacias fluviais brasileiras: Amazônica, São Francisco, Tocantins-Araguaia e Rio da Prata com fluxo contínuo.',
             })}
-            className={`btn-camada-hidrografia relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+            className={`btn-camada-hidrografia relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'bacias_hidrograficas'
                 ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)] scale-105'
                 : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-cyan-300 hover:bg-slate-800'
             }`}
             aria-label="Camada de Bacias Hidrográficas"
           >
-            <Waves className="w-5 h-5" />
+            <Waves className="w-4 h-4 sm:w-5 sm:h-5" />
             {activeLayer === 'bacias_hidrograficas' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-300 ring-2 ring-slate-950 shadow-[0_0_8px_#06b6d4] animate-pulse pointer-events-none" />
             )}
@@ -120,14 +111,14 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
               description:
                 'Delimitação dos 6 biomas continentais brasileiros com sombreamento de relevo e elevações naturais.',
             })}
-            className={`btn-camada-biomas relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+            className={`btn-camada-biomas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'biomas_relevo'
                 ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.5)] scale-105'
                 : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
             }`}
             aria-label="Camada de Biomas Nacionais"
           >
-            <Trees className="w-5 h-5" />
+            <Trees className="w-4 h-4 sm:w-5 sm:h-5" />
             {activeLayer === 'biomas_relevo' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950 shadow-[0_0_8px_#10b981] animate-pulse pointer-events-none" />
             )}
@@ -145,14 +136,14 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
               description:
                 'Estradas históricas (Estrada Real, Rondon), malha ferroviária federal, rodovias de integração (BR-101) e portos de cabotagem.',
             })}
-            className={`btn-camada-rotas relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+            className={`btn-camada-rotas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'rotas_integracao'
                 ? 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)] scale-105'
                 : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-amber-300 hover:bg-slate-800'
             }`}
             aria-label="Camada de Rotas e Conectividade"
           >
-            <Compass className="w-5 h-5" />
+            <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
             {activeLayer === 'rotas_integracao' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-slate-950 shadow-[0_0_8px_#f59e0b] animate-pulse pointer-events-none" />
             )}
@@ -170,14 +161,14 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
               description:
                 'Mapas temáticos por estado: Densidade demográfica Censo 2022, PIB estadual e indicadores sociais do Brasil.',
             })}
-            className={`btn-camada-coropletica relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+            className={`btn-camada-coropletica relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'dados_coropleticos'
                 ? 'bg-indigo-500/30 border-indigo-400 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.5)] scale-105'
                 : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-indigo-300 hover:bg-slate-800'
             }`}
             aria-label="Camada de Dados Coropléticos"
           >
-            <BarChart3 className="w-5 h-5" />
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
             {activeLayer === 'dados_coropleticos' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-300 ring-2 ring-slate-950 shadow-[0_0_8px_#818cf8] animate-pulse pointer-events-none" />
             )}

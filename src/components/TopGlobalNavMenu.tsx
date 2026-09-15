@@ -47,9 +47,10 @@ import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKi
 import { GeopoliticaMetricKey } from '../types/geopolitica';
 import { QuestThemePillar } from '../data/brQuestQuestionsData';
 import { NavFlyoutMenu } from './nav/NavFlyoutMenu';
-import { SidebarWorldToggle } from './nav/SidebarWorldToggle';
+import { SidebarLogoToggle } from './nav/SidebarLogoToggle';
 import { Sidebar2DDrawerTerritory } from './nav/Sidebar2DDrawerTerritory';
 import { Sidebar3DDrawerOrbital } from './nav/Sidebar3DDrawerOrbital';
+import { SidebarUserAndConfigsGroup } from './nav/SidebarUserAndConfigsGroup';
 import { CartographyLayerMode } from '../types/cartography';
 
 export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
@@ -640,60 +641,23 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         className="menu-global-sidebar-esquerda container-sidebar-navegacao menu-superior-status fixed left-2 sm:left-3 top-2 sm:top-3 z-40 flex flex-col items-start pointer-events-auto select-none overflow-visible"
         aria-label="Barra Lateral de Navegação BR Quest"
       >
-        <div className="bg-[#020d24]/90 backdrop-blur-xl border border-amber-500/35 rounded-2xl p-1.5 shadow-2xl shadow-black/80 flex flex-col items-center gap-1 sm:gap-1.5 text-white overflow-visible">
+        <div className="bg-[#020d24]/90 backdrop-blur-xl border border-amber-500/35 rounded-2xl p-1 sm:p-1.5 shadow-2xl shadow-black/80 flex flex-col items-center gap-1 text-white overflow-visible">
           
           {/* ========================================================================= */}
-          {/* 1. LOGO BRQ (TOPO FIXO DA SIDEBAR)                                       */}
+          {/* A. LOGO BRQ + TOGGLE MESTRE DE MUNDO (3 CAMADAS: DIV + LOGO + ANEXO)     */}
           {/* ========================================================================= */}
-          <div className="relative group shrink-0">
-            <button
-              id="btn-sidebar-logo-brq"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                setHoveredMenuTooltip(null);
-                setOpenFlyoutMode(null);
-                onResetViewIfNotCentered?.();
-                onResetView?.();
-              }}
-              {...bindTooltip({
-                title: 'BR Quest • Guardiões da Cultura',
-                badge: 'Mapa do Brasil',
-                badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                description:
-                  'Clique para restaurar e recentralizar o enquadramento do mapa do Brasil.',
-              })}
-              className="btn-sidebar-logo-brq w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-amber-400/60 hover:border-amber-300 flex flex-col items-center justify-center transition-all cursor-pointer shadow-inner group-hover:scale-105"
-              aria-label="BR Quest - Centralizar Mapa"
-            >
-              <span className="text-base sm:text-lg leading-none">🇧🇷</span>
-              <span className="font-serif font-black text-[9px] text-amber-300 leading-none mt-0.5 tracking-tight">
-                BRQ
-              </span>
-            </button>
-          </div>
-
-          {/* Divisor Horizontal */}
-          <div className="w-7 h-[1px] bg-slate-800/80 shrink-0" />
-
-          {/* ========================================================================= */}
-          {/* ALTERNADOR MESTRE DE MUNDO: MAPA 2D <=====> GLOBO 3D                      */}
-          {/* ========================================================================= */}
-          <SidebarWorldToggle
-            isGlobeActive={mainMode === 'globo3d'}
-            onSelectWorld={(world) => {
-              setHoveredMenuTooltip(null);
-              setOpenFlyoutMode(null);
-              if (world === 'globo3d') {
-                onSelectMainMode('globo3d');
-              } else {
-                onSelectMainMode('aventura');
-              }
-            }}
+          <SidebarLogoToggle
+            mainMode={mainMode}
+            onSelectMainMode={onSelectMainMode}
+            onResetView={onResetView}
+            onResetViewIfNotCentered={onResetViewIfNotCentered}
+            setHoveredMenuTooltip={setHoveredMenuTooltip}
+            setOpenFlyoutMode={setOpenFlyoutMode}
             bindTooltip={bindTooltip}
           />
 
           {/* Divisor Horizontal */}
-          <div className="w-7 h-[1px] bg-slate-800/80 shrink-0" />
+          <div className="w-6 h-[1px] bg-slate-800/80 shrink-0" />
 
           {/* ========================================================================= */}
           {/* MUNDO 1: MAPA 2D DO BRASIL (MODOS PRINCIPAIS + GAVETAS 1 E 2)             */}
@@ -703,7 +667,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               {/* 2. SEÇÃO PRINCIPAL DE MODOS DO SISTEMA BR QUEST (ACCORDION SECTION 1) */}
               <div
                 id="secao-modos-principais-sidebar"
-                className="secao-modos-principais-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-amber-500/30 shrink-0 shadow-lg transition-all duration-300"
+                className="secao-modos-principais-sidebar flex flex-col items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-amber-500/30 shrink-0 shadow-lg transition-all duration-300"
               >
                 {/* Seta / Toggle do Menu Principal: SÓ APARECE SE UMA DAS GAVETAS ESTIVER EXPANDIDA */}
                 {(isToolsSectionExpanded || isTerritorySectionExpanded) && (
@@ -721,7 +685,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                         ? 'Clique para recolher o Menu Principal e focar nas gavetas do sistema.'
                         : 'Clique para expandir o Menu Principal com os modos do BR Quest 2D (Clima, Biodiversidade, Geopolítica, Musicalidades e Aventura).',
                     })}
-                    className="btn-toggle-expansao-modos-principais w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                    className="btn-toggle-expansao-modos-principais w-9 h-6 sm:w-10 sm:h-6 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
                     aria-label={isMainMenuExpanded ? 'Recolher Modos Principais' : 'Expandir Modos Principais'}
                     aria-expanded={isMainMenuExpanded}
                   >
@@ -735,7 +699,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
 
             {/* Quando expandido (padrão): renderiza os 6 modos com botões padronizados */}
             {isMainMenuExpanded && (
-              <div className="flex flex-col items-center gap-1.5 transition-all duration-200">
+              <div className="flex flex-col items-center gap-1 transition-all duration-200">
                 {/* 1. CLIMA */}
                 <div className="relative">
                   <button
@@ -751,7 +715,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       description:
                         'Clique para abrir o menu flutuante de Clima: Temperatura ECMWF (-4°C a 36°C), Previsão 7 Dias, Ventos Alísios, Rios Voadores, ZCAS e Observatório.',
                     })}
-                    className={`btn-modo-clima relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                    className={`btn-modo-clima relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'clima'
                         ? 'bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-slate-950 border-amber-300 shadow-[0_0_16px_rgba(249,115,22,0.6)] font-black scale-105 ring-2 ring-orange-400/80'
                         : 'text-slate-400 hover:text-orange-300 hover:bg-slate-800/80 border-transparent hover:border-orange-500/30'
@@ -780,7 +744,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       description:
                         'Clique para abrir o menu flutuante de Biodiversidade: Fauna Nativa, Flora, Fungos, Livro Vermelho MMA e Catálogo de Biomas.',
                     })}
-                    className={`btn-modo-biodiversidade relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                    className={`btn-modo-biodiversidade relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'biodiversidade'
                         ? 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-slate-950 border-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.6)] font-black scale-105 ring-2 ring-emerald-400/80'
                         : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/80 border-transparent hover:border-emerald-500/30'
@@ -809,7 +773,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       description:
                         'Clique para abrir o menu flutuante de Geopolítica: Miscigenação, Sexo/Gênero, Densidade, Natalidade, Saúde, Educação, Partidos e Países Vizinhos.',
                     })}
-                    className={`btn-modo-geopolitica relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                    className={`btn-modo-geopolitica relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'geopolitica'
                         ? 'bg-gradient-to-br from-blue-400 via-blue-500 to-cyan-600 text-slate-950 border-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.6)] font-black scale-105 ring-2 ring-blue-400/80'
                         : 'text-slate-400 hover:text-blue-300 hover:bg-slate-800/80 border-transparent hover:border-blue-500/30'
@@ -838,7 +802,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       description:
                         'Clique para abrir o menu flutuante de Musicalidades: Hinos Oficiais do Estado, Top 5 Clássicos Regionais, Hinos Nacionais e Gabinete do Rádio.',
                     })}
-                    className={`btn-modo-musicalidades relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                    className={`btn-modo-musicalidades relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'musicalidades'
                         ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-slate-950 border-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.6)] font-black scale-105 ring-2 ring-amber-400/80'
                         : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 border-transparent hover:border-amber-500/30'
@@ -867,7 +831,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       description:
                         'Clique para abrir o menu de Desafios BrQuest: Grande Prova do Brasil, Clima, Biodiversidade, Geopolítica, Arte & Cultura, Filtros Regionais e Santuário.',
                     })}
-                    className={`btn-modo-aventura relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                    className={`btn-modo-aventura relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'aventura'
                         ? 'bg-gradient-to-br from-teal-400 via-emerald-500 to-amber-500 text-slate-950 border-teal-300 shadow-[0_0_16px_rgba(20,184,166,0.6)] font-black scale-105 ring-2 ring-teal-400/80'
                         : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800/80 border-transparent hover:border-teal-500/30'
@@ -880,46 +844,33 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     )}
                   </button>
                 </div>
-
-                {/* 7. PERFIL DO EXPLORADOR (Posicionado imediatamente sob Aventura) */}
-                {onOpenUserProfile && (
-                  <div className="relative pt-0.5">
-                    <button
-                      id="btn-perfil-usuario-sidebar"
-                      type="button"
-                      onClick={() => {
-                        audioEngine.playSfx('click');
-                        setHoveredMenuTooltip(null);
-                        setOpenFlyoutMode(null);
-                        onOpenUserProfile();
-                      }}
-                      {...bindTooltip({
-                        title: 'Perfil & Jornada do Explorador',
-                        badge: `Nível ${playerLevel || 1}`,
-                        badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                        description:
-                          'Acesse seu perfil do explorador, insígnias de conquistas, progresso e dados sincronizados no SQLite.',
-                      })}
-                      className="btn-perfil-usuario-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
-                      aria-label="Perfil do Explorador"
-                    >
-                      <User className="w-5 h-5 text-amber-400/90 group-hover:text-amber-300" />
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
           {/* Divisor Horizontal */}
-          <div className="w-7 h-[1px] bg-slate-800/80 shrink-0 my-0.5" />
+          <div className="w-6 h-[1px] bg-slate-800/80 shrink-0 my-0.5" />
 
           {/* ========================================================================= */}
-          {/* 3. SEÇÃO AMBIENTE & SISTEMA (ACCORDION SECTION 2)                          */}
+          {/* C. TERRITÓRIO E REDES (GAVETA DE CAMADAS CARTOGRÁFICAS EXCLUSIVA 2D)      */}
+          {/* ========================================================================= */}
+          <Sidebar2DDrawerTerritory
+            isExpanded={isTerritorySectionExpanded}
+            onToggleExpand={handleToggleTerritorySection}
+            activeLayer={currentCartographyLayer}
+            onSelectLayer={handleSelectCartographyLayer}
+            bindTooltip={bindTooltip}
+          />
+
+          {/* Divisor Horizontal */}
+          <div className="w-6 h-[1px] bg-slate-800/80 shrink-0 my-0.5" />
+
+          {/* ========================================================================= */}
+          {/* D. AMBIENTE E SISTEMA (ACCORDION SECTION 2)                               */}
           {/* ========================================================================= */}
           <div
             id="secao-controles-ambiente-sidebar"
-            className="secao-controles-ambiente-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-sky-500/30 shrink-0 shadow-lg transition-all duration-300"
+            className="secao-controles-ambiente-sidebar flex flex-col items-center gap-1 bg-slate-900/90 p-1 rounded-2xl border border-sky-500/30 shrink-0 shadow-lg transition-all duration-300"
           >
             {/* Interruptor / Seta para expandir e retrair a seção de Ambiente & Sistema */}
             <button
@@ -937,7 +888,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   : 'Clique para expandir os fenômenos climáticos (chuva, nuvens, ondas, astro solar) e utilitários (Saiba +, FPS, APIs).',
               })}
               data-testid="btn-toggle-expansao-atmosfera"
-              className="btn-toggle-expansao-ambiente btn-toggle-expansao-atmosfera w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="btn-toggle-expansao-ambiente btn-toggle-expansao-atmosfera w-9 h-6 sm:w-10 sm:h-6 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
               aria-label={isToolsSectionExpanded ? 'Recolher Ambiente & Sistema' : 'Expandir Ambiente & Sistema'}
               aria-expanded={isToolsSectionExpanded}
             >
@@ -948,34 +899,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               )}
             </button>
 
-            {/* Botão de Configurações Gerais agrupado com Ambiente e Sistema */}
-            {onOpenSettings && (
-              <button
-                id="btn-configuracoes-sidebar"
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  setHoveredMenuTooltip(null);
-                  setOpenFlyoutMode(null);
-                  onOpenSettings();
-                }}
-                {...bindTooltip({
-                  title: 'Configurações Gerais',
-                  badge: 'Sistema',
-                  badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description:
-                    'Ajuste o volume da música ambiente, efeitos sonoros (SFX), reset da câmera, Dicas do Dia e diagnósticos.',
-                })}
-                className="btn-configuracoes-sidebar relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-amber-400 text-slate-300 hover:text-amber-300 flex items-center justify-center transition-all cursor-pointer shadow-md group"
-                aria-label="Configurações Gerais"
-              >
-                <Settings className="w-5 h-5 text-slate-300 group-hover:text-amber-300 group-hover:rotate-45 transition-transform" />
-              </button>
-            )}
-
-            {/* Controles expansíveis (Chuva, Nuvens, Ondas, Astro, Saiba+, FPS, APIs) com tamanho padronizado */}
+            {/* Controles expansíveis (Chuva, Nuvens, Ondas, Astro) com tamanho padronizado */}
             {isToolsSectionExpanded && (
-              <div className="flex flex-col items-center gap-1.5 transition-all duration-200">
+              <div className="flex flex-col items-center gap-1 transition-all duration-200">
                 {/* 1. Simulador de Chuva */}
                 {onToggleRainSim && (
                   <button
@@ -992,14 +918,14 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       badgeColor: isRainSimActive ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
                       description: 'Simula precipitação de chuvas convectivas e frontais com partículas dinâmicas em tempo real.',
                     })}
-                    className={`btn-sidebar-chuva relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    className={`btn-sidebar-chuva relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isRainSimActive
                         ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
                         : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     }`}
                     aria-label="Simulador de Chuva"
                   >
-                    <CloudRain className={`w-5 h-5 ${isRainSimActive ? 'animate-bounce' : ''}`} />
+                    <CloudRain className={`w-4 h-4 sm:w-5 sm:h-5 ${isRainSimActive ? 'animate-bounce' : ''}`} />
                   </button>
                 )}
 
@@ -1019,14 +945,14 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       badgeColor: isCloudsActive ? 'bg-sky-500/20 text-sky-300 border-sky-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
                       description: 'Camada de nuvens dinâmicas em alta altitude com turbulência e sombreamento atmosférico.',
                     })}
-                    className={`btn-sidebar-nuvens relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    className={`btn-sidebar-nuvens relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isCloudsActive
                         ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)]'
                         : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     }`}
                     aria-label="Nuvens Volumétricas"
                   >
-                    <Cloud className={`w-5 h-5 ${isCloudsActive ? 'animate-pulse' : ''}`} />
+                    <Cloud className={`w-4 h-4 sm:w-5 sm:h-5 ${isCloudsActive ? 'animate-pulse' : ''}`} />
                   </button>
                 )}
 
@@ -1046,14 +972,14 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                       badgeColor: isWavesActive ? 'bg-teal-500/20 text-teal-300 border-teal-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
                       description: 'Circulação dos Ventos Alísios equatoriais e correntes de ondas marinhas no Atlântico e Pacífico.',
                     })}
-                    className={`btn-sidebar-ventos-ondas relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    className={`btn-sidebar-ventos-ondas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isWavesActive
                         ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_12px_rgba(20,184,166,0.5)]'
                         : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                     }`}
                     aria-label="Ventos Alísios e Ondas"
                   >
-                    <Waves className={`w-5 h-5 ${isWavesActive ? 'animate-pulse' : ''}`} />
+                    <Waves className={`w-4 h-4 sm:w-5 sm:h-5 ${isWavesActive ? 'animate-pulse' : ''}`} />
                   </button>
                 )}
 
@@ -1080,7 +1006,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                         : 'bg-amber-500/20 text-amber-300 border-amber-400/40',
                       description: 'Alterna entre iluminação solar diurna, abóbada celeste noturna e sincronização automática em tempo real com Brasília.',
                     })}
-                    className={`btn-sidebar-astro-atmosfera relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    className={`btn-sidebar-astro-atmosfera relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isAtmosphereActive
                         ? activeCelestialMode === 'auto'
                           ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)]'
@@ -1090,12 +1016,12 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     aria-label="Astro e Atmosfera"
                   >
                     {activeCelestialMode === 'night' ? (
-                      <Moon className="w-5 h-5 text-indigo-300 animate-pulse" />
+                      <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-300 animate-pulse" />
                     ) : activeCelestialMode === 'day' ? (
-                      <Sun className="w-5 h-5 text-amber-300 animate-spin" style={{ animationDuration: '14s' }} />
+                      <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 animate-spin" style={{ animationDuration: '14s' }} />
                     ) : (
                       <div className="relative flex items-center justify-center">
-                        <SunMedium className="w-5 h-5 text-sky-300" />
+                        <SunMedium className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300" />
                         <span className="absolute -bottom-1 -right-1 text-[8px] font-black bg-sky-400 text-slate-950 px-0.5 rounded leading-none shadow-sm">
                           A
                         </span>
@@ -1103,101 +1029,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     )}
                   </button>
                 )}
-
-                {/* Divisor Horizontal sutil entre fenômenos climáticos e utilitários do sistema */}
-                <div className="w-7 h-[1px] bg-slate-800/80 shrink-0 my-0.5" />
-
-                {/* 5. Saiba Mais (movido do rodapé) */}
-                {onOpenAboutInfo && (
-                  <button
-                    id="btn-sidebar-saiba-mais"
-                    type="button"
-                    onClick={() => {
-                      audioEngine.playSfx('click');
-                      setHoveredMenuTooltip(null);
-                      setOpenFlyoutMode(null);
-                      onOpenAboutInfo();
-                    }}
-                    {...bindTooltip({
-                      title: 'Saiba Mais & Créditos',
-                      badge: 'Informações',
-                      badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                      description: 'Filosofia pedagógica do projeto, fontes oficiais de dados (IBGE, Open-Meteo, CartoDB) e direitos autorais.',
-                    })}
-                    className="btn-sidebar-saiba-mais relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-amber-500/40 hover:border-amber-400 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center justify-center shadow-sm"
-                    aria-label="Saiba Mais"
-                  >
-                    <div className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-mono font-black text-xs">
-                      !
-                    </div>
-                  </button>
-                )}
-
-                {/* 6. Medidor de FPS (movido do rodapé) */}
-                {onToggleFps && (
-                  <button
-                    id="btn-sidebar-fps"
-                    type="button"
-                    onClick={() => {
-                      audioEngine.playSfx('click');
-                      setHoveredMenuTooltip(null);
-                      onToggleFps();
-                    }}
-                    {...bindTooltip({
-                      title: 'Medidor de Taxa de Quadros (FPS)',
-                      badge: showFps ? 'Ativo na Tela' : 'Oculto',
-                      badgeColor: showFps ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40' : 'bg-slate-700/30 text-slate-400 border-slate-600',
-                      description: 'Exibe telemetria de FPS e tempo de renderização de quadros em tempo real.',
-                    })}
-                    className={`btn-sidebar-fps relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                      showFps
-                        ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
-                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                    }`}
-                    aria-label="Medidor de FPS"
-                  >
-                    <Gauge className={`w-5 h-5 ${showFps ? 'animate-pulse text-emerald-300' : ''}`} />
-                  </button>
-                )}
-
-                {/* 7. Monitor de APIs e Cotas (movido do rodapé) */}
-                {onOpenApiStatus && (
-                  <button
-                    id="btn-sidebar-apis"
-                    type="button"
-                    onClick={() => {
-                      audioEngine.playSfx('click');
-                      setHoveredMenuTooltip(null);
-                      setOpenFlyoutMode(null);
-                      onOpenApiStatus();
-                    }}
-                    {...bindTooltip({
-                      title: 'Monitor de APIs & Cotas',
-                      badge: `${apiCallsCount}/10k Hoje`,
-                      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40',
-                      description: `Monitoramento em tempo real das APIs climáticas e demográficas. ${apiCallsCount} requisições feitas hoje. Clique para ver detalhes e cotas semanais.`,
-                    })}
-                    className="btn-sidebar-apis relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl border border-slate-700/80 hover:border-amber-400/50 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-amber-300 transition-all cursor-pointer flex items-center justify-center group"
-                    aria-label="Status de APIs e Cotas"
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <Activity className="w-5 h-5 text-emerald-400 group-hover:text-amber-400 transition-colors" />
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#10b981]" />
-                    </div>
-                  </button>
-                )}
               </div>
             )}
           </div>
-
-          {/* GAVETA 2: TERRITÓRIO & CAMADAS CARTOGRÁFICAS (EXCLUSIVO 2D) */}
-          <Sidebar2DDrawerTerritory
-            isExpanded={isTerritorySectionExpanded}
-            onToggleExpand={handleToggleTerritorySection}
-            activeLayer={currentCartographyLayer}
-            onSelectLayer={handleSelectCartographyLayer}
-            bindTooltip={bindTooltip}
-          />
         </>
       ) : (
         /* ========================================================================= */
@@ -1223,6 +1057,26 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
           bindTooltip={bindTooltip}
         />
       )}
+
+      {/* Divisor Horizontal */}
+      <div className="w-7 h-[1px] bg-slate-800/80 shrink-0 my-0.5" />
+
+      {/* ========================================================================= */}
+      {/* E. GRUPO FIXO INFERIOR: USUÁRIO + CONFIGURAÇÕES                           */}
+      {/* ========================================================================= */}
+      <SidebarUserAndConfigsGroup
+        playerLevel={playerLevel}
+        onOpenUserProfile={onOpenUserProfile}
+        onOpenSettings={onOpenSettings}
+        onOpenAboutInfo={onOpenAboutInfo}
+        onToggleFps={onToggleFps}
+        showFps={showFps}
+        onOpenApiStatus={onOpenApiStatus}
+        apiCallsCount={apiCallsCount}
+        setHoveredMenuTooltip={setHoveredMenuTooltip}
+        setOpenFlyoutMode={setOpenFlyoutMode}
+        bindTooltip={bindTooltip}
+      />
     </div>
 
         {/* ========================================================================= */}
