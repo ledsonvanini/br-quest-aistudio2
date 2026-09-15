@@ -47,6 +47,10 @@ import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKi
 import { GeopoliticaMetricKey } from '../types/geopolitica';
 import { QuestThemePillar } from '../data/brQuestQuestionsData';
 import { NavFlyoutMenu } from './nav/NavFlyoutMenu';
+import { SidebarWorldToggle } from './nav/SidebarWorldToggle';
+import { Sidebar2DDrawerTerritory } from './nav/Sidebar2DDrawerTerritory';
+import { Sidebar3DDrawerOrbital } from './nav/Sidebar3DDrawerOrbital';
+import { CartographyLayerMode } from '../types/cartography';
 
 export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
 
@@ -58,6 +62,9 @@ export interface MenuTooltipInfo {
 }
 
 interface Props {
+  // Cartography Layers (Gaveta 2 de Território)
+  activeCartographyLayer?: CartographyLayerMode;
+  onSelectCartographyLayer?: (layer: CartographyLayerMode) => void;
   // Active App Module
   mainMode: AppMainMode;
   onSelectMainMode: (mode: AppMainMode) => void;
@@ -162,6 +169,8 @@ interface Props {
 }
 
 export const TopGlobalNavMenu: React.FC<Props> = ({
+  activeCartographyLayer,
+  onSelectCartographyLayer,
   mainMode,
   onSelectMainMode,
   geopoliticaMetric = 'miscigenacao',
@@ -256,11 +265,21 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   } | null>(null);
 
   // Comportamento Accordion da Sidebar:
-  // - Por padrão: 'Menu Principal' expandido (true) e 'Ambiente & Sistema' recolhido (false).
-  // - A seta de recolher no Menu Principal só aparece quando a seção 'Ambiente & Sistema' estiver expandida.
-  // - Ao expandir uma seção, a outra é automaticamente recolhida (apenas uma por vez).
+  // - Por padrão: 'Menu Principal' expandido (true), 'Ambiente & Sistema' recolhido (false) e 'Território & Camadas' recolhido (false).
+  // - A seta de recolher no Menu Principal só aparece quando uma das gavetas estiver expandida.
+  // - Ao expandir uma seção, as outras são automaticamente recolhidas (apenas uma por vez).
   const [isToolsSectionExpanded, setIsToolsSectionExpanded] = useState<boolean>(false);
+  const [isTerritorySectionExpanded, setIsTerritorySectionExpanded] = useState<boolean>(false);
+  const [isGlobeSectionExpanded, setIsGlobeSectionExpanded] = useState<boolean>(true);
   const [isMainMenuExpanded, setIsMainMenuExpanded] = useState<boolean>(true);
+
+  // Camada Cartográfica Ativa (Gaveta 2: Território)
+  const [internalCartographyLayer, setInternalCartographyLayer] = useState<CartographyLayerMode>('none');
+  const currentCartographyLayer = activeCartographyLayer !== undefined ? activeCartographyLayer : internalCartographyLayer;
+  const handleSelectCartographyLayer = (layer: CartographyLayerMode) => {
+    setInternalCartographyLayer(layer);
+    onSelectCartographyLayer?.(layer);
+  };
 
   // Handlers do Accordion
   const handleToggleToolsSection = () => {
@@ -269,9 +288,24 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     setOpenFlyoutMode(null);
     if (!isToolsSectionExpanded) {
       setIsToolsSectionExpanded(true);
+      setIsTerritorySectionExpanded(false);
       setIsMainMenuExpanded(false);
     } else {
       setIsToolsSectionExpanded(false);
+      setIsMainMenuExpanded(true);
+    }
+  };
+
+  const handleToggleTerritorySection = () => {
+    audioEngine.playSfx('click');
+    setHoveredMenuTooltip(null);
+    setOpenFlyoutMode(null);
+    if (!isTerritorySectionExpanded) {
+      setIsTerritorySectionExpanded(true);
+      setIsToolsSectionExpanded(false);
+      setIsMainMenuExpanded(false);
+    } else {
+      setIsTerritorySectionExpanded(false);
       setIsMainMenuExpanded(true);
     }
   };
@@ -282,6 +316,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     if (!isMainMenuExpanded) {
       setIsMainMenuExpanded(true);
       setIsToolsSectionExpanded(false);
+      setIsTerritorySectionExpanded(false);
     } else {
       setIsMainMenuExpanded(false);
       setIsToolsSectionExpanded(true);
@@ -641,39 +676,62 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
           <div className="w-7 h-[1px] bg-slate-800/80 shrink-0" />
 
           {/* ========================================================================= */}
-          {/* 2. SEÇÃO PRINCIPAL DE MODOS DO SISTEMA BR QUEST (ACCORDION SECTION 1)      */}
+          {/* ALTERNADOR MESTRE DE MUNDO: MAPA 2D <=====> GLOBO 3D                      */}
           {/* ========================================================================= */}
-          <div
-            id="secao-modos-principais-sidebar"
-            className="secao-modos-principais-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-amber-500/30 shrink-0 shadow-lg transition-all duration-300"
-          >
-            {/* Seta / Toggle do Menu Principal: SÓ APARECE SE A SEÇÃO AMBIENTE ESTIVER EXPANDIDA */}
-            {isToolsSectionExpanded && (
-              <button
-                id="btn-toggle-expansao-modos-principais"
-                type="button"
-                onClick={handleToggleMainMenu}
-                {...bindTooltip({
-                  title: 'Menu Principal',
-                  badge: isMainMenuExpanded ? 'Recolher' : 'Expandir',
-                  badgeColor: isMainMenuExpanded
-                    ? 'bg-slate-700/50 text-slate-300 border-slate-600'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-400/40',
-                  description: isMainMenuExpanded
-                    ? 'Clique para recolher o Menu Principal e focar na seção de Ambiente & Sistema.'
-                    : 'Clique para expandir o Menu Principal com os 6 modos do BR Quest (Clima, Biodiversidade, Geopolítica, Musicalidades, Globo 3D e Aventura).',
-                })}
-                className="btn-toggle-expansao-modos-principais w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-                aria-label={isMainMenuExpanded ? 'Recolher Modos Principais' : 'Expandir Modos Principais'}
-                aria-expanded={isMainMenuExpanded}
+          <SidebarWorldToggle
+            isGlobeActive={mainMode === 'globo3d'}
+            onSelectWorld={(world) => {
+              setHoveredMenuTooltip(null);
+              setOpenFlyoutMode(null);
+              if (world === 'globo3d') {
+                onSelectMainMode('globo3d');
+              } else {
+                onSelectMainMode('aventura');
+              }
+            }}
+            bindTooltip={bindTooltip}
+          />
+
+          {/* Divisor Horizontal */}
+          <div className="w-7 h-[1px] bg-slate-800/80 shrink-0" />
+
+          {/* ========================================================================= */}
+          {/* MUNDO 1: MAPA 2D DO BRASIL (MODOS PRINCIPAIS + GAVETAS 1 E 2)             */}
+          {/* ========================================================================= */}
+          {mainMode !== 'globo3d' ? (
+            <>
+              {/* 2. SEÇÃO PRINCIPAL DE MODOS DO SISTEMA BR QUEST (ACCORDION SECTION 1) */}
+              <div
+                id="secao-modos-principais-sidebar"
+                className="secao-modos-principais-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-amber-500/30 shrink-0 shadow-lg transition-all duration-300"
               >
-                {isMainMenuExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-slate-300 transition-transform" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-amber-300 animate-pulse transition-transform" />
+                {/* Seta / Toggle do Menu Principal: SÓ APARECE SE UMA DAS GAVETAS ESTIVER EXPANDIDA */}
+                {(isToolsSectionExpanded || isTerritorySectionExpanded) && (
+                  <button
+                    id="btn-toggle-expansao-modos-principais"
+                    type="button"
+                    onClick={handleToggleMainMenu}
+                    {...bindTooltip({
+                      title: 'Menu Principal',
+                      badge: isMainMenuExpanded ? 'Recolher' : 'Expandir',
+                      badgeColor: isMainMenuExpanded
+                        ? 'bg-slate-700/50 text-slate-300 border-slate-600'
+                        : 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+                      description: isMainMenuExpanded
+                        ? 'Clique para recolher o Menu Principal e focar nas gavetas do sistema.'
+                        : 'Clique para expandir o Menu Principal com os modos do BR Quest 2D (Clima, Biodiversidade, Geopolítica, Musicalidades e Aventura).',
+                    })}
+                    className="btn-toggle-expansao-modos-principais w-10 h-7 sm:w-11 sm:h-7 rounded-xl bg-slate-800/80 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                    aria-label={isMainMenuExpanded ? 'Recolher Modos Principais' : 'Expandir Modos Principais'}
+                    aria-expanded={isMainMenuExpanded}
+                  >
+                    {isMainMenuExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-slate-300 transition-transform" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-amber-300 animate-pulse transition-transform" />
+                    )}
+                  </button>
                 )}
-              </button>
-            )}
 
             {/* Quando expandido (padrão): renderiza os 6 modos com botões padronizados */}
             {isMainMenuExpanded && (
@@ -794,36 +852,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 5. GLOBO 3D */}
-                <div className="relative">
-                  <button
-                    id="btn-modo-globo3d"
-                    ref={(el) => {
-                      buttonRefs.current['globo3d'] = el;
-                    }}
-                    onClick={() => handleModeButtonClick('globo3d')}
-                    {...bindTooltip({
-                      title: 'Globo 3D Orbital',
-                      badge: mainMode === 'globo3d' ? 'Modo Ativo' : 'Órbita Terrestre',
-                      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
-                      description:
-                        'Clique para alternar para o Globo 3D Orbital (Visão do Espaço, Ciclo Solar 24h, Órbitas e Ferramentas no Rodapé).',
-                    })}
-                    className={`btn-modo-globo3d relative w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
-                      mainMode === 'globo3d'
-                        ? 'bg-gradient-to-br from-indigo-400 via-indigo-500 to-blue-600 text-slate-950 border-indigo-300 shadow-[0_0_16px_rgba(99,102,241,0.6)] font-black scale-105 ring-2 ring-indigo-400/80'
-                        : 'text-slate-400 hover:text-indigo-300 hover:bg-slate-800/80 border-transparent hover:border-indigo-500/30'
-                    }`}
-                    aria-label="Globo 3D Orbital"
-                  >
-                    {getGloboActiveIcon()}
-                    {mainMode === 'globo3d' && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-300 ring-2 ring-slate-950 shadow-[0_0_8px_#818cf8] animate-pulse pointer-events-none" />
-                    )}
-                  </button>
-                </div>
-
-                {/* 6. AVENTURA & MAPA */}
+                {/* 5. AVENTURA & MAPA */}
                 <div className="relative">
                   <button
                     id="btn-modo-aventura"
@@ -887,9 +916,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
 
           {/* ========================================================================= */}
           {/* 3. SEÇÃO AMBIENTE & SISTEMA (ACCORDION SECTION 2)                          */}
-          {/* Oculto no Modo Globo 3D conforme solicitado                               */}
           {/* ========================================================================= */}
-          {mainMode !== 'globo3d' && (
           <div
             id="secao-controles-ambiente-sidebar"
             className="secao-controles-ambiente-sidebar flex flex-col items-center gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-sky-500/30 shrink-0 shadow-lg transition-all duration-300"
@@ -1162,8 +1189,41 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
               </div>
             )}
           </div>
-          )}
-        </div>
+
+          {/* GAVETA 2: TERRITÓRIO & CAMADAS CARTOGRÁFICAS (EXCLUSIVO 2D) */}
+          <Sidebar2DDrawerTerritory
+            isExpanded={isTerritorySectionExpanded}
+            onToggleExpand={handleToggleTerritorySection}
+            activeLayer={currentCartographyLayer}
+            onSelectLayer={handleSelectCartographyLayer}
+            bindTooltip={bindTooltip}
+          />
+        </>
+      ) : (
+        /* ========================================================================= */
+        /* MUNDO 2: GLOBO 3D ORBITAL (GAVETA EXCLUSIVA ORBITAL)                      */
+        /* ========================================================================= */
+        <Sidebar3DDrawerOrbital
+          isExpanded={isGlobeSectionExpanded}
+          onToggleExpand={() => {
+            audioEngine.playSfx('click');
+            setIsGlobeSectionExpanded((prev) => !prev);
+          }}
+          globeTextureMode={globeTextureMode}
+          onGlobeTextureModeChange={onGlobeTextureModeChange}
+          isGlobeCloudsActive={isGlobeCloudsActive}
+          onToggleGlobeClouds={onToggleGlobeClouds}
+          isGlobeAutoRotateActive={isGlobeAutoRotateActive}
+          onToggleGlobeAutoRotate={onToggleGlobeAutoRotate}
+          isGlobeBordersActive={isGlobeBordersActive}
+          onToggleGlobeBorders={onToggleGlobeBorders}
+          isGlobeTelemetryOpen={isGlobeTelemetryOpen}
+          onToggleGlobeTelemetry={onToggleGlobeTelemetry}
+          onResetGlobeCamera={onResetGlobeCamera}
+          bindTooltip={bindTooltip}
+        />
+      )}
+    </div>
 
         {/* ========================================================================= */}
         {/* PAINEL FLYOUT VERTICAL FLUTUANTE COM BALÃO DE DIÁLOGO E CLAMPING         */}

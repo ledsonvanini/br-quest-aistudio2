@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, Activity } from 'lucide-react';
-import { AppMainMode } from './TopGlobalNavMenu';
-import { GuardianData } from '../types';
+import { AppMainMode, GuardianData } from '../types';
 import { audioEngine } from '../lib/audioSynth';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
 import { vintageRadioEngine, RadioPlaybackState } from '../lib/vintageRadioEngine';
@@ -15,6 +14,9 @@ import { FooterBiodiversityTicker } from './footer/FooterBiodiversityTicker';
 import { FooterRadioTicker } from './footer/FooterRadioTicker';
 import { FooterGeopoliticsTicker } from './footer/FooterGeopoliticsTicker';
 import { FooterAdventureTicker } from './footer/FooterAdventureTicker';
+import { FooterGlobeTicker } from './footer/FooterGlobeTicker';
+import { FooterTerritoryTicker } from './footer/FooterTerritoryTicker';
+import { CartographyLayerMode } from '../types/cartography';
 
 interface DynamicAppFooterProps {
   mainMode: AppMainMode;
@@ -29,7 +31,7 @@ interface DynamicAppFooterProps {
   onOpenAboutInfo: () => void;
   onNavigateHome: () => void;
 
-  // Telemetry & Utility buttons
+  // Telemetry & Utility
   showFps?: boolean;
   onToggleFps?: () => void;
   onOpenApiStatus?: () => void;
@@ -43,25 +45,21 @@ interface DynamicAppFooterProps {
   minTempState?: { stateId: string; temp: number };
   climateLastUpdated?: string | number;
 
-  isRainSimActive?: boolean;
-  onToggleRainSim?: () => void;
-  isCloudsActive?: boolean;
-  onToggleClouds?: () => void;
-  isWavesActive?: boolean;
-  onToggleWaves?: () => void;
-  isAtmosphereActive?: boolean;
-  onToggleAtmosphere?: () => void;
-  timeOverride?: 'auto' | 'day' | 'night';
-  onTimeOverrideChange?: (mode: 'auto' | 'day' | 'night') => void;
-
-  // Music context
+  // Music & Geopolitics
   onToggleRadio?: () => void;
-
-  // Geopolitics context
   geopoliticaMetric?: GeopoliticaMetricKey;
-
-  // BrQuest context
   onOpenBrQuestHub?: () => void;
+
+  // 3D Orbital context
+  globeTextureMode?: 'nasa_satellite' | 'night_lights' | 'natural_earth';
+  isGlobeAutoRotateActive?: boolean;
+  isGlobeCloudsActive?: boolean;
+  onToggleGlobeAutoRotate?: () => void;
+  onResetGlobeCamera?: () => void;
+
+  // Cartography Layer context (2D)
+  activeCartographyLayer?: CartographyLayerMode;
+  onClearCartographyLayer?: () => void;
 }
 
 export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
@@ -83,6 +81,13 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   onToggleRadio,
   geopoliticaMetric = 'miscigenacao',
   onOpenBrQuestHub,
+  globeTextureMode = 'nasa_satellite',
+  isGlobeAutoRotateActive = false,
+  isGlobeCloudsActive = true,
+  onToggleGlobeAutoRotate,
+  onResetGlobeCamera,
+  activeCartographyLayer = 'none',
+  onClearCartographyLayer,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
   const formattedTimeOnly = useMemo(() => {
@@ -99,16 +104,11 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   });
 
   useEffect(() => {
-    const unsubscribeRadio = vintageRadioEngine.subscribe((state) => {
-      setRadioState(state);
-    });
-    const unsubscribePerf = perfEngine.subscribe((data) => {
-      setFpsTelemetry(data);
-    });
-
+    const unsubRadio = vintageRadioEngine.subscribe(setRadioState);
+    const unsubPerf = perfEngine.subscribe(setFpsTelemetry);
     return () => {
-      unsubscribeRadio();
-      unsubscribePerf();
+      unsubRadio();
+      unsubPerf();
     };
   }, []);
 
@@ -116,11 +116,6 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
     const stateId = radioState.activeStateId || selectedStateId || 'RJ';
     return getStateMusicalHeritage(stateId);
   }, [selectedStateId, radioState.activeStateId]);
-
-  // No modo Globo 3D, a barra de controle própria (GlobeControlsHUD) ocupa o rodapé
-  if (mainMode === 'globo3d') {
-    return null;
-  }
 
   return (
     <footer
@@ -134,8 +129,24 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
       <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
         {/* Seção de Conteúdo Dinâmico Auxiliar */}
         <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
+          {/* CASO GLOBO 3D ORBITAL */}
+          {mainMode === 'globo3d' && (
+            <FooterGlobeTicker
+              textureMode={globeTextureMode}
+              isAutoRotate={isGlobeAutoRotateActive}
+            />
+          )}
+
+          {/* CASO CAMADA CARTOGRÁFICA ATIVA (2D) */}
+          {mainMode !== 'globo3d' && !activeGuardian && activeTab === 'map' && activeCartographyLayer !== 'none' && (
+            <FooterTerritoryTicker
+              activeLayer={activeCartographyLayer}
+              onClearLayer={onClearCartographyLayer || (() => {})}
+            />
+          )}
+
           {/* CASO A: Modo Aventura / Cartografia */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
+          {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
             <FooterAdventureTicker
               completedSet={completedSet}
               hoveredStateId={hoveredStateId}
@@ -145,7 +156,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           )}
 
           {/* CASO B: Modo Clima no Mapa */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'clima' && (
+          {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'clima' && (
             <FooterWeatherTicker
               avgTempBrazil={avgTempBrazil}
               maxTempState={maxTempState}
@@ -155,12 +166,12 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           )}
 
           {/* CASO C: Modo Biodiversidade no Mapa */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
+          {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'biodiversidade' && (
             <FooterBiodiversityTicker biodivTimeOnly={biodivTimeOnly} />
           )}
 
           {/* CASO D: Modo Musicalidades no Mapa */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'musicalidades' && (
+          {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'musicalidades' && (
             <FooterRadioTicker
               radioState={radioState}
               activeMusicStateData={activeMusicStateData}
@@ -169,7 +180,7 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           )}
 
           {/* CASO E: Modo Geopolítica no Mapa */}
-          {!activeGuardian && activeTab === 'map' && mainMode === 'geopolitica' && (
+          {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'geopolitica' && (
             <FooterGeopoliticsTicker geopoliticaMetric={geopoliticaMetric} />
           )}
 

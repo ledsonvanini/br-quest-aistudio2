@@ -116,13 +116,15 @@ describe('Analytical Astronomical and Celestial Mathematics', () => {
     const sunDir = new THREE.Vector3(1, 0, 0);
     const planets = getVisiblePlanetsInfo(new Date(), sunDir);
 
-    expect(planets.length).toBe(5);
+    expect(planets.length).toBe(7);
     const names = planets.map((p) => p.name);
     expect(names).toContain('Mercúrio');
     expect(names).toContain('Vênus');
     expect(names).toContain('Marte');
     expect(names).toContain('Júpiter');
     expect(names).toContain('Saturno');
+    expect(names).toContain('Urano');
+    expect(names).toContain('Netuno');
   });
 
   it('contains complete descriptions for all 4 astronomical solstices and equinoxes', () => {

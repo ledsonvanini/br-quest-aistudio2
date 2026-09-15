@@ -22,6 +22,7 @@ import { apiTracker } from './services/apiTracker';
 import { QuestThemePillar } from './data/brQuestQuestionsData';
 import { DailyTipsModal } from './components/quest/DailyTipsModal';
 import { useDailyTips } from './hooks/useDailyTips';
+import { CartographyLayerMode } from './types/cartography';
 
 import { useAppModes } from './hooks/useAppModes';
 import { centralizarZoomMapa } from './services/mapModeService';
@@ -140,8 +141,16 @@ export function App() {
   const [isGlobeBordersActive, setIsGlobeBordersActive] = useState<boolean>(true);
   const [globePinMode, setGlobePinMode] = useState<'all' | 'compact' | 'none'>('all');
 
+  // Camadas Cartográficas Ricas do Território (Exclusivo 2D)
+  const [activeCartographyLayer, setActiveCartographyLayer] = useState<CartographyLayerMode>('none');
+
   const handleSelectMainMode = (newMode: AppMainMode) => {
     selectMainMode(newMode);
+
+    // Desacoplamento inegociável entre 2D e 3D: desativar camadas temáticas do mapa 2D ao mudar para o Globo 3D
+    if (newMode === 'globo3d') {
+      setActiveCartographyLayer('none');
+    }
 
     if (activeTab !== 'map') {
       setActiveTab('map');
@@ -614,6 +623,8 @@ export function App() {
             setCenterMapTrigger((prev) => prev + 1);
           }}
           hoveredStateId={hoveredStateId}
+          activeCartographyLayer={activeCartographyLayer}
+          onSelectCartographyLayer={setActiveCartographyLayer}
           onOpenDailyTips={() => setIsDailyTipsOpen(true)}
           dailyTipsUnreadCount={dailyTips.unreadCount}
           onOpenBrQuestHub={(pillar) => {
@@ -663,6 +674,7 @@ export function App() {
               onOpenSettings={() => setIsSettingsOpen(true)}
               mainMode={mainMode}
               onSelectMainMode={handleSelectMainMode}
+              activeCartographyLayer={activeCartographyLayer}
               climateMode={climateMode}
               onClimateModeChange={setClimateMode}
               terrainProvider={terrainProvider}
@@ -844,16 +856,13 @@ export function App() {
         maxTempState={climateTelemetry.maxTempState}
         minTempState={climateTelemetry.minTempState}
         climateLastUpdated={climateTelemetry.lastUpdated}
-        isRainSimActive={isRainSimActive}
-        onToggleRainSim={() => setIsRainSimActive((prev) => !prev)}
-        isCloudsActive={isCloudsActive}
-        onToggleClouds={() => setIsCloudsActive((prev) => !prev)}
-        isWavesActive={isWavesActive}
-        onToggleWaves={() => setIsWavesActive((prev) => !prev)}
-        isAtmosphereActive={isAtmosphereActive}
-        onToggleAtmosphere={() => setIsAtmosphereActive((prev) => !prev)}
-        timeOverride={celestialTimeOverride}
-        onTimeOverrideChange={setCelestialTimeOverride}
+        globeTextureMode={globeTextureMode}
+        isGlobeAutoRotateActive={isGlobeAutoRotateActive}
+        isGlobeCloudsActive={isGlobeCloudsActive}
+        onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((prev) => !prev)}
+        onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
+        activeCartographyLayer={activeCartographyLayer}
+        onClearCartographyLayer={() => setActiveCartographyLayer('none')}
         onToggleRadio={() => {
           setIsRadioOpen((prev) => {
             const next = !prev;

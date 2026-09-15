@@ -63,6 +63,8 @@ import { CompassLoadingScreen } from './map/CompassLoadingScreen';
 import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
 import { VintageRadioPlayer } from './music/VintageRadioPlayer';
+import { TerritoryLayersOverlay } from './map/TerritoryLayersOverlay';
+import { CartographyLayerMode } from '../types/cartography';
 import { vintageRadioEngine } from '../lib/vintageRadioEngine';
 import { AppMainMode } from './TopGlobalNavMenu';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
@@ -144,6 +146,7 @@ interface Props {
   onToggleGlobeTelemetry?: () => void;
   onOpenDailyTips?: () => void;
   dailyTipsUnreadCount?: number;
+  activeCartographyLayer?: CartographyLayerMode;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -152,6 +155,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   onClimateActiveChange,
   mainMode = 'aventura',
   onSelectMainMode,
+  activeCartographyLayer = 'none',
   isRadioOpen = true,
   onToggleRadio,
   activeMusicCategory = 'state_anthems',
@@ -1852,6 +1856,17 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 }}
               />
             </div>
+
+            {/* Layer 2.4: Camadas Cartográficas Ricas do Território (Exclusivo 2D) */}
+            {activeCartographyLayer && activeCartographyLayer !== 'none' && (
+              <div style={{ transform: 'translateZ(10px)', transformStyle: 'preserve-3d' }}>
+                <TerritoryLayersOverlay
+                  activeLayer={activeCartographyLayer}
+                  hoveredStateId={hoveredStateId}
+                  selectedStateId={selectedStateId}
+                />
+              </div>
+            )}
 
             {/* Layer 2.5: Real-Time Climate Phenomena & Streamlines (Coplanar with map base at Z=0px) */}
             <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
