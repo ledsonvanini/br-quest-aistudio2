@@ -38,6 +38,8 @@ export interface GetStateVisualsOptions {
   focusedBiodiversityStateId?: string | null;
   focusedGeopoliticsStateId?: string | null;
   focusedTerritoryStateId?: string | null;
+  selectedCampaign?: string;
+  mainMode?: string;
 }
 
 export const REGION_STATES_MAP: Record<string, string[]> = {
@@ -115,6 +117,7 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
     focusedBiodiversityStateId = null,
     focusedGeopoliticsStateId = null,
     focusedTerritoryStateId = null,
+    selectedCampaign = 'livre',
   } = opts;
 
   const isCompleted = completedStateIds.has(stateId);
@@ -553,49 +556,82 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
     strokeColor = isSelected ? '#ffffff' : isHovered ? '#ffffff' : '#fde047';
     strokeWidth = isSelected ? 3.4 : isHovered ? 2.6 : 1.4;
   } else {
-    const colors = getStateColor(
-      stateId,
-      visualStyle,
-      choroplethSubTheme,
-      isCompleted,
-      isHovered,
-      isSelected
-    );
-    stateFill = visualStyle === 'tiles' ? (isHovered || isSelected ? '#fbbf24' : 'transparent') : colors.fill;
-    stateFillOpacity =
-      visualStyle === 'tiles'
-        ? isSelected
-          ? 0.50
+    // Modo Aventura e visualização padrão do mapa por regiões/campanha
+    const stateRegion = getStateRegion(stateId);
+    const isRegionCampaignActive = selectedCampaign && selectedCampaign !== 'todos' && selectedCampaign !== 'livre';
+    const isStateInCampaign = !isRegionCampaignActive || stateRegion === selectedCampaign;
+
+    if (!isStateInCampaign) {
+      // Estado fora da campanha regional ativa: Muted slate cartográfico elegante com divisas visíveis
+      return {
+        stateFill: '#0b1626',
+        stateFillOpacity: 0.82,
+        strokeColor: '#1d2c42',
+        strokeWidth: 0.85,
+        underglowColor: 'transparent',
+        wallGradId: 'url(#extrusionWallGradDefault)',
+      };
+    }
+
+    // Cores temáticas do modo Aventura por Região
+    let baseRegionFill = REGION_COLORS_MAP[stateRegion] || '#0284c7';
+    let baseRegionStroke = '#fde047';
+    let baseWallGrad = 'url(#extrusionWallGradDefault)';
+
+    if (stateRegion === 'norte') {
+      baseRegionFill = '#0d4d38';
+      baseRegionStroke = '#34d399';
+      baseWallGrad = 'url(#extrusionWallGradEmerald)';
+    } else if (stateRegion === 'nordeste') {
+      baseRegionFill = '#7c2d12';
+      baseRegionStroke = '#f97316';
+      baseWallGrad = 'url(#extrusionWallGradGold)';
+    } else if (stateRegion === 'centro_oeste') {
+      baseRegionFill = '#78350f';
+      baseRegionStroke = '#facc15';
+      baseWallGrad = 'url(#extrusionWallGradGold)';
+    } else if (stateRegion === 'sudeste') {
+      baseRegionFill = '#1e3a8a';
+      baseRegionStroke = '#60a5fa';
+      baseWallGrad = 'url(#extrusionWallGradCyan)';
+    } else if (stateRegion === 'sul') {
+      baseRegionFill = '#581c87';
+      baseRegionStroke = '#c084fc';
+      baseWallGrad = 'url(#extrusionWallGradCyan)';
+    }
+
+    if (isCompleted) {
+      stateFill = isSelected ? '#a16207' : isHovered ? '#854d0e' : '#0f392b';
+      stateFillOpacity = isSelected ? 0.98 : isHovered ? 0.92 : 0.75;
+      strokeColor = isSelected ? '#ffffff' : isHovered ? '#fde047' : '#34d399';
+      strokeWidth = isSelected ? 3.4 : isHovered ? 2.8 : 1.8;
+      underglowColor = '#10b981';
+      wallGradId = 'url(#extrusionWallGradGold)';
+    } else {
+      stateFill = visualStyle === 'tiles' ? (isHovered || isSelected ? '#fbbf24' : 'transparent') : baseRegionFill;
+      stateFillOpacity =
+        visualStyle === 'tiles'
+          ? isSelected
+            ? 0.50
+            : isHovered
+            ? 0.40
+            : 0.0
+          : isSelected
+          ? 0.96
           : isHovered
-          ? 0.40
-          : isCompleted
-          ? 0.25
-          : 0.0
-        : isSelected
-        ? 0.96
+          ? 0.90
+          : 0.78;
+
+      strokeColor = isSelected
+        ? '#fef08a'
         : isHovered
-        ? 0.90
-        : isCompleted
-        ? 0.45
-        : 0.28;
+        ? '#fde047'
+        : baseRegionStroke;
 
-    strokeColor = isSelected
-      ? '#fef08a'
-      : isHovered
-      ? '#fde047'
-      : isCompleted
-      ? '#34d399'
-      : visualStyle === 'tiles'
-      ? '#f59e0b'
-      : colors.stroke;
-
-    strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.4;
-    underglowColor = isCompleted ? '#10b981' : isSelected ? '#facc15' : '#f59e0b';
-    wallGradId = isCompleted
-      ? 'url(#extrusionWallGradEmerald)'
-      : visualStyle === 'tiles' || terrainProvider === 'voyager_parchment'
-      ? 'url(#extrusionWallGradGold)'
-      : 'url(#extrusionWallGradDefault)';
+      strokeWidth = isSelected ? 3.2 : isHovered ? 2.6 : 1.4;
+      underglowColor = isSelected ? '#facc15' : '#f59e0b';
+      wallGradId = baseWallGrad;
+    }
   }
 
   return {

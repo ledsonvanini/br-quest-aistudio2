@@ -65,6 +65,8 @@ interface DynamicAppFooterProps {
   onSelectTerritorySubitem?: (subitemId: string | null) => void;
   isTerritorySubmenuOpen?: boolean;
   onToggleTerritorySubmenu?: () => void;
+  selectedRegionFilter?: string;
+  onSelectRegionFilter?: (region: string) => void;
 }
 
 export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
@@ -98,6 +100,8 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   onSelectTerritorySubitem,
   isTerritorySubmenuOpen,
   onToggleTerritorySubmenu,
+  selectedRegionFilter = 'livre',
+  onSelectRegionFilter,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
   const formattedTimeOnly = useMemo(() => {
@@ -165,9 +169,9 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           {mainMode !== 'globo3d' && activeCartographyLayer === 'none' && !activeGuardian && activeTab === 'map' && mainMode === 'aventura' && (
             <FooterAdventureTicker
               completedSet={completedSet}
-              hoveredStateId={hoveredStateId}
               onStateClick={onStateClick}
-              onOpenBrQuestHub={onOpenBrQuestHub}
+              selectedCampaign={selectedRegionFilter}
+              onSelectCampaign={onSelectRegionFilter}
             />
           )}
 

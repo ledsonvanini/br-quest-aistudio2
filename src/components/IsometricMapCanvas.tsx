@@ -56,6 +56,7 @@ import { ProceduralAtmosphereLayer } from './map/ProceduralAtmosphereLayer';
 import { TopHudCelestialOrb } from './map/TopHudCelestialOrb';
 import { MapStatesLayer } from './map/MapStatesLayer';
 import { MapPinsLayer } from './map/MapPinsLayer';
+import { DottedCampaignPathLayer } from './map/DottedCampaignPathLayer';
 import { NeighborCountryPinsLayer } from './map/NeighborCountryPinsLayer';
 import { NeighborCountryModal } from './map/NeighborCountryModal';
 import { NeighborCountryData } from '../data/southAmericaNeighborsData';
@@ -523,29 +524,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const hoveredStateRef = useRef<string | null>(null);
   const lastWheelTimeRef = useRef<number>(0);
   const [selectedStateId, setSelectedStateId] = useState<string | null>(propSelectedStateId ?? null);
-  useEffect(() => {
-    if (propSelectedStateId !== undefined) {
-      setSelectedStateId(propSelectedStateId);
-      if (activeCartographyLayer && activeCartographyLayer !== 'none') {
-        setSelectedTerritoryStateId(propSelectedStateId);
-      }
-      if (propSelectedStateId && centroids[propSelectedStateId]) {
-        const centroid = centroids[propSelectedStateId];
-        const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
-          stateId: propSelectedStateId,
-          centroid,
-          containerWidth: getContainerWidth(),
-          is3D,
-          isPanelOpen: true,
-        });
-        setTransitionMode('button');
-        setPan(targetPan);
-        setZoom(targetZoom);
-        baseUserPanRef.current = targetPan;
-        baseUserZoomRef.current = targetZoom;
-      }
-    }
-  }, [propSelectedStateId, activeCartographyLayer, mainMode, is3D]);
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(true);
   const [showAnchorPoint, setShowAnchorPoint] = useState<boolean>(false);
   const anchorTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -584,6 +562,41 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     const pathGen = geoPath().projection(projection);
     return calculateCalibratedCentroids(geoData?.features, pathGen);
   }, [geoData, projection]);
+
+  useEffect(() => {
+    if (propSelectedStateId !== undefined) {
+      setSelectedStateId(propSelectedStateId);
+      if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+        setSelectedTerritoryStateId(propSelectedStateId);
+      }
+      if (propSelectedStateId && centroids[propSelectedStateId]) {
+        const centroid = centroids[propSelectedStateId];
+        const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
+          stateId: propSelectedStateId,
+          centroid,
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: true,
+        });
+        setTransitionMode('button');
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      } else if (propSelectedStateId === null) {
+        const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: false,
+        });
+        setTransitionMode('button');
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      }
+    }
+  }, [propSelectedStateId, activeCartographyLayer, mainMode, is3D, centroids, getContainerWidth]);
 
   // Interatividade das Estações do Observatório: Selecionar e Voar a Câmera
   const handleSelectClimateStation = useCallback((station: ClimateStationData | null) => {
@@ -1302,25 +1315,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, abre o AppLateral do Guardião/Aventura e centraliza nos 50% restantes
+    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, viaja direto para 'Desafiar Guardião' sem perguntas
     if (mainMode === 'aventura') {
-      setSelectedStateId(stateId);
-      setInternalIsBiodiversityPanelOpen(false);
-      setInternalIsGeopoliticaPanelOpen(false);
-      const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
-        stateId,
-        centroid,
-        containerWidth: getContainerWidth(),
-        is3D,
-        isPanelOpen: true,
-      });
-      setTransitionMode('button');
-      setPan(targetPan);
-      setZoom(targetZoom);
-      baseUserPanRef.current = targetPan;
-      baseUserZoomRef.current = targetZoom;
-
       audioEngine.playSfx('travel');
+      handleEnterGuardianScene(stateId);
       return;
     }
 
@@ -2161,9 +2159,15 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               />
             </div>
 
-            {/* Layer 3: Guardian Heraldic Pins Layer with Coat of Arms (Coplanar with map base at Z=0px) */}
+            {/* Layer 3: Guardian Heraldic Pins Layer with Coat of Arms & Dotted Campaign Path (Coplanar with map base at Z=0px) */}
             {!showNeighbors && effectiveIsAventuraActive && (
               <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
+                <DottedCampaignPathLayer
+                  centroids={centroids}
+                  selectedCampaign={selectedRegionFilter || 'livre'}
+                  completedStateIds={completedSet}
+                  tiltAngle={sphericalAngles.rotateX}
+                />
                 <MapPinsLayer
                   centroids={centroids}
                   completedStateIds={completedSet}
@@ -2174,6 +2178,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                   onSelectGuardian={handleStateClick}
                   onStateEnter={handleStateEnter}
                   onStateLeave={handleStateLeave}
+                  selectedCampaign={selectedRegionFilter}
+                  mainMode={mainMode}
                 />
               </div>
             )}

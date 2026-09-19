@@ -88,14 +88,12 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
 
   const isTerritoryActive = Boolean(activeCartographyLayer && activeCartographyLayer !== 'none');
 
-  // Aparece nos modos Clima, Bio, Geopolítica, Musicalidade ou quando Camada de Território ativa.
-  // No Modo Aventura padrão (sem camada de território), o Guardião à esquerda já exibe as informações.
+  // Balão flutuante unificado exibido ao posicionar o mouse sobre qualquer estado
   const shouldHide =
     !hoveredStateId ||
     showNeighbors ||
     Boolean(selectedStateId) ||
-    mainMode === 'globo3d' ||
-    (!isTerritoryActive && mainMode === 'aventura');
+    mainMode === 'globo3d';
 
   useEffect(() => {
     if (!hoveredStateId || shouldHide) {

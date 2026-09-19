@@ -2,8 +2,11 @@ import React from 'react';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
 import { ALL_BRAZIL_STATES } from '../../data/brazilStatesRegistry';
 import { MAP_CANVAS_WIDTH, MAP_CANVAS_HEIGHT } from '../../lib/mapProjections';
-import { Shield, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Shield, Sparkles, CheckCircle2, Lock } from 'lucide-react';
 import { StateFlag } from '../StateFlag';
+import { getStateHeraldicInfo } from '../../data/coatOfArms';
+import { getStateRegion } from './stateStyling/stateFillStyler';
+import { AppMainMode } from '../../types';
 
 interface MapPinsLayerProps {
   centroids: Record<string, [number, number]>;
@@ -15,6 +18,8 @@ interface MapPinsLayerProps {
   onSelectGuardian: (stateId: string) => void;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
+  selectedCampaign?: string;
+  mainMode?: AppMainMode;
 }
 
 export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
@@ -27,9 +32,13 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
   onSelectGuardian,
   onStateEnter,
   onStateLeave,
+  selectedCampaign = 'todos',
+  mainMode = 'aventura',
 }) => {
   // Quando qualquer estado estiver selecionado/isolado, oculta os pins do mapa
   if (selectedStateId) return null;
+
+  const isRegionCampaignActive = selectedCampaign && selectedCampaign !== 'todos' && selectedCampaign !== 'livre';
 
   return (
     <div
@@ -50,6 +59,12 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
         const isHovered = hoveredStateId === stateId;
         const isSelected = selectedStateId === stateId;
         const isActive = isHovered || isSelected;
+
+        const stateRegion = getStateRegion(stateId);
+        const isLocked = isRegionCampaignActive && stateRegion !== selectedCampaign;
+
+        const heraldic = getStateHeraldicInfo(stateId);
+        const coatUrl = heraldic?.coatUrl || stateInfo.coatOfArmsUrl || heraldic?.fallbackUrl;
 
         // Counter-tilt for orthogonal view so the banner faces the player camera
         const effectiveTilt = Math.round(tiltAngle || 42);
@@ -90,10 +105,11 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
 
             {/* ==================================================================== */}
             {/* 1. GROUND BEACON CIRCLE & PERMANENT HIGH-CONTRAST STATE LABEL       */}
+            {/* Beautiful, animated cartographic jewel at the center of each state   */}
             {/* ==================================================================== */}
             <div
-              className={`circulo-beacon-terreno absolute -left-4 -top-4 w-8 h-8 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-transform duration-300 ${
-                isActive ? 'scale-125' : 'hover:scale-115'
+              className={`circulo-beacon-terreno absolute -left-5 -top-5 w-10 h-10 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-transform duration-300 ${
+                isActive ? 'scale-125 z-40' : 'hover:scale-115'
               }`}
               onMouseEnter={() => onStateEnter(stateId)}
               onMouseLeave={() => onStateLeave(stateId)}
@@ -106,87 +122,134 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                 e.stopPropagation();
               }}
             >
-              {/* Soft Expanding Pulse Wave */}
+              {/* Outer Radiant Echo Wave (Primary Pulse) */}
               <div
                 className={`anel-radar-pulso absolute inset-0 rounded-full anim-ground-beacon-pulse pointer-events-none ${
                   isActive
-                    ? 'border-2 border-amber-300 bg-amber-400/25 shadow-[0_0_14px_rgba(245,158,11,0.6)]'
+                    ? 'border-2 border-amber-300 bg-amber-400/30 shadow-[0_0_18px_rgba(245,158,11,0.8)]'
                     : isCompleted
-                    ? 'border-2 border-emerald-400/80 bg-emerald-500/15'
-                    : 'border-2 border-amber-400/70 bg-amber-500/15'
+                    ? 'border-2 border-emerald-400/80 bg-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                    : isLocked
+                    ? 'border border-slate-700/60 bg-slate-900/10'
+                    : 'border-2 border-amber-400/70 bg-amber-500/15 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
                 }`}
               />
 
-              {/* Antique Metal Cartographic Disc */}
+              {/* Secondary Harmonic Ring */}
               <div
-                className={`anel-mostrador-solo relative w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-200 ${
+                className={`absolute -inset-1 rounded-full border border-dashed pointer-events-none ${
                   isActive
-                    ? 'border-amber-300 bg-amber-950/95 shadow-[0_0_12px_rgba(245,158,11,0.85)]'
+                    ? 'border-amber-300/80 anim-beacon-halo-rotate'
                     : isCompleted
-                    ? 'border-emerald-400 bg-emerald-950/90 shadow-[0_0_10px_rgba(52,211,153,0.5)]'
-                    : 'border-amber-400 bg-slate-950/90 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                    ? 'border-emerald-400/50 anim-beacon-halo-rotate'
+                    : isLocked
+                    ? 'border-slate-800'
+                    : 'border-amber-400/40 anim-beacon-halo-rotate'
+                }`}
+              />
+
+              {/* Antique Brass Cartographic Dial Plate */}
+              <div
+                className={`anel-mostrador-solo relative w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                  isActive
+                    ? 'border-amber-300 bg-gradient-to-br from-amber-900 via-amber-950 to-black shadow-[0_0_16px_rgba(245,158,11,0.9)]'
+                    : isCompleted
+                    ? 'border-emerald-300 bg-gradient-to-br from-emerald-900 via-emerald-950 to-black shadow-[0_0_12px_rgba(52,211,153,0.7)]'
+                    : isLocked
+                    ? 'border-slate-700 bg-slate-950/95 opacity-60'
+                    : 'border-amber-400/90 bg-gradient-to-br from-slate-900 via-slate-950 to-black shadow-[0_0_10px_rgba(245,158,11,0.5)]'
                 }`}
               >
-                {/* Concentric Brass Inset Ring */}
+                {/* Concentric Golden Inset Ring */}
                 <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                  className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center ${
                     isActive
-                      ? 'border-amber-300 bg-amber-400/20'
+                      ? 'border-amber-200 bg-amber-400/30'
                       : isCompleted
-                      ? 'border-emerald-300/90 bg-emerald-400/20'
-                      : 'border-amber-400/80'
+                      ? 'border-emerald-300 bg-emerald-400/25'
+                      : isLocked
+                      ? 'border-slate-800 bg-slate-900/50'
+                      : 'border-amber-400/70 bg-amber-500/20'
                   }`}
                 >
-                  {/* Central Core Eyelet Pinpoint (Strict (0,0) center) */}
+                  {/* Central Radiant Gem Orb */}
                   <div
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-2.5 h-2.5 rounded-full anim-beacon-orb-glow ${
                       isActive
-                        ? 'bg-amber-300 shadow-[0_0_8px_#fde047]'
+                        ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-white shadow-[0_0_10px_#fef08a]'
                         : isCompleted
-                        ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
-                        : 'bg-amber-400 shadow-[0_0_4px_#f59e0b]'
+                        ? 'bg-gradient-to-tr from-emerald-400 via-emerald-200 to-white shadow-[0_0_8px_#6ee7b7]'
+                        : isLocked
+                        ? 'bg-slate-600 shadow-none'
+                        : 'bg-gradient-to-tr from-amber-500 via-yellow-300 to-white shadow-[0_0_6px_#fde047]'
                     }`}
                   />
                 </div>
               </div>
 
-              {/* Tag Permanente da Sigla do Estado para Leitura Imediata (Para Idosos e Zoom Cheio) */}
+              {/* Tag Permanente da Sigla do Estado para Leitura Imediata */}
               <div
-                className={`tag-sigla-permanente absolute top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.2 rounded-md border shadow-lg font-mono font-black text-[11px] sm:text-xs tracking-wider whitespace-nowrap select-none pointer-events-none transition-all ${
+                className={`tag-sigla-permanente absolute top-8 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-md border shadow-xl font-mono font-black text-[11px] sm:text-xs tracking-wider whitespace-nowrap select-none pointer-events-none transition-all duration-200 ${
                   isActive
-                    ? 'bg-amber-950 text-amber-200 border-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.7)] scale-110 opacity-0'
+                    ? 'bg-amber-950 text-amber-200 border-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.8)] scale-110 opacity-0'
                     : isCompleted
-                    ? 'bg-slate-950/95 text-emerald-300 border-emerald-400/80 shadow-[0_2px_8px_rgba(16,185,129,0.4)]'
-                    : 'bg-slate-950/95 text-amber-200 border-amber-400/80 shadow-[0_2px_8px_rgba(0,0,0,0.8)]'
+                    ? 'bg-slate-950/95 text-emerald-300 border-emerald-400/80 shadow-[0_2px_10px_rgba(16,185,129,0.5)]'
+                    : isLocked
+                    ? 'bg-slate-950/95 text-slate-400 border-slate-800'
+                    : 'bg-slate-950/95 text-amber-200 border-amber-400/80 shadow-[0_2px_10px_rgba(0,0,0,0.85)]'
                 }`}
               >
                 {stateId}
               </div>
             </div>
 
-            {/* Resting Heraldic Pin (Shown when NOT active to keep map lively) */}
-            {!isActive && (
+            {/* Resting Hoisted Flag Pin with Official Coat of Arms Overlay (Shown ONLY for CONQUERED states when not hovered) */}
+            {!isActive && isCompleted && (
               <div
-                className="pin-repouso-brasao-estado absolute -top-8 left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none transition-opacity duration-200"
+                className="pin-repouso-hasteado pin-estado-conquistado absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto cursor-pointer group select-none transition-transform duration-200"
                 style={{
+                  bottom: '14px',
                   transformOrigin: 'bottom center',
                   transform: `rotateX(-${effectiveTilt}deg)`,
                 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectGuardian(stateId);
+                }}
+                onMouseEnter={() => onStateEnter(stateId)}
+                onMouseLeave={() => onStateLeave(stateId)}
               >
-                <div className="w-6 h-6 rounded-full bg-slate-950/90 border border-amber-400/80 shadow-md flex items-center justify-center p-0.5 overflow-hidden">
-                  {stateInfo.coatOfArmsUrl && stateInfo.coatOfArmsUrl.startsWith('/brasao_br/') ? (
-                    <img
-                      src={stateInfo.coatOfArmsUrl}
-                      alt={`Brasão ${stateInfo.name}`}
-                      className="w-full h-full object-contain"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <StateFlag uf={stateId} className="w-full h-full rounded-full object-cover" alt={`Bandeira ${stateId}`} />
-                  )}
+                {/* Wooden / Brass Mast Pole connecting Ground Pin to Flag */}
+                <div className="haste-mastro-mini w-1 h-7 bg-gradient-to-b from-amber-300 via-amber-600 to-amber-900 rounded-sm shadow-md" />
+
+                {/* Flag Banner with Victory Frame */}
+                <div
+                  className="quadro-bandeira-repouso absolute -top-6 w-11 h-7 flex items-center justify-center rounded-md overflow-hidden border-2 border-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.7)] bg-slate-950 group-hover:scale-110 transition-all duration-200"
+                >
+                  {/* State Flag SVG Background */}
+                  <StateFlag uf={stateId} className="w-full h-full object-cover brightness-105" alt={`Bandeira Conquistada ${stateId}`} />
+
+                  {/* Official Coat of Arms Badge Overlay in Center */}
+                  {coatUrl ? (
+                    <div className="brasao-selo-centro absolute inset-0 flex items-center justify-center p-0.5">
+                      <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-slate-950/80 border border-emerald-300 p-0.5 shadow-md flex items-center justify-center overflow-hidden">
+                        <img
+                          src={coatUrl}
+                          alt={`Brasão ${stateId}`}
+                          className="w-full h-full object-contain filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Conquered Seal badge */}
+                  <div className="selo-conquistado absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-amber-300 flex items-center justify-center shadow-md">
+                    <CheckCircle2 className="w-3 h-3 text-white" />
+                  </div>
                 </div>
               </div>
             )}

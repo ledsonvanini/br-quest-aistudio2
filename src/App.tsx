@@ -921,6 +921,8 @@ export function App() {
         }}
         geopoliticaMetric={geopoliticaMetric}
         onOpenBrQuestHub={() => setIsBrQuestHubOpen(true)}
+        selectedRegionFilter={selectedRegionFilter}
+        onSelectRegionFilter={setSelectedRegionFilter}
       />
     </div>
   );
