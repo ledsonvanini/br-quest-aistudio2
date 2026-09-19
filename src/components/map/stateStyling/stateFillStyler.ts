@@ -1,9 +1,12 @@
-import { MapVisualStyle, ChoroplethSubTheme, getStateColor } from '../../../lib/mapColorScales';
+import { MapVisualStyle, ChoroplethSubTheme, getStateColor, STATE_GEOGRAPHICAL_DATA } from '../../../lib/mapColorScales';
 import { StateWeatherData, getEcmwfTempColor } from '../../../services/climateService';
 import { ClimateMode } from '../ClimatePhenomenaLayer';
 import { GeopoliticaMetricKey } from '../../../types/geopolitica';
 import { BRAZIL_STATES_GEOPOLITICS } from '../../../data/geopoliticaData';
 import { TerrainTileProvider } from '../ClippedMapTilesLayer';
+import { CartographyLayerMode } from '../../../types/cartography';
+import { getRouteStateStyle } from './routesStateColors';
+import { isStateMatchingTerritoryFilter } from './territoryStateFilters';
 
 export interface StateVisualProperties {
   stateFill: string;
@@ -28,9 +31,13 @@ export interface GetStateVisualsOptions {
   stateWeather?: Record<string, StateWeatherData>;
   isGeopoliticaActive?: boolean;
   geopoliticaMetric?: GeopoliticaMetricKey;
+  activeCartographyLayer?: CartographyLayerMode;
+  selectedTerritorySubitemId?: string | null;
+  selectedStateId?: string | null;
   focusedClimateStateId?: string | null;
   focusedBiodiversityStateId?: string | null;
   focusedGeopoliticsStateId?: string | null;
+  focusedTerritoryStateId?: string | null;
 }
 
 export const REGION_STATES_MAP: Record<string, string[]> = {
@@ -101,9 +108,13 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
     stateWeather,
     isGeopoliticaActive = false,
     geopoliticaMetric = 'densidade',
+    activeCartographyLayer,
+    selectedTerritorySubitemId = null,
+    selectedStateId = null,
     focusedClimateStateId = null,
     focusedBiodiversityStateId = null,
     focusedGeopoliticsStateId = null,
+    focusedTerritoryStateId = null,
   } = opts;
 
   const isCompleted = completedStateIds.has(stateId);
@@ -121,24 +132,155 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
     };
   }
 
-  // 1. Estado focado/isolado
+  // 0.A ISOLAMENTO E FOCO TOTAL NO ESTADO SELECIONADO:
+  // Se qualquer estado estiver focado/selecionado (em modos fora de território), os outros 26 estados recebem tratamento "muted"
+  // cartográfico elegante (ardósia/índigo suave, preservando a leitura geográfica e as divisas, sem jamais pintar de preto)
+  const isCartographyActive = Boolean(activeCartographyLayer && activeCartographyLayer !== 'none');
+
   const activeIsolatedId =
+    selectedStateId ||
+    focusedTerritoryStateId ||
     (isClimateActive ? focusedClimateStateId : null) ||
     focusedBiodiversityStateId ||
-    focusedGeopoliticsStateId;
+    focusedGeopoliticsStateId ||
+    (isSelected ? stateId : null);
 
-  if (activeIsolatedId) {
-    if (stateId !== activeIsolatedId) {
+  if (!isCartographyActive && activeIsolatedId && stateId !== activeIsolatedId) {
+    return {
+      stateFill: '#0b1626',
+      stateFillOpacity: 0.82,
+      strokeColor: '#1d2c42',
+      strokeWidth: 0.85,
+      underglowColor: 'transparent',
+      wallGradId: 'url(#extrusionWallGradDefault)',
+    };
+  }
+
+  // 0.B Camadas Cartográficas Especiais do Território (Bacias Hidrográficas, Biomas & Relevo, Rotas e Dados Coropléticos)
+  if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+    const isMatchingFilter = isStateMatchingTerritoryFilter(
+      activeCartographyLayer,
+      selectedTerritorySubitemId,
+      stateId
+    );
+
+    // Se houver um subitem selecionado e o estado não pertencer a ele, atenua com preenchimento cartográfico suave
+    if (!isMatchingFilter) {
       return {
-        stateFill: '#27272a',
-        stateFillOpacity: 1.0,
-        strokeColor: '#52525b',
-        strokeWidth: 1.2,
+        stateFill: '#0b1626',
+        stateFillOpacity: 0.80,
+        strokeColor: '#1d2c42',
+        strokeWidth: 0.85,
         underglowColor: 'transparent',
         wallGradId: 'url(#extrusionWallGradDefault)',
       };
     }
+  }
 
+  if (activeCartographyLayer === 'bacias_hidrograficas') {
+    const isSubitemFiltered = Boolean(selectedTerritorySubitemId);
+    // Mapeamento das Grandes Bacias Hidrográficas Brasileiras (12 Regiões ANA / IBGE Oficial)
+    const basinMap: Record<string, { fill: string; stroke: string; glow: string; wall: string; name: string }> = {
+      // 1. Região Hidrográfica Amazônica (Verde Florestal Fluvial ANA)
+      AM: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica' },
+      AC: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica' },
+      RO: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica (Madeira)' },
+      RR: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica (Rio Branco)' },
+      AP: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica / Foz Oceânica' },
+      PA: { fill: '#1b4d2e', stroke: '#38bdf8', glow: '#0ea5e9', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia Amazônica e Foz Marajoara' },
+
+      // 2. Região Hidrográfica Tocantins-Araguaia (Ocre Alaranjado ANA)
+      TO: { fill: '#b45309', stroke: '#facc15', glow: '#fde047', wall: 'url(#extrusionWallGradGold)', name: 'Bacia Tocantins-Araguaia' },
+      GO: { fill: '#b45309', stroke: '#facc15', glow: '#fde047', wall: 'url(#extrusionWallGradGold)', name: 'Bacia Araguaia e Paranaíba' },
+      DF: { fill: '#b45309', stroke: '#fde047', glow: '#fef08a', wall: 'url(#extrusionWallGradGold)', name: 'Berço das Águas (DF)' },
+
+      // 3. Região Hidrográfica do Parnaíba (Anil / Índigo Fluvial ANA)
+      PI: { fill: '#3730a3', stroke: '#818cf8', glow: '#a5b4fc', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia do Rio Parnaíba' },
+
+      // 4. Atlântico Nordeste Ocidental (Laranja Cobre ANA)
+      MA: { fill: '#c2410c', stroke: '#fb923c', glow: '#fdba74', wall: 'url(#extrusionWallGradGold)', name: 'Atlântico NE Ocidental / Pindaré' },
+
+      // 5. Atlântico Nordeste Oriental (Âmbar Dourado ANA)
+      CE: { fill: '#a16207', stroke: '#fde047', glow: '#fef08a', wall: 'url(#extrusionWallGradGold)', name: 'Atlântico NE Oriental (Jaguaribe)' },
+      RN: { fill: '#a16207', stroke: '#fde047', glow: '#fef08a', wall: 'url(#extrusionWallGradGold)', name: 'Bacia Piranhas-Açu' },
+      PB: { fill: '#a16207', stroke: '#fde047', glow: '#fef08a', wall: 'url(#extrusionWallGradGold)', name: 'Bacia do Rio Paraíba' },
+
+      // 6. Região Hidrográfica do São Francisco (Terracota / Carmesim do Velho Chico ANA)
+      MG: { fill: '#9f1239', stroke: '#f87171', glow: '#fca5a5', wall: 'url(#extrusionWallGradGold)', name: 'Nascentes do Velho Chico (Canastra)' },
+      BA: { fill: '#9f1239', stroke: '#f87171', glow: '#fca5a5', wall: 'url(#extrusionWallGradGold)', name: 'Bacia do São Francisco (Médio)' },
+      PE: { fill: '#9f1239', stroke: '#f87171', glow: '#fca5a5', wall: 'url(#extrusionWallGradGold)', name: 'Submédio São Francisco' },
+      AL: { fill: '#9f1239', stroke: '#f87171', glow: '#fca5a5', wall: 'url(#extrusionWallGradGold)', name: 'Foz do São Francisco (Piaçabuçu)' },
+      SE: { fill: '#9f1239', stroke: '#f87171', glow: '#fca5a5', wall: 'url(#extrusionWallGradGold)', name: 'Foz do São Francisco (Brejo Grande)' },
+
+      // 7. Região Hidrográfica do Paraguai (Púrpura Pantaneiro ANA)
+      MS: { fill: '#701a75', stroke: '#e879f9', glow: '#f0abfc', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia do Rio Paraguai (Pantanal)' },
+      MT: { fill: '#701a75', stroke: '#e879f9', glow: '#f0abfc', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia do Paraguai e Teles Pires' },
+
+      // 8. Região Hidrográfica do Paraná (Violeta do Planalto ANA)
+      SP: { fill: '#5b21b6', stroke: '#a78bfa', glow: '#c4b5fd', wall: 'url(#extrusionWallGradGold)', name: 'Bacia do Rio Tietê-Paraná' },
+      PR: { fill: '#5b21b6', stroke: '#a78bfa', glow: '#c4b5fd', wall: 'url(#extrusionWallGradGold)', name: 'Bacia do Rio Paraná e Iguaçu' },
+
+      // 9. Regiões Hidrográficas do Uruguai e Atlântico Sul (Azul Marinho / Turquesa ANA)
+      SC: { fill: '#0f4c81', stroke: '#38bdf8', glow: '#7dd3fc', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia do Rio Uruguai e Itajaí-Açu' },
+      RS: { fill: '#0f4c81', stroke: '#38bdf8', glow: '#7dd3fc', wall: 'url(#extrusionWallGradCyan)', name: 'Bacia do Rio Uruguai e Lagoa dos Patos' },
+
+      // 10. Bacias Costeiras do Atlântico Leste / Sudeste (Verde Oliva Fluvial)
+      ES: { fill: '#365314', stroke: '#a3e635', glow: '#bef264', wall: 'url(#extrusionWallGradEmerald)', name: 'Bacia do Rio Doce' },
+      RJ: { fill: '#365314', stroke: '#a3e635', glow: '#bef264', wall: 'url(#extrusionWallGradEmerald)', name: 'Bacia do Rio Paraíba do Sul' },
+    };
+
+    const bInfo = basinMap[stateId] || {
+      fill: '#1e293b',
+      stroke: '#38bdf8',
+      glow: '#0ea5e9',
+      wall: 'url(#extrusionWallGradCyan)',
+      name: 'Rede Hidrográfica',
+    };
+
+    return {
+      stateFill: bInfo.fill,
+      stateFillOpacity: isSelected ? 0.98 : isHovered ? 0.94 : isSubitemFiltered ? 0.96 : 0.88,
+      strokeColor: isSelected ? '#fef08a' : isHovered ? '#ffffff' : isSubitemFiltered ? '#38bdf8' : bInfo.stroke,
+      strokeWidth: isSelected ? 3.6 : isHovered ? 2.8 : isSubitemFiltered ? 2.4 : 1.8,
+      underglowColor: bInfo.glow,
+      wallGradId: bInfo.wall,
+    };
+  }
+
+  if (activeCartographyLayer === 'rotas_integracao') {
+    return getRouteStateStyle(stateId, isSelected, isHovered);
+  }
+
+  if (activeCartographyLayer === 'biomas_relevo') {
+    const isSubitemFiltered = Boolean(selectedTerritorySubitemId);
+    const geoInfo = STATE_GEOGRAPHICAL_DATA[stateId];
+    const biomeColors: Record<string, { fill: string; stroke: string; glow: string; wall: string }> = {
+      'Amazônia': { fill: '#064e3b', stroke: '#10b981', glow: '#059669', wall: 'url(#extrusionWallGradEmerald)' },
+      'Cerrado': { fill: '#78350f', stroke: '#d97706', glow: '#f59e0b', wall: 'url(#extrusionWallGradGold)' },
+      'Caatinga': { fill: '#831843', stroke: '#db2777', glow: '#f43f5e', wall: 'url(#extrusionWallGradGold)' },
+      'Mata Atlântica': { fill: '#14532d', stroke: '#16a34a', glow: '#22c55e', wall: 'url(#extrusionWallGradEmerald)' },
+      'Pantanal': { fill: '#0e7490', stroke: '#06b6d4', glow: '#22d3ee', wall: 'url(#extrusionWallGradCyan)' },
+      'Pampa': { fill: '#4c1d95', stroke: '#8b5cf6', glow: '#a855f7', wall: 'url(#extrusionWallGradCyan)' },
+    };
+    const bColor = (geoInfo?.biome && biomeColors[geoInfo.biome]) || {
+      fill: '#1e293b',
+      stroke: '#38bdf8',
+      glow: '#0ea5e9',
+      wall: 'url(#extrusionWallGradCyan)',
+    };
+
+    return {
+      stateFill: bColor.fill,
+      stateFillOpacity: isSelected ? 0.98 : isHovered ? 0.94 : isSubitemFiltered ? 0.96 : 0.85,
+      strokeColor: isSelected ? '#fef08a' : isHovered ? '#ffffff' : isSubitemFiltered ? '#34d399' : bColor.stroke,
+      strokeWidth: isSelected ? 3.6 : isHovered ? 2.8 : isSubitemFiltered ? 2.4 : 1.8,
+      underglowColor: bColor.glow,
+      wallGradId: bColor.wall,
+    };
+  }
+
+  // 1. Estilos específicos para o estado isolado focado
+  if (activeIsolatedId && stateId === activeIsolatedId) {
     if (focusedGeopoliticsStateId && stateId === focusedGeopoliticsStateId) {
       return {
         stateFill: '#0891b2',
@@ -166,6 +308,17 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
         stateFill: '#0284c7',
         stateFillOpacity: 0.98,
         strokeColor: '#38bdf8',
+        strokeWidth: 3.6,
+        underglowColor: '#0ea5e9',
+        wallGradId: 'url(#extrusionWallGradCyan)',
+      };
+    }
+
+    if (focusedTerritoryStateId && stateId === focusedTerritoryStateId) {
+      return {
+        stateFill: '#0284c7',
+        stateFillOpacity: 0.98,
+        strokeColor: '#fef08a',
         strokeWidth: 3.6,
         underglowColor: '#0ea5e9',
         wallGradId: 'url(#extrusionWallGradCyan)',

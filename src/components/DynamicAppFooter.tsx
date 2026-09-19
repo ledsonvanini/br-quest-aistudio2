@@ -60,6 +60,11 @@ interface DynamicAppFooterProps {
   // Cartography Layer context (2D)
   activeCartographyLayer?: CartographyLayerMode;
   onClearCartographyLayer?: () => void;
+  onSelectCartographyLayer?: (layer: CartographyLayerMode) => void;
+  selectedTerritorySubitemId?: string | null;
+  onSelectTerritorySubitem?: (subitemId: string | null) => void;
+  isTerritorySubmenuOpen?: boolean;
+  onToggleTerritorySubmenu?: () => void;
 }
 
 export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
@@ -88,6 +93,11 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
   onResetGlobeCamera,
   activeCartographyLayer = 'none',
   onClearCartographyLayer,
+  onSelectCartographyLayer,
+  selectedTerritorySubitemId,
+  onSelectTerritorySubitem,
+  isTerritorySubmenuOpen,
+  onToggleTerritorySubmenu,
 }) => {
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
   const formattedTimeOnly = useMemo(() => {
@@ -122,13 +132,13 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
       id="rodape-aplicacao-dinamico"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      className="rodape-aplicacao container-rodape-dinamico fixed bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-40 bg-[#020d24]/80 backdrop-blur-md border border-amber-500/35 rounded-2xl px-2.5 sm:px-3.5 py-1.5 text-slate-200 select-none shadow-[0_8px_32px_rgba(0,0,0,0.85)] flex items-center justify-between gap-2 sm:gap-3 pointer-events-auto max-w-[calc(100vw-24px)] md:max-w-fit"
+      className="rodape-aplicacao container-rodape-dinamico fixed bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 z-40 bg-[#020d24]/92 backdrop-blur-md border border-amber-500/35 rounded-2xl px-2.5 sm:px-3.5 py-1.5 text-slate-200 select-none shadow-[0_8px_32px_rgba(0,0,0,0.85)] flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto max-w-[calc(100vw-24px)] md:max-w-fit transition-all duration-300 mx-auto"
       role="contentinfo"
       aria-label="Rodapé do Sistema BR Quest"
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-3 w-full">
-        {/* Seção de Conteúdo Dinâmico Auxiliar */}
-        <div className="secao-conteudo-dinamico-auxiliar flex-1 min-w-0 flex items-center justify-center overflow-visible">
+      <div className="flex items-center justify-center gap-2 sm:gap-3 w-full">
+        {/* Seção de Conteúdo Dinâmico Auxiliar Centralizado */}
+        <div className="secao-conteudo-dinamico-auxiliar flex items-center justify-center overflow-visible">
           {/* CASO GLOBO 3D ORBITAL */}
           {mainMode === 'globo3d' && (
             <FooterGlobeTicker
@@ -141,7 +151,13 @@ export const DynamicAppFooter: React.FC<DynamicAppFooterProps> = ({
           {mainMode !== 'globo3d' && !activeGuardian && activeTab === 'map' && activeCartographyLayer !== 'none' && (
             <FooterTerritoryTicker
               activeLayer={activeCartographyLayer}
+              selectedSubitemId={selectedTerritorySubitemId}
+              onSelectSubitem={onSelectTerritorySubitem}
               onClearLayer={onClearCartographyLayer || (() => {})}
+              onSelectLayer={onSelectCartographyLayer}
+              isSubmenuOpen={isTerritorySubmenuOpen}
+              onToggleSubmenu={onToggleTerritorySubmenu}
+              onClearSelection={selectedStateId ? () => onStateClick(selectedStateId) : undefined}
             />
           )}
 

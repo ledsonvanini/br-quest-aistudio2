@@ -35,11 +35,10 @@ import {
   Trophy,
 } from 'lucide-react';
 import { ClimateMode } from '../map/ClimatePhenomenaLayer';
-import { TerrainTileProvider, MapVisualStyle, BiodiversityKingdom } from '../../types';
+import { TerrainTileProvider, MapVisualStyle, BiodiversityKingdom, AppMainMode, MenuTooltipInfo } from '../../types';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
 import { QuestThemePillar } from '../../data/brQuestQuestionsData';
 import { BRAZIL_STATES_REGISTRY } from '../../data/brazilStatesRegistry';
-import { AppMainMode, MenuTooltipInfo } from '../TopGlobalNavMenu';
 
 interface NavFlyoutMenuProps {
   openFlyoutMode: AppMainMode;

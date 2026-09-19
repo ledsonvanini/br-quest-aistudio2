@@ -101,4 +101,46 @@ test.describe.serial('Navegação, Modos Temáticos e Hubs Educacionais - Testes
       await page.waitForTimeout(400);
     }
   });
+
+  test('5. deve testar camada Território e Redes: submenu lateral conectado e toolbar com ícones no rodapé', async () => {
+    // Expande gaveta de território se estiver recolhida
+    const btnExpandTerritory = page.locator('#btn-toggle-expansao-territorio');
+    if (await btnExpandTerritory.isVisible()) {
+      await btnExpandTerritory.click({ force: true });
+      await page.waitForTimeout(300);
+    }
+
+    // Ativa camada de Bacias Hidrográficas
+    const btnBacias = page.locator('#btn-camada-hidrografia');
+    if (await btnBacias.isVisible()) {
+      await btnBacias.click({ force: true });
+      await page.waitForTimeout(400);
+
+      // Verifica presença do rodapé de território focado em ícones
+      const toolbarRodape = page.locator('#rodape-toolbar-territorio');
+      await expect(toolbarRodape).toBeAttached();
+
+      // Verifica presença do submenu lateral conectado à sidebar
+      const submenuLateral = page.locator('#submenu-lateral-territorio-conectado');
+      await expect(submenuLateral).toBeAttached();
+
+      // Alterna para Biomas & Relevo via botão no rodapé
+      const btnBiomasRodape = page.locator('#btn-camada-rodape-biomas_relevo');
+      if (await btnBiomasRodape.isVisible()) {
+        await btnBiomasRodape.click({ force: true });
+        await page.waitForTimeout(300);
+      }
+
+      // Alterna para Rotas de Integração via botão no rodapé
+      const btnRotasRodape = page.locator('#btn-camada-rodape-rotas_integracao');
+      if (await btnRotasRodape.isVisible()) {
+        await btnRotasRodape.click({ force: true });
+        await page.waitForTimeout(300);
+      }
+
+      // Garante que o usuário permanece no mapa sem abrir o modo Guardião
+      const modalGuardiao = page.locator('#modal-quiz-guardiao, #painel-guardiao-detalhes');
+      await expect(modalGuardiao).not.toBeVisible();
+    }
+  });
 });

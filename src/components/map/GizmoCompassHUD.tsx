@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Compass, RotateCcw, Eye, Layers, Maximize2, Globe } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
+import { CartographyLayerMode } from '../../types/cartography';
+import { MapVisualStyle, ChoroplethSubTheme } from '../../lib/mapColorScales';
+import { UnifiedCompassMapLegend } from './UnifiedCompassMapLegend';
 
 export type MapAnglePreset = '2d_flat' | 'iso_suave' | 'iso_classico' | 'perspectiva_3d';
 
@@ -14,6 +17,10 @@ interface GizmoCompassHUDProps {
   is3D: boolean;
   isGlobe3DActive?: boolean;
   onToggleGlobe3D?: () => void;
+  activeCartographyLayer?: CartographyLayerMode;
+  visualStyle?: MapVisualStyle;
+  choroplethSubTheme?: ChoroplethSubTheme;
+  completedCount?: number;
 }
 
 export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
@@ -26,6 +33,10 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
   is3D,
   isGlobe3DActive = false,
   onToggleGlobe3D,
+  activeCartographyLayer = 'none',
+  visualStyle = 'tiles',
+  choroplethSubTheme = 'progress',
+  completedCount = 0,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDraggingCompass, setIsDraggingCompass] = useState(false);
@@ -153,11 +164,11 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
       id="gizmo-compass-hud"
       className="painel-gizmo-bussola fixed bottom-0.5 right-2 sm:right-3 z-40 flex flex-col items-center select-none pointer-events-auto"
     >
-      {/* 1. Angle & Preset Options Popover */}
+      {/* 1. Angle, Preset Options & Unified Map Legend Popover */}
       {isMenuOpen && (
         <div
           ref={menuPopoverRef}
-          className="painel-presets-gizmo mb-1 w-64 bg-slate-950/95 backdrop-blur-xl border border-amber-500/40 shadow-2xl shadow-black/80 rounded-2xl p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200 z-50"
+          className="painel-presets-gizmo mb-1 w-72 sm:w-80 max-h-[82vh] overflow-y-auto bg-slate-950/95 backdrop-blur-xl border border-amber-500/40 shadow-2xl shadow-black/80 rounded-2xl p-3 flex flex-col gap-2.5 animate-in fade-in slide-in-from-bottom-3 duration-200 z-50 scrollbar-thin scrollbar-thumb-slate-700"
         >
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
             <span className="text-xs font-serif font-bold text-amber-300 flex items-center gap-1.5">
@@ -287,6 +298,14 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
             </button>
           )}
 
+          {/* Legenda Cartográfica Viva e Unificada */}
+          <UnifiedCompassMapLegend
+            activeCartographyLayer={activeCartographyLayer}
+            visualStyle={visualStyle}
+            choroplethSubTheme={choroplethSubTheme}
+            completedCount={completedCount}
+          />
+
           {/* Botão de Reset ao Norte */}
           <button
             onClick={() => {
@@ -326,6 +345,16 @@ export const GizmoCompassHUD: React.FC<GizmoCompassHUDProps> = ({
           <span className="font-bold">{getHeadingLabel(headingAngle)}</span>
           <span className="text-amber-500/60">•</span>
           <span>{Math.round(pitchAngle)}°</span>
+          {activeCartographyLayer && activeCartographyLayer !== 'none' && (
+            <>
+              <span className="text-cyan-500/60">•</span>
+              <span className="text-cyan-300 font-sans font-semibold text-[9px] uppercase tracking-wider">
+                {activeCartographyLayer === 'bacias_hidrograficas' && 'Bacias'}
+                {activeCartographyLayer === 'biomas_relevo' && 'Biomas'}
+                {activeCartographyLayer === 'rotas_integracao' && 'Rotas'}
+              </span>
+            </>
+          )}
           {!isFacingNorth && (
             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-0.5" />
           )}

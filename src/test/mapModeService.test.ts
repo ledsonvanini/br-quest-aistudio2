@@ -30,7 +30,7 @@ describe('MapModeService - Governance and Decoupling Engine', () => {
     expect(MODE_DEFAULT_PROFILES.clima.defaultTerrain).toBe('muted_gray');
     expect(MODE_DEFAULT_PROFILES.biodiversidade.defaultTerrain).toBe('natural_earth');
     expect(MODE_DEFAULT_PROFILES.geopolitica.defaultTerrain).toBe('shaded_relief');
-    expect(MODE_DEFAULT_PROFILES.geopolitica.defaultPanelOpen).toBe(true);
+    expect(MODE_DEFAULT_PROFILES.geopolitica.defaultPanelOpen).toBe(false);
     expect(MODE_DEFAULT_PROFILES.musicalidades.defaultPanelOpen).toBe(false);
     expect(MODE_DEFAULT_PROFILES.aventura.defaultTerrain).toBe('voyager_parchment');
   });

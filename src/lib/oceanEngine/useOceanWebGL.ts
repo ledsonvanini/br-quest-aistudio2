@@ -8,6 +8,7 @@ export interface UseOceanWebGLOptions {
   enabled: boolean;
   waveSpeed: number;
   mode: AppMainMode;
+  isTerritoryMode?: boolean;
   customBrazilGeo?: any;
   mapScale?: [number, number];
 }
@@ -30,6 +31,7 @@ export function useOceanWebGL({
   enabled,
   waveSpeed,
   mode,
+  isTerritoryMode = false,
   customBrazilGeo,
   mapScale = [1.0, 1.0],
 }: UseOceanWebGLOptions) {
@@ -49,6 +51,7 @@ export function useOceanWebGL({
   });
 
   const getThemeModeInt = useCallback((themeMode: AppMainMode): number => {
+    if (isTerritoryMode) return 4;
     switch (themeMode) {
       case 'biodiversidade':
         return 1;
@@ -61,7 +64,7 @@ export function useOceanWebGL({
       default:
         return 0;
     }
-  }, []);
+  }, [isTerritoryMode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

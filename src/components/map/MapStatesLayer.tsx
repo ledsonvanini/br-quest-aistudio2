@@ -10,6 +10,7 @@ import { CartographicGraticuleLayer } from './CartographicGraticuleLayer';
 import { StateWeatherData } from '../../services/climateService';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
+import { CartographyLayerMode } from '../../types/cartography';
 import {
   computeStateVisuals,
   REGION_STATES_MAP,
@@ -44,10 +45,13 @@ export interface MapStatesLayerProps {
   stateWeather?: Record<string, StateWeatherData>;
   isGeopoliticaActive?: boolean;
   geopoliticaMetric?: GeopoliticaMetricKey;
+  activeCartographyLayer?: CartographyLayerMode;
+  selectedTerritorySubitemId?: string | null;
   focusedClimateStateId?: string | null;
   focusedBiodiversityStateId?: string | null;
   focusedGeopoliticsStateId?: string | null;
   focusedMusicalStateId?: string | null;
+  focusedTerritoryStateId?: string | null;
   is3D?: boolean;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
@@ -76,10 +80,13 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   stateWeather,
   isGeopoliticaActive = false,
   geopoliticaMetric = 'densidade',
+  activeCartographyLayer,
+  selectedTerritorySubitemId = null,
   focusedClimateStateId = null,
   focusedBiodiversityStateId = null,
   focusedGeopoliticsStateId = null,
   focusedMusicalStateId = null,
+  focusedTerritoryStateId = null,
   onStateEnter,
   onStateLeave,
   onStateClick,
@@ -184,9 +191,12 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       stateWeather,
       isGeopoliticaActive,
       geopoliticaMetric,
+      activeCartographyLayer,
+      selectedStateId,
       focusedClimateStateId,
       focusedBiodiversityStateId,
       focusedGeopoliticsStateId,
+      focusedTerritoryStateId,
     });
   }, [
     activeElevatedStateId,
@@ -205,6 +215,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
     focusedClimateStateId,
     focusedBiodiversityStateId,
     focusedGeopoliticsStateId,
+    focusedTerritoryStateId,
   ]);
 
   if (!pathGenerator || !geoData) return null;
@@ -218,6 +229,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   const isRegionActive = !!activeRegionFilter;
 
   const activeIsolatedState =
+    selectedStateId ||
+    focusedTerritoryStateId ||
     (isClimateActive ? focusedClimateStateId : null) ||
     focusedBiodiversityStateId ||
     focusedGeopoliticsStateId ||
@@ -244,6 +257,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
         showNeighbors={showNeighbors}
         hoveredCountryId={hoveredCountryId}
         isClimateActive={isClimateActive}
+        isTerritoryActive={Boolean(activeCartographyLayer && activeCartographyLayer !== 'none')}
         terrainProvider={terrainProvider}
         onCountryEnter={onCountryEnter}
         onCountryLeave={onCountryLeave}
@@ -252,6 +266,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
 
       {/* 2. D3 Clipped Map Tiles (Natural Earth, Shaded Relief, Satellite) */}
       {visualStyle === 'tiles' &&
+        !activeIsolatedState &&
+        (!activeCartographyLayer || activeCartographyLayer === 'none') &&
         !focusedClimateStateId &&
         !focusedBiodiversityStateId &&
         !focusedGeopoliticsStateId &&
@@ -264,15 +280,17 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           />
         )}
 
-      {/* Cartographic Graticule Grid */}
-      <CartographicGraticuleLayer
-        projection={projection}
-        isParchmentMode={terrainProvider === 'voyager_parchment'}
-        isClimateActive={isClimateActive}
-      />
+      {/* Cartographic Graticule Grid (Discreto e apenas quando nenhuma camada temática de território ou foco estiver ativa) */}
+      {(!activeCartographyLayer || activeCartographyLayer === 'none') && !activeIsolatedState && (
+        <CartographicGraticuleLayer
+          projection={projection}
+          isParchmentMode={terrainProvider === 'voyager_parchment'}
+          isClimateActive={isClimateActive}
+        />
+      )}
 
-      {/* Antique Cartography Embellishments */}
-      {!isClimateActive && (
+      {/* Antique Cartography Embellishments (Apenas no modo padrão sem cartografia temática) */}
+      {!isClimateActive && (!activeCartographyLayer || activeCartographyLayer === 'none') && !activeIsolatedState && (
         <AntiqueCartographyDecor isParchmentMode={terrainProvider === 'voyager_parchment'} />
       )}
 
@@ -308,9 +326,13 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
             stateWeather,
             isGeopoliticaActive,
             geopoliticaMetric,
+            activeCartographyLayer,
+            selectedTerritorySubitemId,
+            selectedStateId,
             focusedClimateStateId,
             focusedBiodiversityStateId,
             focusedGeopoliticsStateId,
+            focusedTerritoryStateId,
           });
 
           const belongsToActiveRegion =
@@ -338,6 +360,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
               isClimateActive={isClimateActive}
               isGeopoliticaActive={isGeopoliticaActive}
               visualStyle={visualStyle}
+              activeCartographyLayer={activeCartographyLayer}
               onStateEnter={onStateEnter}
               onStateLeave={onStateLeave}
               onStateClick={onStateClick}

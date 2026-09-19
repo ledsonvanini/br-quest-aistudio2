@@ -9,6 +9,7 @@ export const OCEAN_EXPANDED_HEIGHT = MAP_CANVAS_HEIGHT;
 export interface OceanShaderCanvasProps {
   enabled?: boolean;
   mode?: AppMainMode;
+  isTerritoryMode?: boolean;
   waveSpeed?: number;
   onWaterClick?: (x: number, y: number) => void;
   customBrazilGeo?: any;
@@ -35,6 +36,7 @@ export interface OceanShaderCanvasProps {
 export const OceanShaderCanvas: React.FC<OceanShaderCanvasProps> = ({
   enabled = true,
   mode = 'aventura',
+  isTerritoryMode = false,
   waveSpeed = 0.6,
   onWaterClick,
   customBrazilGeo,
@@ -47,6 +49,7 @@ export const OceanShaderCanvas: React.FC<OceanShaderCanvasProps> = ({
     enabled,
     waveSpeed,
     mode,
+    isTerritoryMode,
     customBrazilGeo,
     mapScale: [1.0, 1.0],
   });

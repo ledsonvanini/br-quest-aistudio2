@@ -48,6 +48,12 @@ void getDeepOceanPalette(
     midOcean         = vec3(0.020, 0.160, 0.360);
     lightAzure       = vec3(0.100, 0.480, 0.800);
     causticHighlight = vec3(0.550, 0.850, 0.980);
+  } else if (mode == 4) {
+    // Território & Redes Vivas: Batimetria e Estuários Técnicos Cartográficos
+    deepAbyss        = vec3(0.004, 0.045, 0.115);
+    midOcean         = vec3(0.012, 0.125, 0.250);
+    lightAzure       = vec3(0.038, 0.340, 0.520);
+    causticHighlight = vec3(0.320, 0.800, 0.920);
   } else {
     // Aventura, Clima, Geopolítica (Padrão Atlântico Sul Profundo)
     deepAbyss        = vec3(0.006, 0.070, 0.160);

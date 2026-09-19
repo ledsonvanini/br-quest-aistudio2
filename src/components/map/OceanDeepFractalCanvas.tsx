@@ -4,11 +4,13 @@ import { AppMainMode } from '../../types';
 
 interface OceanDeepFractalCanvasProps {
   mode?: AppMainMode;
+  isTerritoryMode?: boolean;
   waveSpeed?: number;
   isPlayingAnimation?: boolean;
 }
 
-const getThemeModeInt = (mode?: AppMainMode): number => {
+const getThemeModeInt = (mode?: AppMainMode, isTerritoryMode?: boolean): number => {
+  if (isTerritoryMode) return 4;
   if (mode === 'biodiversidade') return 1;
   if (mode === 'musicalidades') return 2;
   return 0; // aventura, clima, geopolitica
@@ -23,6 +25,7 @@ const getThemeModeInt = (mode?: AppMainMode): number => {
  */
 export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
   mode = 'aventura',
+  isTerritoryMode = false,
   waveSpeed = 0.72,
   isPlayingAnimation = true,
 }) => {
@@ -158,7 +161,7 @@ export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
             gl.uniform2f(uniformsRef.current.u_resolution, canvas.width, canvas.height);
           }
           if (uniformsRef.current.u_theme_mode) {
-            gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode));
+            gl.uniform1i(uniformsRef.current.u_theme_mode, getThemeModeInt(mode, isTerritoryMode));
           }
 
           gl.clearColor(0, 0, 0, 0);
@@ -180,7 +183,7 @@ export const OceanDeepFractalCanvas: React.FC<OceanDeepFractalCanvasProps> = ({
         if (fs) gl.deleteShader(fs);
       }
     };
-  }, [mode, waveSpeed, isPlayingAnimation]);
+  }, [mode, isTerritoryMode, waveSpeed, isPlayingAnimation]);
 
   return (
     <div

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TopGlobalNavMenu, AppMainMode } from './components/TopGlobalNavMenu';
+import { TopGlobalNavMenu } from './components/TopGlobalNavMenu';
 import { IsometricMapCanvas } from './components/IsometricMapCanvas';
 import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
@@ -9,7 +9,7 @@ import { AboutInfoModal } from './components/AboutInfoModal';
 import { UserProfileModal } from './components/auth/UserProfileModal';
 import { BrQuestHubModal } from './components/quest/BrQuestHubModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
-import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from './types';
+import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome, AppMainMode } from './types';
 import { GeopoliticaMetricKey } from './types/geopolitica';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
@@ -42,7 +42,7 @@ export function App() {
   const [isDailyTipsOpen, setIsDailyTipsOpen] = useState<boolean>(false);
   const [showFps, setShowFps] = useState<boolean>(false);
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
-  const [selectedStateId, setSelectedStateId] = useState<string | null>('DF');
+  const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
 
   // App Modes Orchestration with custom hook
   const {
@@ -143,14 +143,53 @@ export function App() {
 
   // Camadas Cartográficas Ricas do Território (Exclusivo 2D)
   const [activeCartographyLayer, setActiveCartographyLayer] = useState<CartographyLayerMode>('none');
+  const [selectedTerritorySubitemId, setSelectedTerritorySubitemId] = useState<string | null>(null);
+  const [isTerritorySubmenuOpen, setIsTerritorySubmenuOpen] = useState<boolean>(true);
+
+  const handleSelectCartographyLayer = (layer: CartographyLayerMode, targetState?: string | null) => {
+    if (layer === activeCartographyLayer) {
+      setActiveCartographyLayer('none');
+      setSelectedTerritorySubitemId(null);
+      setSelectedStateId(null);
+      setIsTerritorySubmenuOpen(false);
+      return;
+    }
+
+    setActiveCartographyLayer(layer);
+    setSelectedTerritorySubitemId(null);
+    if (layer !== 'none') {
+      if (targetState) {
+        // Se um estado foi explicitamente requisitado (ex: balão fixo), abre o AppLateral e fecha submenu
+        setSelectedStateId(targetState);
+        setIsTerritorySubmenuOpen(false);
+      } else {
+        // Padrão solicitado: abrir apenas o menu lateral e fechar appLateral (se estiver aberto) + Centralizar Mapa Brasil
+        setSelectedStateId(null);
+        setIsTerritorySubmenuOpen(true);
+        if (showNeighbors) setShowNeighbors(false);
+        setCenterMapTrigger((prev) => prev + 1);
+      }
+    } else {
+      setSelectedStateId(null);
+      setIsTerritorySubmenuOpen(false);
+    }
+  };
+
+  const handleSelectStateId = (stateId: string | null) => {
+    setSelectedStateId(stateId);
+    if (stateId) {
+      // Ao abrir o AppLateral para um estado ou balão, fecha os submenus
+      setIsTerritorySubmenuOpen(false);
+    }
+  };
 
   const handleSelectMainMode = (newMode: AppMainMode) => {
     selectMainMode(newMode);
 
-    // Desacoplamento inegociável entre 2D e 3D: desativar camadas temáticas do mapa 2D ao mudar para o Globo 3D
-    if (newMode === 'globo3d') {
-      setActiveCartographyLayer('none');
-    }
+    // Desacoplamento inegociável entre modos: desativa completamente camadas temáticas de território ao alternar modos
+    setActiveCartographyLayer('none');
+    setSelectedTerritorySubitemId(null);
+    setIsTerritorySubmenuOpen(false);
 
     if (activeTab !== 'map') {
       setActiveTab('map');
@@ -481,16 +520,14 @@ export function App() {
           onToggleNeighbors={handleToggleNeighbors}
           isObservatorioOpen={isObservatorioOpen}
           onToggleObservatorio={() => {
-            setIsObservatorioOpen((prev) => {
-              const next = !prev;
-              if (next) {
-                setIsBiodiversityPanelOpen(false);
-                setIsGeopoliticaPanelOpen(false);
-                setIsRadioOpen(false);
-                setIsGlobeTelemetryOpen(false);
-              }
-              return next;
-            });
+            const next = !isObservatorioOpen;
+            setIsObservatorioOpen(next);
+            if (next) {
+              setIsBiodiversityPanelOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsRadioOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
             if (showNeighbors) setShowNeighbors(false);
           }}
           onNavigateToSanctuary={() => {
@@ -523,16 +560,14 @@ export function App() {
           }}
           isRadioOpen={isRadioOpen}
           onToggleRadio={() => {
-            setIsRadioOpen((prev) => {
-              const next = !prev;
-              if (next) {
-                setIsObservatorioOpen(false);
-                setIsBiodiversityPanelOpen(false);
-                setIsGeopoliticaPanelOpen(false);
-                setIsGlobeTelemetryOpen(false);
-              }
-              return next;
-            });
+            const next = !isRadioOpen;
+            setIsRadioOpen(next);
+            if (next) {
+              setIsObservatorioOpen(false);
+              setIsBiodiversityPanelOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
           }}
           activeMusicCategory={activeMusicCategory}
           onSelectMusicCategory={setActiveMusicCategory}
@@ -551,16 +586,14 @@ export function App() {
           onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
           isGlobeTelemetryOpen={isGlobeTelemetryOpen}
           onToggleGlobeTelemetry={() => {
-            setIsGlobeTelemetryOpen((prev) => {
-              const next = !prev;
-              if (next) {
-                setIsObservatorioOpen(false);
-                setIsBiodiversityPanelOpen(false);
-                setIsGeopoliticaPanelOpen(false);
-                setIsRadioOpen(false);
-              }
-              return next;
-            });
+            const next = !isGlobeTelemetryOpen;
+            setIsGlobeTelemetryOpen(next);
+            if (next) {
+              setIsObservatorioOpen(false);
+              setIsBiodiversityPanelOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsRadioOpen(false);
+            }
           }}
           biodiversityKingdom={biodiversityKingdom}
           onBiodiversityKingdomChange={(k) => {
@@ -578,16 +611,14 @@ export function App() {
           onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
           isBiodiversityPanelOpen={isBiodiversityPanelOpen}
           onToggleBiodiversityPanel={() => {
-            setIsBiodiversityPanelOpen((p) => {
-              const next = !p;
-              if (next) {
-                setIsObservatorioOpen(false);
-                setIsGeopoliticaPanelOpen(false);
-                setIsRadioOpen(false);
-                setIsGlobeTelemetryOpen(false);
-              }
-              return next;
-            });
+            const next = !isBiodiversityPanelOpen;
+            setIsBiodiversityPanelOpen(next);
+            if (next) {
+              setIsObservatorioOpen(false);
+              setIsGeopoliticaPanelOpen(false);
+              setIsRadioOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
           }}
           geopoliticaMetric={geopoliticaMetric}
           onGeopoliticaMetricChange={(metric) => {
@@ -596,16 +627,14 @@ export function App() {
           }}
           isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
           onToggleGeopoliticaPanel={() => {
-            setIsGeopoliticaPanelOpen((p) => {
-              const next = !p;
-              if (next) {
-                setIsObservatorioOpen(false);
-                setIsBiodiversityPanelOpen(false);
-                setIsRadioOpen(false);
-                setIsGlobeTelemetryOpen(false);
-              }
-              return next;
-            });
+            const next = !isGeopoliticaPanelOpen;
+            setIsGeopoliticaPanelOpen(next);
+            if (next) {
+              setIsObservatorioOpen(false);
+              setIsBiodiversityPanelOpen(false);
+              setIsRadioOpen(false);
+              setIsGlobeTelemetryOpen(false);
+            }
             if (showNeighbors) setShowNeighbors(false);
           }}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -624,7 +653,12 @@ export function App() {
           }}
           hoveredStateId={hoveredStateId}
           activeCartographyLayer={activeCartographyLayer}
-          onSelectCartographyLayer={setActiveCartographyLayer}
+          onSelectCartographyLayer={handleSelectCartographyLayer}
+          onSelectState={handleSelectStateId}
+          selectedTerritorySubitemId={selectedTerritorySubitemId}
+          onSelectTerritorySubitem={setSelectedTerritorySubitemId}
+          isTerritorySubmenuOpen={isTerritorySubmenuOpen}
+          onToggleTerritorySubmenu={() => setIsTerritorySubmenuOpen((prev) => !prev)}
           onOpenDailyTips={() => setIsDailyTipsOpen(true)}
           dailyTipsUnreadCount={dailyTips.unreadCount}
           onOpenBrQuestHub={(pillar) => {
@@ -675,6 +709,13 @@ export function App() {
               mainMode={mainMode}
               onSelectMainMode={handleSelectMainMode}
               activeCartographyLayer={activeCartographyLayer}
+              selectedTerritorySubitemId={selectedTerritorySubitemId}
+              onSelectTerritorySubitem={setSelectedTerritorySubitemId}
+              isTerritorySubmenuOpen={isTerritorySubmenuOpen}
+              onCloseTerritorySubmenu={() => setIsTerritorySubmenuOpen(false)}
+              onOpenTerritorySubmenu={() => setIsTerritorySubmenuOpen(true)}
+              selectedStateId={selectedStateId}
+              onSelectStateId={handleSelectStateId}
               climateMode={climateMode}
               onClimateModeChange={setClimateMode}
               terrainProvider={terrainProvider}
@@ -862,18 +903,21 @@ export function App() {
         onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((prev) => !prev)}
         onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
         activeCartographyLayer={activeCartographyLayer}
-        onClearCartographyLayer={() => setActiveCartographyLayer('none')}
+        onClearCartographyLayer={() => handleSelectCartographyLayer('none')}
+        onSelectCartographyLayer={handleSelectCartographyLayer}
+        selectedTerritorySubitemId={selectedTerritorySubitemId}
+        onSelectTerritorySubitem={setSelectedTerritorySubitemId}
+        isTerritorySubmenuOpen={isTerritorySubmenuOpen}
+        onToggleTerritorySubmenu={() => setIsTerritorySubmenuOpen((prev) => !prev)}
         onToggleRadio={() => {
-          setIsRadioOpen((prev) => {
-            const next = !prev;
-            if (next) {
-              setIsObservatorioOpen(false);
-              setIsBiodiversityPanelOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-            return next;
-          });
+          const next = !isRadioOpen;
+          setIsRadioOpen(next);
+          if (next) {
+            setIsObservatorioOpen(false);
+            setIsBiodiversityPanelOpen(false);
+            setIsGeopoliticaPanelOpen(false);
+            setIsGlobeTelemetryOpen(false);
+          }
         }}
         geopoliticaMetric={geopoliticaMetric}
         onOpenBrQuestHub={() => setIsBrQuestHubOpen(true)}

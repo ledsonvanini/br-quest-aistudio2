@@ -1,209 +1,282 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { MAP_CANVAS_WIDTH, MAP_CANVAS_HEIGHT } from '../../lib/mapProjections';
 import { CartographyLayerMode } from '../../types/cartography';
+import { ENRICHED_INTEGRATION_ROUTES, BRAZIL_KEY_PORTS } from '../../data/cartographyBasinsData';
+import { HydroBasinsMapLayer } from './territory/HydroBasinsMapLayer';
+import { BiomesReliefMapLayer } from './territory/BiomesReliefMapLayer';
+import { TerritoryFeatureDetailModal, TerritoryFeatureData } from './territory/TerritoryFeatureDetailModal';
+import { HydroRegionInfo } from '../../data/cartography/hydroRegionsData';
+import { BiomeGeoFeature } from '../../data/cartography/biomesData';
 
-interface TerritoryLayersOverlayProps {
+export interface TerritoryLayersOverlayProps {
   activeLayer: CartographyLayerMode;
   hoveredStateId?: string | null;
   selectedStateId?: string | null;
+  selectedSubitemId?: string | null;
+  onSelectSubitem?: (subitemId: string | null) => void;
+  onSelectState?: (stateId: string) => void;
 }
 
-/**
- * Dados Cartográficos das Bacias Hidrográficas do Brasil
- * Coordenadas calibradas na malha 1000x1000 do SVG nacional.
- */
-const HYDROLOGICAL_BASINS = [
-  {
-    id: 'amazonica',
-    name: 'Bacia Amazônica',
-    color: '#06b6d4',
-    discharge: '209.000 m³/s',
-    area: '6.110.000 km²',
-    // Linhas principais do Rio Solimões/Amazonas, Rio Negro e Madeira
-    riverPaths: [
-      'M 120,380 Q 250,370 380,330 T 600,280 T 780,240', // Rio Solimões / Amazonas
-      'M 280,210 Q 340,260 410,320', // Rio Negro
-      'M 300,520 Q 360,460 480,360', // Rio Madeira
-      'M 490,560 Q 520,450 560,320', // Rio Tapajós
-      'M 600,600 Q 640,480 670,300', // Rio Xingu
-    ],
-    labelPos: { x: 380, y: 260 },
-  },
-  {
-    id: 'tocantins_araguaia',
-    name: 'Bacia Tocantins-Araguaia',
-    color: '#0ea5e9',
-    discharge: '13.600 m³/s',
-    area: '920.000 km²',
-    riverPaths: [
-      'M 580,680 Q 600,540 620,380 T 680,270', // Rio Araguaia
-      'M 660,650 Q 670,510 680,380 T 700,280', // Rio Tocantins
-    ],
-    labelPos: { x: 620, y: 460 },
-  },
-  {
-    id: 'sao_francisco',
-    name: 'Bacia do São Francisco',
-    color: '#38bdf8',
-    discharge: '2.850 m³/s',
-    area: '640.000 km²',
-    riverPaths: [
-      'M 680,720 Q 730,620 760,510 T 820,440 T 900,430', // "Velho Chico" da Canastra à foz no Atlântico
-    ],
-    labelPos: { x: 770, y: 530 },
-  },
-  {
-    id: 'prata_parana',
-    name: 'Bacia do Prata (Paraná / Paraguai)',
-    color: '#67e8f9',
-    discharge: '16.000 m³/s',
-    area: '1.400.000 km²',
-    riverPaths: [
-      'M 530,680 Q 520,760 510,830', // Rio Paraguai / Pantanal
-      'M 650,720 Q 620,770 580,820 T 540,880', // Rio Paraná / Itaipu
-      'M 670,780 Q 620,830 540,890', // Rio Tietê / Paranapanema
-      'M 550,910 Q 500,940 460,980', // Rio Uruguai
-    ],
-    labelPos: { x: 580, y: 780 },
-  },
-];
+const ROUTE_PRIMARY_STATE: Record<string, string> = {
+  br_101: 'RJ',
+  br_116: 'SP',
+  br_364: 'RO',
+  hidrovia_tiete_parana: 'SP',
+  hidrovia_madeira_amazonas: 'AM',
+  ferrovia_norte_sul: 'GO',
+  ferrovia_carajas: 'PA',
+};
 
-/**
- * Rotas e Conectividade Histórica / Moderna
- */
-const INTEGRATION_ROUTES = [
-  {
-    id: 'estrada_real',
-    name: 'Estrada Real (Ouro & Diamantes)',
-    color: '#f59e0b',
-    path: 'M 720,710 Q 710,740 700,770 T 730,795', // MG até Paraty / Rio
-    kind: 'Histórica (Século XVIII)',
-  },
-  {
-    id: 'br_101',
-    name: 'Rodovia BR-101 (Translitorânea)',
-    color: '#fbbf24',
-    path: 'M 930,370 Q 910,480 870,600 T 770,750 T 680,840 T 560,930 T 490,990', // Touros (RN) ao RS
-    kind: 'Rodovia Federal',
-  },
-  {
-    id: 'ferrovia_norte_sul',
-    name: 'Ferrovia Norte-Sul',
-    color: '#d97706',
-    path: 'M 700,280 Q 660,450 630,630 T 600,760 T 590,830', // Açailândia (MA) até Estrela d\'Oeste (SP)
-    kind: 'Malha Ferroviária',
-  },
-];
+const BIOME_PRIMARY_STATE: Record<string, string> = {
+  amazonia: 'AM',
+  cerrado: 'GO',
+  caatinga: 'BA',
+  mata_atlantica: 'RJ',
+  pantanal: 'MS',
+  pampa: 'RS',
+};
 
-/**
- * TerritoryLayersOverlay
- * Renderizador de sobreposição SVG para camadas cartográficas temáticas sobre o mapa do Brasil.
- */
+const BASIN_PRIMARY_STATE: Record<string, string> = {
+  amazonica: 'AM',
+  tocantins_araguaia: 'TO',
+  sao_francisco: 'BA',
+  parana: 'SP',
+  paraguai: 'MS',
+  uruguai: 'RS',
+  parnaiba: 'PI',
+  atlantico_nordeste_oriental: 'PE',
+  atlantico_nordeste_ocidental: 'MA',
+  atlantico_leste: 'MG',
+  atlantico_sudeste: 'RJ',
+  atlantico_sul: 'SC',
+};
+
 export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
   activeLayer,
+  hoveredStateId,
+  selectedStateId,
+  selectedSubitemId,
+  onSelectSubitem,
+  onSelectState,
 }) => {
-  if (activeLayer === 'none') return null;
+  const [hoveredRegionId, setHoveredRegionId] = useState<string | null>(null);
+  const [modalFeature, setModalFeature] = useState<TerritoryFeatureData | null>(null);
+
+  if (!activeLayer || activeLayer === 'none') {
+    return null;
+  }
+
+  const handleRouteClick = (routeId: string) => {
+    onSelectSubitem?.(selectedSubitemId === routeId ? null : routeId);
+    const anchor = ROUTE_PRIMARY_STATE[routeId] || 'SP';
+    onSelectState?.(anchor);
+  };
+
+  const handlePortClick = (porto: (typeof BRAZIL_KEY_PORTS)[0]) => {
+    onSelectSubitem?.(porto.id);
+    onSelectState?.(porto.state);
+    setModalFeature({
+      type: 'porto',
+      data: porto,
+    });
+  };
 
   return (
-    <g
-      id="container-camadas-territorio-overlay"
-      className="container-camadas-territorio-overlay pointer-events-none select-none transition-opacity duration-300"
-    >
-      {/* ========================================================================= */}
-      {/* 1. CAMADA DE BACIAS HIDROGRÁFICAS (RIOS VIVOS)                            */}
-      {/* ========================================================================= */}
-      {activeLayer === 'bacias_hidrograficas' && (
-        <g id="camada-bacias-hidrograficas" className="camada-bacias-hidrograficas">
-          {HYDROLOGICAL_BASINS.map((basin) => (
-            <g key={basin.id} className="grupo-bacia-hidrografica">
-              {/* Rios da Bacia com Glow e Traçado Fluido */}
-              {basin.riverPaths.map((d, idx) => (
-                <React.Fragment key={`${basin.id}-river-${idx}`}>
-                  {/* Glow externo */}
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke={basin.color}
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeOpacity="0.35"
-                    filter="drop-shadow(0 0 4px rgba(6,182,212,0.8))"
-                  />
-                  {/* Linha de água central pulsante */}
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeOpacity="0.85"
-                    strokeDasharray="12 6"
-                    className="animate-[dash_20s_linear_infinite]"
-                  />
-                </React.Fragment>
-              ))}
+    <>
+      {/* 1. MODAL FLUTUANTE DE DETALHE DE FEIÇÃO GEOGRÁFICA ESPECÍFICA */}
+      <TerritoryFeatureDetailModal
+        feature={modalFeature}
+        onClose={() => setModalFeature(null)}
+      />
 
-              {/* Rótulo Geográfico da Bacia */}
-              <g
-                transform={`translate(${basin.labelPos.x}, ${basin.labelPos.y})`}
-                className="rotulo-bacia-hidrografica"
-              >
-                <rect
-                  x="-75"
-                  y="-14"
-                  width="150"
-                  height="26"
-                  rx="6"
-                  fill="#020d24"
-                  fillOpacity="0.85"
-                  stroke={basin.color}
-                  strokeWidth="1"
-                  strokeOpacity="0.7"
-                />
-                <text
-                  textAnchor="middle"
-                  y="2"
-                  fill="#ffffff"
-                  fontSize="9.5"
-                  fontFamily="sans-serif"
-                  fontWeight="bold"
-                >
-                  {basin.name}
-                </text>
-              </g>
-            </g>
-          ))}
-        </g>
-      )}
+      {/* 2. CAMADA CARTOGRÁFICA VETORIAL SVG (VIEWBOX 2560x1440) */}
+      <svg
+        id="territory-layers-svg-canvas"
+        className="territory-layers-svg-canvas absolute inset-0 pointer-events-none overflow-visible"
+        style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT }}
+        viewBox={`0 0 ${MAP_CANVAS_WIDTH} ${MAP_CANVAS_HEIGHT}`}
+      >
+        <defs>
+          <filter id="portBeaconGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="routeGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <style>
+            {`
+              @keyframes routeTransitFlow {
+                from { stroke-dashoffset: 40; }
+                to { stroke-dashoffset: 0; }
+              }
+              .linha-transito-logistico {
+                stroke-dasharray: 8 6;
+                animation: routeTransitFlow 2s linear infinite;
+              }
+            `}
+          </style>
+        </defs>
 
-      {/* ========================================================================= */}
-      {/* 2. CAMADA DE ROTAS & INTEGRAÇÃO NACIONAL                                 */}
-      {/* ========================================================================= */}
-      {activeLayer === 'rotas_integracao' && (
-        <g id="camada-rotas-integracao" className="camada-rotas-integracao">
-          {INTEGRATION_ROUTES.map((route) => (
-            <g key={route.id} className="grupo-rota-integracao">
-              {/* Rota com Glow */}
-              <path
-                d={route.path}
-                fill="none"
-                stroke={route.color}
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeOpacity="0.4"
-              />
-              <path
-                d={route.path}
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeDasharray="6 4"
-                strokeOpacity="0.9"
-              />
+        <g id="territory-overlay-root-group" className="territory-overlay-root-group">
+          {/* Subcamada 1: BACIAS HIDROGRÁFICAS (ANA / HIDROWEB) */}
+          {activeLayer === 'bacias_hidrograficas' && (
+            <HydroBasinsMapLayer
+              selectedRegionId={selectedSubitemId}
+              hoveredRegionId={hoveredRegionId}
+              selectedStateId={selectedStateId}
+              onSelectRegion={(region: HydroRegionInfo) => {
+                onSelectSubitem?.(region.id);
+                const anchor = BASIN_PRIMARY_STATE[region.id] || 'AM';
+                onSelectState?.(anchor);
+              }}
+              onHoverRegion={(rId) => setHoveredRegionId(rId)}
+              onSelectPin={(pin) => setModalFeature({ type: 'hydroPin', data: pin })}
+              onSelectState={onSelectState}
+            />
+          )}
+
+          {/* Subcamada 2: BIOMAS & RELEVO (IBGE / JURANDYR ROSS) */}
+          {activeLayer === 'biomas_relevo' && (
+            <BiomesReliefMapLayer
+              selectedBiomeId={selectedSubitemId}
+              hoveredBiomeId={hoveredRegionId}
+              selectedStateId={selectedStateId}
+              onSelectBiome={(biome: BiomeGeoFeature) => {
+                onSelectSubitem?.(biome.id);
+                const anchor = BIOME_PRIMARY_STATE[biome.id] || 'GO';
+                onSelectState?.(anchor);
+              }}
+              onHoverBiome={(bId) => setHoveredRegionId(bId)}
+              onSelectPeak={(peak) => setModalFeature({ type: 'peak', data: peak })}
+              onSelectChapada={(chapada) => setModalFeature({ type: 'chapada', data: chapada })}
+              onSelectState={onSelectState}
+            />
+          )}
+
+          {/* Subcamada 3: ROTAS DE INTEGRAÇÃO & CORREDORES MULTIMODAIS */}
+          {activeLayer === 'rotas_integracao' && (
+            <g id="camada-rotas-logistica-viva" className="camada-rotas-logistica-viva pointer-events-auto">
+              {ENRICHED_INTEGRATION_ROUTES.map((route) => {
+                // Se um estado estiver isolado, esconde rotas que não pertençam a ele
+                if (selectedStateId && ROUTE_PRIMARY_STATE[route.id] !== selectedStateId && selectedSubitemId !== route.id) return null;
+
+                const isSelected =
+                  selectedSubitemId === route.id ||
+                  (selectedSubitemId === 'rodovias' && (route.type === 'rodoviaria' || route.type === 'historica')) ||
+                  (selectedSubitemId === 'hidrovias' && route.type === 'fluvial_cabotagem') ||
+                  (selectedSubitemId === 'ferrovias' && route.type === 'ferroviaria');
+                const isDimmed = Boolean(selectedSubitemId && !isSelected);
+
+                return (
+                  <g
+                    key={route.id}
+                    className={`grupo-rota-integracao cursor-pointer group transition-opacity duration-300 ${
+                      isDimmed ? 'opacity-20 hover:opacity-80' : 'opacity-100'
+                    }`}
+                    onClick={() => handleRouteClick(route.id)}
+                  >
+                    <path
+                      d={route.path}
+                      fill="none"
+                      stroke={route.color}
+                      strokeWidth={isSelected ? 8 : route.type === 'fluvial_cabotagem' ? 6 : 4.5}
+                      strokeLinecap="round"
+                      strokeOpacity={isSelected ? 0.95 : 0.65}
+                      filter={isSelected ? 'url(#routeGlow)' : undefined}
+                      className="transition-all"
+                    />
+                    <path
+                      d={route.path}
+                      fill="none"
+                      stroke={route.type === 'historica' ? '#fde047' : '#ffffff'}
+                      strokeWidth={route.type === 'ferroviaria' ? 3 : 2.4}
+                      strokeLinecap="round"
+                      className="linha-transito-logistico"
+                    />
+                    {isSelected && route.cities[0] && (
+                      <g
+                        transform={`translate(${route.cities[0].x}, ${route.cities[0].y - 14})`}
+                        className="transition-transform"
+                      >
+                        <rect
+                          x="-75"
+                          y="-12"
+                          width="150"
+                          height="24"
+                          rx="6"
+                          fill="#0f172a"
+                          fillOpacity="0.96"
+                          stroke="#38bdf8"
+                          strokeWidth={1.8}
+                          filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))"
+                        />
+                        <text textAnchor="middle" y="3.5" fill="#f8fafc" fontSize="9.5" fontWeight="bold">
+                          {route.name}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+
+              {/* Portos de Cabotagem Estratégicos */}
+              {BRAZIL_KEY_PORTS.map((porto) => {
+                // Se um estado estiver isolado, esconde portos fora desse estado
+                if (selectedStateId && porto.state !== selectedStateId) return null;
+
+                const isPortSelected = selectedSubitemId === 'portos' || selectedSubitemId === porto.id;
+                return (
+                  <g
+                    key={porto.id}
+                    transform={`translate(${porto.x}, ${porto.y})`}
+                    className="marcador-porto-maritimo cursor-pointer group"
+                    onClick={() => handlePortClick(porto)}
+                  >
+                    <circle
+                      r={isPortSelected ? 14 : 9}
+                      fill={porto.type === 'porto_fluvial' ? '#22d3ee' : '#38bdf8'}
+                      fillOpacity={isPortSelected ? 0.6 : 0.35}
+                      className="animate-ping"
+                    />
+                    <circle
+                      r={isPortSelected ? 7 : 5}
+                      fill={isPortSelected ? '#fef08a' : '#ffffff'}
+                      stroke={porto.type === 'porto_fluvial' ? '#0891b2' : '#0284c7'}
+                      strokeWidth={isPortSelected ? 3 : 2}
+                      filter="url(#portBeaconGlow)"
+                    />
+                  <g transform="translate(14, 4)" className="transition-all opacity-0 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
+                    <rect
+                      x="-4"
+                      y="-11"
+                      width={porto.name.length * 6.4 + 14}
+                      height="20"
+                      rx="5"
+                      fill="#030712"
+                      fillOpacity="0.95"
+                      stroke="#0284c7"
+                      strokeWidth="1.2"
+                      filter="drop-shadow(0 2px 6px rgba(0,0,0,0.8))"
+                    />
+                    <text x="3" y="3" fill="#e0f2fe" fontSize="9.5" fontWeight="bold">
+                      ⚓ {porto.name.replace(/Porto (de|do|Fluvial de) /g, '')} ({porto.state})
+                    </text>
+                  </g>
+                </g>
+              );
+            })}
             </g>
-          ))}
+          )}
         </g>
-      )}
-    </g>
+      </svg>
+    </>
   );
 };

@@ -3,8 +3,6 @@ import {
   X,
   Thermometer,
   CloudRain,
-  Mountain,
-  Waves,
   Sun,
   Flame,
   Snowflake,
@@ -15,8 +13,6 @@ import {
   Info,
   TrendingUp,
   BarChart3,
-  ShieldAlert,
-  MapPin,
   Clock,
   Sparkles,
   Maximize2,
@@ -49,7 +45,7 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
   onClose,
   onToggleExpand,
 }) => {
-  const [activeTab, setActiveTab] = useState<'geral' | 'previsao' | 'enchentes' | 'extremos' | 'relevo' | 'estatisticas'>(
+  const [activeTab, setActiveTab] = useState<'geral' | 'previsao' | 'extremos' | 'estatisticas'>(
     climateMode === 'previsao_tempo' ? 'previsao' : 'geral'
   );
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -259,18 +255,6 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('enchentes')}
-          className={`flex-1 py-2 px-1.5 sm:px-2 flex items-center justify-center gap-1 sm:gap-1.5 transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'enchentes'
-              ? 'border-blue-400 text-blue-300 bg-blue-950/30 font-bold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Waves className="w-3.5 h-3.5 shrink-0" />
-          <span>Bacias</span>
-        </button>
-        <button
-          type="button"
           onClick={() => setActiveTab('extremos')}
           className={`flex-1 py-2 px-1.5 sm:px-2 flex items-center justify-center gap-1 sm:gap-1.5 transition-colors border-b-2 cursor-pointer ${
             activeTab === 'extremos'
@@ -280,18 +264,6 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
         >
           <Flame className="w-3.5 h-3.5 shrink-0" />
           <span>Extremos</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('relevo')}
-          className={`flex-1 py-2 px-1.5 sm:px-2 flex items-center justify-center gap-1 sm:gap-1.5 transition-colors border-b-2 cursor-pointer ${
-            activeTab === 'relevo'
-              ? 'border-emerald-400 text-emerald-300 bg-emerald-950/30 font-bold'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Mountain className="w-3.5 h-3.5 shrink-0" />
-          <span>Relevo</span>
         </button>
         <button
           type="button"
@@ -492,65 +464,6 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
           </div>
         )}
 
-        {/* ABA: ENCHENTES & BACIAS */}
-        {activeTab === 'enchentes' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between flex-wrap gap-2.5 bg-slate-900/90 p-4 sm:p-5 rounded-2xl border border-slate-800">
-              <div>
-                <span className="text-xs sm:text-sm font-semibold text-slate-200">Vulnerabilidade a Inundações & Enchentes:</span>
-                <p className="text-xs text-slate-400 mt-0.5">Classificação conforme histórico do CPRM e Defesa Civil</p>
-              </div>
-              <span
-                className={`px-3.5 py-1.5 rounded-full font-black text-xs sm:text-sm ${
-                  climateInfo.floodHistory.vulnerabilityLevel === 'Muito Alta'
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
-                    : climateInfo.floodHistory.vulnerabilityLevel === 'Alta'
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/50'
-                }`}
-              >
-                {climateInfo.floodHistory.vulnerabilityLevel}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-xs font-mono text-blue-400 font-bold flex items-center gap-1.5">
-                <Waves className="w-4 h-4" />
-                BACIAS HIDROGRÁFICAS CRÍTICAS
-              </div>
-              <div className="flex flex-wrap gap-2.5">
-                {climateInfo.floodHistory.mainBasins.map((basin, idx) => (
-                  <span
-                    key={idx}
-                    className="px-3 py-2 rounded-xl bg-blue-950/60 border border-blue-800/60 text-blue-200 text-xs sm:text-sm font-medium flex items-center gap-2 shadow-sm"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-                    {basin}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <div className="text-xs font-mono text-amber-400 font-bold flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4" />
-                EVENTOS HISTÓRICOS DE CHEIA / INUNDAÇÃO / SECA
-              </div>
-              <ul className="space-y-2.5">
-                {climateInfo.floodHistory.historicEvents.map((event, idx) => (
-                  <li
-                    key={idx}
-                    className="p-3.5 sm:p-4 rounded-xl bg-slate-900/70 border border-slate-800 text-xs sm:text-sm text-slate-200 leading-relaxed flex items-start gap-2.5"
-                  >
-                    <span className="text-amber-400 font-bold shrink-0 mt-0.5">•</span>
-                    <span>{event}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
         {/* ABA: EXTREMOS HISTÓRICOS INMET */}
         {activeTab === 'extremos' && (
           <div className="space-y-4 animate-in fade-in duration-200">
@@ -606,60 +519,6 @@ export const StateClimateDialog: React.FC<StateClimateDialogProps> = ({
               <strong className="text-amber-300 font-bold text-sm sm:text-base">
                 {(climateInfo.temperatureExtremes.recordHeat.temp - climateInfo.temperatureExtremes.recordCold.temp).toFixed(1)}°C de Variação
               </strong>
-            </div>
-          </div>
-        )}
-
-        {/* ABA: RELEVO & TOPOGRAFIA */}
-        {activeTab === 'relevo' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-emerald-950/40 p-4 sm:p-5 rounded-2xl border border-emerald-800/50 space-y-1.5">
-              <div className="text-xs font-mono text-emerald-400 font-bold">
-                RELEVO & GEOMORFOLOGIA PREDOMINANTE
-              </div>
-              <div className="text-xs sm:text-sm font-bold text-white leading-relaxed">
-                {climateInfo.reliefGeography.predominantRelief}
-              </div>
-            </div>
-
-            <div className="bg-slate-900/90 p-4 sm:p-5 rounded-xl border border-slate-800 flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <div className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-                  <Mountain className="w-4 h-4 text-amber-400" />
-                  PONTO CULMINANTE DO ESTADO
-                </div>
-                <div className="text-sm sm:text-base font-bold text-white mt-1">
-                  {climateInfo.reliefGeography.highestPoint.name}
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-300 font-mono font-black text-sm sm:text-base shadow-[0_0_12px_rgba(245,158,11,0.2)]">
-                  {climateInfo.reliefGeography.highestPoint.altitudeM.toLocaleString('pt-BR')} m
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="text-xs font-mono text-slate-400 font-bold flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-400" />
-                PRINCIPAIS FORMAÇÕES TOPOGRÁFICAS & SERRAS
-              </div>
-              <div className="space-y-2">
-                {climateInfo.reliefGeography.mainLandforms.map((form, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 px-3.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs sm:text-sm text-slate-200 flex items-center gap-2.5"
-                  >
-                    <span className="text-emerald-400">⛰️</span>
-                    <span>{form}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 text-xs sm:text-sm text-slate-300 leading-relaxed">
-              <strong className="text-emerald-300">Destaque Ambiental & Geológico:</strong>{' '}
-              {climateInfo.reliefGeography.environmentalHighlights}
             </div>
           </div>
         )}

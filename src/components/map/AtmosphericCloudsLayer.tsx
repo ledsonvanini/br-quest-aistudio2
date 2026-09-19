@@ -119,21 +119,21 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
       cachedShadows.push(shadowCanvas);
     }
 
-    // High performance cloud pool (14 balanced clouds across Brazil and Atlantic)
-    const CLOUD_COUNT = 14;
+    // High performance cloud pool (nuvens reduzidas em escala e densidade: leves, aéreas e delicadas)
+    const CLOUD_COUNT = 8;
     const clouds: CloudParticle[] = [];
 
     const createCloud = (initialSpawn = false): CloudParticle => {
       const imgIdx = Math.floor(Math.random() * 3);
       const isMirrored = Math.random() < 0.5;
-      const baseScale = 0.65 + Math.random() * 0.95;
-      const altitude = 1 + Math.random() * 2;
+      const baseScale = 0.28 + Math.random() * 0.32;
+      const altitude = 1 + Math.random() * 1.5;
 
-      const baseSpeed = (0.28 + (3.5 - altitude) * 0.16 + Math.random() * 0.14) * speedMultiplier;
+      const baseSpeed = (0.22 + (3.0 - altitude) * 0.12 + Math.random() * 0.10) * speedMultiplier;
       const windAngle = Math.PI * 0.95 + (Math.random() - 0.5) * 0.15;
 
-      const cloudW = 340 * baseScale;
-      const cloudH = 190 * baseScale;
+      const cloudW = 280 * baseScale;
+      const cloudH = 150 * baseScale;
 
       let startX: number;
       let startY: number;
@@ -142,11 +142,11 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         startX = Math.random() * (w * 1.1) - w * 0.05;
         startY = Math.random() * (h * 0.95);
       } else {
-        startX = w + 120 + Math.random() * 350;
+        startX = w + 80 + Math.random() * 250;
         startY = Math.random() * (h * 0.88);
       }
 
-      const targetOpacity = 0.35 + Math.random() * 0.45;
+      const targetOpacity = 0.18 + Math.random() * 0.24;
 
       return {
         id: Math.random(),
@@ -162,12 +162,12 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         width: cloudW,
         height: cloudH,
         altitude,
-        rotation: (Math.random() - 0.5) * 0.06,
+        rotation: (Math.random() - 0.5) * 0.05,
         vRot: (Math.random() - 0.5) * 0.0001,
         life: 0,
         maxLife: 4500 + Math.random() * 5000,
-        shadowOffsetX: (24 + altitude * 14) * baseScale,
-        shadowOffsetY: (32 + altitude * 18) * baseScale,
+        shadowOffsetX: (16 + altitude * 10) * baseScale,
+        shadowOffsetY: (20 + altitude * 12) * baseScale,
       };
     };
 
@@ -217,7 +217,7 @@ export const AtmosphericCloudsLayer: React.FC<AtmosphericCloudsLayerProps> = ({
         ctx.translate(c.x + c.shadowOffsetX, c.y + c.shadowOffsetY);
         ctx.rotate(c.rotation);
         ctx.scale(c.scaleX, c.scaleY);
-        ctx.globalAlpha = c.opacity * 0.22;
+        ctx.globalAlpha = c.opacity * 0.12;
         ctx.drawImage(shadow, -180, -100, 360, 200);
         ctx.restore();
 

@@ -20,6 +20,14 @@ export const MapCartographicDefs: React.FC<MapCartographicDefsProps> = ({
         <stop offset="100%" stopColor="#101926" />
       </linearGradient>
 
+      {/* Gradiente Continental Próprio e Exclusivo do Modo Território & Redes Vivas */}
+      <linearGradient id="saContinentTerritoryGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#1e2c3f" />
+        <stop offset="40%" stopColor="#162232" />
+        <stop offset="75%" stopColor="#101926" />
+        <stop offset="100%" stopColor="#0a1018" />
+      </linearGradient>
+
       <linearGradient id="neighborHighlightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#3b5275" />
         <stop offset="100%" stopColor="#23354d" />

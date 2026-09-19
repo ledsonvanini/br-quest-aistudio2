@@ -7,8 +7,7 @@ export type CartographyLayerMode =
   | 'none'
   | 'bacias_hidrograficas'
   | 'biomas_relevo'
-  | 'rotas_integracao'
-  | 'dados_coropleticos';
+  | 'rotas_integracao';
 
 export interface HydrologicalBasin {
   id: string;
@@ -27,7 +26,7 @@ export interface TerritoryLayerOption {
   shortLabel: string;
   badge: string;
   badgeColor: string;
-  iconName: 'waves' | 'trees' | 'compass' | 'barChart';
+  iconName: 'waves' | 'trees' | 'compass';
   description: string;
 }
 
@@ -58,14 +57,5 @@ export const TERRITORY_LAYERS_CONFIG: TerritoryLayerOption[] = [
     badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
     iconName: 'compass',
     description: 'Ferrovias históricas, principais rodovias federais de integração e rotas mercantis de cabotagem.',
-  },
-  {
-    id: 'dados_coropleticos',
-    label: 'Dados Coropléticos',
-    shortLabel: 'Censo & PIB',
-    badge: 'Estatísticas',
-    badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
-    iconName: 'barChart',
-    description: 'Mapas temáticos por UF: Densidade demográfica Censo 2022, PIB dos Estados e IDH.',
   },
 ];

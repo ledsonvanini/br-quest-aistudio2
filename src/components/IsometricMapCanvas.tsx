@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { geoPath } from 'd3-geo';
-import { GuardianData, Language } from '../types';
+import { GuardianData, Language, AppMainMode } from '../types';
 import { GUARDIANS_DATA } from '../data/guardiansData';
 import { audioEngine } from '../lib/audioSynth';
 import {
@@ -24,6 +24,13 @@ import {
 } from '../lib/mapProjections';
 import { MapVisualStyle, ChoroplethSubTheme } from '../lib/mapColorScales';
 import { centralizarZoomMapa } from '../services/mapModeService';
+
+import { getStateAnaWaterData } from '../data/cartography/anaWaterData2025';
+import {
+  STATE_PRIMARY_BASIN,
+  STATE_PRIMARY_BIOME,
+  STATE_PRIMARY_ROUTE,
+} from '../data/cartography/territoryAnchors';
 
 // Modular Sub-components
 import { ProceduralTerrainFilter } from './map/ProceduralTerrainFilter';
@@ -64,9 +71,9 @@ import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
 import { VintageRadioPlayer } from './music/VintageRadioPlayer';
 import { TerritoryLayersOverlay } from './map/TerritoryLayersOverlay';
+import { StateTerritoryDialog } from './map/territory/StateTerritoryDialog';
 import { CartographyLayerMode } from '../types/cartography';
 import { vintageRadioEngine } from '../lib/vintageRadioEngine';
-import { AppMainMode } from './TopGlobalNavMenu';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
 import { StateClimateDialog } from './map/StateClimateDialog';
 import { BiodiversityMapLayer } from './map/BiodiversityMapLayer';
@@ -76,9 +83,10 @@ import { GeopoliticsMapLayer } from './map/GeopoliticsMapLayer';
 import { GeopoliticsControlPanel } from './map/GeopoliticsControlPanel';
 import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { EducatorPortalModal } from './educator/EducatorPortalModal';
+import { StateAdventureDialog } from './guardian/StateAdventureDialog';
+import { StateMusicDialog } from './music/StateMusicDialog';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
-import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio, Music } from 'lucide-react';
 
 interface Props {
@@ -147,6 +155,13 @@ interface Props {
   onOpenDailyTips?: () => void;
   dailyTipsUnreadCount?: number;
   activeCartographyLayer?: CartographyLayerMode;
+  selectedTerritorySubitemId?: string | null;
+  onSelectTerritorySubitem?: (subitemId: string | null) => void;
+  isTerritorySubmenuOpen?: boolean;
+  onCloseTerritorySubmenu?: () => void;
+  onOpenTerritorySubmenu?: () => void;
+  selectedStateId?: string | null;
+  onSelectStateId?: (stateId: string | null) => void;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -156,6 +171,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   mainMode = 'aventura',
   onSelectMainMode,
   activeCartographyLayer = 'none',
+  selectedTerritorySubitemId,
+  onSelectTerritorySubitem,
+  isTerritorySubmenuOpen = false,
+  onCloseTerritorySubmenu,
+  onOpenTerritorySubmenu,
+  selectedStateId: propSelectedStateId,
+  onSelectStateId,
   isRadioOpen = true,
   onToggleRadio,
   activeMusicCategory = 'state_anthems',
@@ -307,6 +329,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [isGeopoliticaPanelExpanded, setIsGeopoliticaPanelExpanded] = useState<boolean>(true);
   const [geopoliticaScope, setGeopoliticaScope] = useState<GeopoliticaScope>('nacional');
   const [selectedGeopoliticaStateId, setSelectedGeopoliticaStateId] = useState<string | null>(null);
+  const [selectedTerritoryStateId, setSelectedTerritoryStateId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const geopoliticaMetric = propGeopoliticaMetric !== undefined ? propGeopoliticaMetric : internalGeopoliticaMetric;
@@ -319,6 +342,41 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       setInternalGeopoliticaMetric(metric);
     }
   };
+
+  // Isolamento Estrito: quando a camada de território muda, isola o módulo sem abrir AppLateral automaticamente
+  useEffect(() => {
+    if (!activeCartographyLayer || activeCartographyLayer === 'none') {
+      setSelectedTerritoryStateId(null);
+      if (selectedStateId) {
+        setSelectedStateId(null);
+        onSelectStateId?.(null);
+      }
+    } else {
+      setSelectedClimateStateId(null);
+      setSelectedClimateStation(null);
+      setSelectedBiodiversityStateId(null);
+      setSelectedGeopoliticaStateId(null);
+      setSelectedTerritoryStateId(null);
+      setSelectedStateId(null);
+      onSelectStateId?.(null);
+      setInternalIsClimatePanelOpen(false);
+      setInternalIsBiodiversityPanelOpen(false);
+      setInternalIsGeopoliticaPanelOpen(false);
+
+      // Centraliza a visão do Brasil no modo sem AppLateral
+      const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+        stateId: 'RESET_CENTRAL_BRAZIL',
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: false,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+    }
+  }, [activeCartographyLayer]);
 
   // Synchronize internal climate active state with global mainMode
   useEffect(() => {
@@ -464,7 +522,30 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const hoveredStateRef = useRef<string | null>(null);
   const lastWheelTimeRef = useRef<number>(0);
-  const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
+  const [selectedStateId, setSelectedStateId] = useState<string | null>(propSelectedStateId ?? null);
+  useEffect(() => {
+    if (propSelectedStateId !== undefined) {
+      setSelectedStateId(propSelectedStateId);
+      if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+        setSelectedTerritoryStateId(propSelectedStateId);
+      }
+      if (propSelectedStateId && centroids[propSelectedStateId]) {
+        const centroid = centroids[propSelectedStateId];
+        const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
+          stateId: propSelectedStateId,
+          centroid,
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: true,
+        });
+        setTransitionMode('button');
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+      }
+    }
+  }, [propSelectedStateId, activeCartographyLayer, mainMode, is3D]);
   const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(true);
   const [showAnchorPoint, setShowAnchorPoint] = useState<boolean>(false);
   const anchorTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -474,6 +555,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   // Set of completed IDs for O(1) lookups
   const completedSet = useMemo(() => new Set(completedStateIds), [completedStateIds]);
+
+  // Modo Território e Redes Vivas Ativo (Camadas de Bacias, Biomas, Rotas)
+  const isTerritoryModeActive = Boolean(
+    activeCartographyLayer && activeCartographyLayer !== 'none'
+  );
 
   // Load GeoJSON on mount with memory cache
   useEffect(() => {
@@ -726,6 +812,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
   // Identificador do estado isolado em foco (unificado para todos os modos)
   const activeIsolatedStateId =
+    selectedTerritoryStateId ||
+    (activeCartographyLayer && activeCartographyLayer !== 'none' && selectedStateId ? selectedStateId : null) ||
     (isClimateActive && selectedClimateStateId) ||
     (mainMode === 'biodiversidade' && selectedBiodiversityStateId) ||
     (mainMode === 'geopolitica' && (selectedGeopoliticaStateId || selectedStateId)) ||
@@ -917,7 +1005,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
     const target = e.target as HTMLElement;
     if (
-      target.closest('path') ||
       target.closest('button') ||
       target.closest('input') ||
       target.closest('a') ||
@@ -931,14 +1018,43 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       target.closest('.modal-dialog-biodiversidade-estado') ||
       target.closest('.painel-controle-geopolitica') ||
       target.closest('.modal-dialog-geopolitica-estado') ||
-      target.closest('.card-guardiao-standee')
+      target.closest('.card-guardiao-standee') ||
+      target.closest('.state-territory-dialog') ||
+      target.closest('.menu-lateral-interativo') ||
+      target.closest('.painel-territorio-lateral') ||
+      target.closest('.pin-brasao-estado')
     ) {
       return;
     }
 
-    if (selectedStateId || selectedCountry || selectedBiodiversityStateId || selectedGeopoliticaStateId) {
+    // Se o clique foi especificamente em um polígono de estado do Brasil ou balão interativo, o handler respectivo cuida
+    if (
+      target.closest('.camada-vetorial-estados') ||
+      target.closest('[id^="state-path-"]') ||
+      target.closest('.grupo-titulos-bacias-mapa') ||
+      target.closest('.grupo-bolhas-biomas-ibge') ||
+      target.closest('.grupo-rota-integracao') ||
+      target.closest('.marcador-porto-maritimo')
+    ) {
+      return;
+    }
+
+    // Se uma região, subitem ou estado estiver selecionado: ao clicarmos fora do Mapa do Brasil, restauramos a visão geral!
+    const isAnyRegionOrStateSelected = Boolean(
+      selectedStateId ||
+      selectedTerritoryStateId ||
+      selectedTerritorySubitemId ||
+      selectedCountry ||
+      selectedBiodiversityStateId ||
+      selectedGeopoliticaStateId
+    );
+
+    if (isAnyRegionOrStateSelected) {
       audioEngine.playSfx('click');
       setSelectedStateId(null);
+      setSelectedTerritoryStateId(null);
+      onSelectStateId?.(null);
+      onSelectTerritorySubitem?.(null);
       setSelectedCountry(null);
       setSelectedBiodiversityStateId(null);
       setSelectedGeopoliticaStateId(null);
@@ -946,18 +1062,31 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       if (onHoverStateChange) {
         onHoverStateChange(null);
       }
+
+      // Se a camada de território estiver ativa, reabre o submenu lateral
+      if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+        onOpenTerritorySubmenu?.();
+      }
+
+      // Restaura a visão geral e centraliza o mapa do Brasil
+      const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+        stateId: 'RESET_CENTRAL_BRAZIL',
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: false,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       if (mainMode === 'musicalidades') {
         if (isRadioOpen && onToggleRadio) {
           onToggleRadio();
         }
-        const defaultPan = getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, is3D);
-        setTransitionMode('button');
-        setPan(defaultPan);
-        setZoom(DEFAULT_BRAZIL_ZOOM);
-        baseUserPanRef.current = defaultPan;
-        baseUserZoomRef.current = DEFAULT_BRAZIL_ZOOM;
-        return;
       }
+      return;
     }
   };
 
@@ -992,6 +1121,79 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
     const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
     const centroid = centroids[stateId];
+
+    // 0. MODO TERRITÓRIO & REDES VIVAS (Bacias, Biomas, Rotas e Censo Demográfico)
+    // Caso o usuário clique em apenas um Estado: isolamos a Bacia ou agrupamento ao qual ele pertence + AppLateral com dados corretos
+    if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+      if (selectedStateId === stateId) {
+        // Deseleção com segundo clique restaura a visão geral
+        setSelectedStateId(null);
+        setSelectedTerritoryStateId(null);
+        onSelectStateId?.(null);
+        onSelectTerritorySubitem?.(null);
+        onOpenTerritorySubmenu?.();
+        const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+          stateId: 'RESET_CENTRAL_BRAZIL',
+          containerWidth: getContainerWidth(),
+          is3D,
+          isPanelOpen: false,
+        });
+        setTransitionMode('button');
+        setPan(targetPan);
+        setZoom(targetZoom);
+        baseUserPanRef.current = targetPan;
+        baseUserZoomRef.current = targetZoom;
+        audioEngine.playSfx('click');
+        return;
+      }
+
+      // Identifica a Bacia, Bioma ou Rota ao qual o estado pertence:
+      let groupingId: string | null = null;
+      if (activeCartographyLayer === 'bacias_hidrograficas') {
+        groupingId = STATE_PRIMARY_BASIN[stateId] || null;
+      } else if (activeCartographyLayer === 'biomas_relevo') {
+        groupingId = STATE_PRIMARY_BIOME[stateId] || null;
+      } else if (activeCartographyLayer === 'rotas_integracao') {
+        groupingId = STATE_PRIMARY_ROUTE[stateId] || null;
+      }
+
+      if (groupingId) {
+        onSelectTerritorySubitem?.(groupingId);
+      }
+
+      // Ao abrir o AppLateral, fecha os submenus (garante que AppLateral e Menu Lateral não fiquem abertos juntos)
+      onCloseTerritorySubmenu?.();
+
+      if (propIsObservatorioOpen && onToggleObservatorio) {
+        onToggleObservatorio();
+      }
+      setInternalIsClimatePanelOpen(false);
+      setSelectedClimateStation(null);
+      setSelectedClimateStateId(null);
+      setSelectedBiodiversityStateId(null);
+      setSelectedGeopoliticaStateId(null);
+
+      const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+        isExpanded: true,
+      });
+
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
+      setSelectedStateId(stateId);
+      setSelectedTerritoryStateId(stateId);
+      onSelectStateId?.(stateId);
+      audioEngine.playSfx('travel');
+      return;
+    }
 
     // 1. MODO CLIMA: Abre o diálogo de clima local e foca na telemetria (50% da tela)
     // Desmarca e fecha o Observatório e telemetrias flutuantes para não poluir a tela junto com o App Lateral
@@ -1078,12 +1280,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 2. MODO MUSICALIDADES: Sintoniza a rádio do estado instantaneamente e centraliza nos 50% restantes
+    // 2. MODO MUSICALIDADES: Abre o AppLateral Musical do Estado, sintoniza sua rádio e centraliza nos 50% restantes
     if (mainMode === 'musicalidades') {
       setSelectedStateId(stateId);
-      if (!isRadioOpen && onToggleRadio) {
-        onToggleRadio();
-      }
+      setInternalIsBiodiversityPanelOpen(false);
+      setInternalIsGeopoliticaPanelOpen(false);
       const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
         stateId,
         centroid,
@@ -1101,10 +1302,25 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, navega diretamente ao Guardião RPG para enfrentar seus desafios
+    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, abre o AppLateral do Guardião/Aventura e centraliza nos 50% restantes
     if (mainMode === 'aventura') {
       setSelectedStateId(stateId);
-      handleEnterGuardianScene(stateId);
+      setInternalIsBiodiversityPanelOpen(false);
+      setInternalIsGeopoliticaPanelOpen(false);
+      const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
+      audioEngine.playSfx('travel');
       return;
     }
 
@@ -1121,14 +1337,33 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserPanRef.current = targetPan;
       baseUserZoomRef.current = targetZoom;
     }
-  }, [activeIsolatedStateId, centroids, getContainerWidth, handleEnterGuardianScene, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleBiodiversityPanel, onToggleGeopoliticaPanel, onToggleObservatorio, onToggleRadio, propIsBiodiversityPanelOpen, propIsGeopoliticaPanelOpen, propIsObservatorioOpen, stopInertia, zoom]);
+  }, [activeCartographyLayer, activeIsolatedStateId, centroids, getContainerWidth, handleEnterGuardianScene, is3D, isClimateActive, isEnteringScene, isRadioOpen, mainMode, onToggleBiodiversityPanel, onToggleGeopoliticaPanel, onToggleObservatorio, onToggleRadio, propIsBiodiversityPanelOpen, propIsGeopoliticaPanelOpen, propIsObservatorioOpen, stopInertia, zoom]);
 
   // Close focus & return camera smoothly to centered full Brazil map
   const handleCloseInspection = useCallback(() => {
     setSelectedClimateStateId(null);
     setSelectedBiodiversityStateId(null);
     setSelectedGeopoliticaStateId(null);
+    setSelectedTerritoryStateId(null);
     setSelectedStateId(null);
+    onSelectStateId?.(null);
+    if (activeCartographyLayer && activeCartographyLayer !== 'none') {
+      onOpenTerritorySubmenu?.();
+      onSelectTerritorySubitem?.(null);
+      const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
+        stateId: 'RESET_CENTRAL_BRAZIL',
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: false,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+      audioEngine.playMenuHover();
+      return;
+    }
     audioEngine.playMenuHover();
 
     if (mainMode === 'musicalidades') {
@@ -1195,11 +1430,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedStateId, selectedCountry, selectedClimateStateId, selectedBiodiversityStateId, selectedGeopoliticaStateId, handleCloseInspection]);
 
-
   // Custom onEnter handler for Brazilian States: Highlights state, updates HUD & plays sound
   const handleStateEnter = useCallback((stateId: string) => {
     if (isMouseDownRef.current || hasMovedRef.current || isEnteringScene) return;
-    if ((isClimateActive && selectedClimateStateId) || (mainMode === 'biodiversidade' && selectedBiodiversityStateId) || (mainMode === 'geopolitica' && selectedGeopoliticaStateId)) return;
+    if (activeIsolatedStateId) return;
 
     if (stateLeaveTimeoutRef.current) {
       clearTimeout(stateLeaveTimeoutRef.current);
@@ -1654,7 +1888,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       )}
 
       {/* 5. Choropleth Interactive Legend (Shown on 2D/2.5D Cartographic Mode in Adventure Mode) */}
-      {!showNeighbors && !isGlobe3DActive && !isClimateActive && mainMode === 'aventura' && (
+      {!showNeighbors && !isGlobe3DActive && !isClimateActive && !isTerritoryModeActive && mainMode === 'aventura' && (
         <MapChoroplethLegend
           visualStyle={visualStyle}
           choroplethSubTheme={choroplethSubTheme}
@@ -1662,8 +1896,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         />
       )}
 
-      {/* 6. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only - Fixed on Right Side) */}
-      {!showNeighbors && !isClimateActive && mainMode === 'aventura' && (
+      {/* 6. UNBOXED FULL-BODY GUARDIAN NPC STANDEE (Adventure Mode only - Fixed on Right Side; Oculto em modo Território por isolamento de módulo) */}
+      {!showNeighbors && !isClimateActive && !isTerritoryModeActive && mainMode === 'aventura' && (
         <IsolatedRightGuardianStandee
           activeStateId={hoveredStateId || selectedStateId || 'DF'}
           completedStateIds={completedSet}
@@ -1789,6 +2023,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           onToggleTelemetry={onToggleGlobeTelemetry}
         />
       ) : (() => {
+        const effectiveCartographyLayer = isTerritoryModeActive ? activeCartographyLayer : 'none';
+        const effectiveIsClimateActive = Boolean(isClimateActive && mainMode === 'clima' && !isTerritoryModeActive);
+        const effectiveIsBiodiversityActive = Boolean(mainMode === 'biodiversidade' && !isTerritoryModeActive);
+        const effectiveIsGeopoliticaActive = Boolean(mainMode === 'geopolitica' && !isTerritoryModeActive);
+        const effectiveIsAventuraActive = Boolean(mainMode === 'aventura' && !isTerritoryModeActive);
+        const effectiveIsMusicalActive = Boolean(mainMode === 'musicalidades' && !isTerritoryModeActive);
+
         return (
           <div className="container-palco-globo-3d relative z-10 w-full h-full overflow-visible pointer-events-none">
             <div
@@ -1806,15 +2047,17 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             <ProceduralOceanCanvas
               mode={mainMode}
               isPlayingAnimation={true}
-              isParchmentMode={terrainProvider === 'voyager_parchment'}
-              isBiodiversityMode={mainMode === 'biodiversidade'}
-              isMusicalMode={mainMode === 'musicalidades'}
+              isParchmentMode={!isTerritoryModeActive && terrainProvider === 'voyager_parchment'}
+              isBiodiversityMode={effectiveIsBiodiversityActive}
+              isMusicalMode={effectiveIsMusicalActive}
+              isTerritoryMode={isTerritoryModeActive}
             />
 
             {/* Layer 0.1: Coastal Waves, Bathymetric Gradient & Heterogeneous Swell Shader */}
             <CoastalWavesCanvas
               enabled={wavesEnabled}
               mode={mainMode}
+              isTerritoryMode={isTerritoryModeActive}
               waveSpeed={0.6}
               customBrazilGeo={geoData}
             />
@@ -1835,15 +2078,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 showNeighbors={showNeighbors}
                 hoveredCountryId={hoveredCountryId}
                 centroids={centroids}
-                isClimateActive={isClimateActive}
+                isClimateActive={effectiveIsClimateActive}
                 climateMode={currentClimateMode}
                 stateWeather={stateWeather}
-                isGeopoliticaActive={mainMode === 'geopolitica' && !showNeighbors}
+                isGeopoliticaActive={effectiveIsGeopoliticaActive && !showNeighbors}
                 geopoliticaMetric={geopoliticaMetric}
-                focusedClimateStateId={isClimateActive ? selectedClimateStateId : null}
-                focusedBiodiversityStateId={mainMode === 'biodiversidade' ? selectedBiodiversityStateId : null}
-                focusedGeopoliticsStateId={mainMode === 'geopolitica' ? selectedGeopoliticaStateId : null}
-                focusedMusicalStateId={mainMode === 'musicalidades' ? selectedStateId : null}
+                activeCartographyLayer={effectiveCartographyLayer}
+                selectedTerritorySubitemId={isTerritoryModeActive ? selectedTerritorySubitemId : null}
+                focusedClimateStateId={effectiveIsClimateActive ? selectedClimateStateId : null}
+                focusedBiodiversityStateId={effectiveIsBiodiversityActive ? selectedBiodiversityStateId : null}
+                focusedGeopoliticsStateId={effectiveIsGeopoliticaActive ? selectedGeopoliticaStateId : null}
+                focusedMusicalStateId={effectiveIsMusicalActive ? selectedStateId : null}
+                focusedTerritoryStateId={isTerritoryModeActive ? (selectedTerritoryStateId || selectedStateId) : null}
                 is3D={is3D}
                 onStateEnter={handleStateEnter}
                 onStateLeave={handleStateLeave}
@@ -1857,13 +2103,24 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               />
             </div>
 
-            {/* Layer 2.4: Camadas Cartográficas Ricas do Território (Exclusivo 2D) */}
-            {activeCartographyLayer && activeCartographyLayer !== 'none' && (
-              <div style={{ transform: 'translateZ(10px)', transformStyle: 'preserve-3d' }}>
+            {/* Layer 2.4: Camadas Cartográficas Ricas do Território (Exclusivo 2D e Aventura) */}
+            {isTerritoryModeActive && (
+              <div
+                className="camada-territorio-wrapper absolute inset-0 pointer-events-none"
+                style={{
+                  width: MAP_CANVAS_WIDTH,
+                  height: MAP_CANVAS_HEIGHT,
+                  transform: 'translateZ(10px)',
+                  transformStyle: 'preserve-3d',
+                }}
+              >
                 <TerritoryLayersOverlay
                   activeLayer={activeCartographyLayer}
                   hoveredStateId={hoveredStateId}
                   selectedStateId={selectedStateId}
+                  selectedSubitemId={selectedTerritorySubitemId}
+                  onSelectSubitem={onSelectTerritorySubitem}
+                  onSelectState={handleStateClick}
                 />
               </div>
             )}
@@ -1871,7 +2128,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             {/* Layer 2.5: Real-Time Climate Phenomena & Streamlines (Coplanar with map base at Z=0px) */}
             <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
               <ClimatePhenomenaLayer
-                active={isClimateActive}
+                active={effectiveIsClimateActive}
                 mode={currentClimateMode}
                 stations={climateStations}
                 stateWeather={stateWeather}
@@ -1882,7 +2139,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 onSelectStation={handleSelectClimateStation}
                 speedMultiplier={climateSpeedMultiplier}
                 dateTimeFormatted={climateDateTimeFormatted}
-                focusedStateId={isClimateActive ? selectedClimateStateId : null}
+                focusedStateId={effectiveIsClimateActive ? selectedClimateStateId : null}
                 disableHoverTooltip={true}
               />
             </div>
@@ -1890,7 +2147,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             {/* Layer 2.6: Rain Simulation & Rainfall Hotspots Ranking (Elevated at Z=60px) */}
             <div style={{ transform: 'translateZ(60px)', transformStyle: 'preserve-3d' }}>
               <RainSimulationLayer
-                active={rainSimEnabled || (isClimateActive && currentClimateMode === 'precipitacao_zcas')}
+                active={(!isTerritoryModeActive && rainSimEnabled) || (effectiveIsClimateActive && currentClimateMode === 'precipitacao_zcas')}
                 stateWeather={stateWeather}
                 tiltAngle={is3D ? baseTiltAngle : 0}
               />
@@ -1905,7 +2162,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             </div>
 
             {/* Layer 3: Guardian Heraldic Pins Layer with Coat of Arms (Coplanar with map base at Z=0px) */}
-            {!showNeighbors && !isClimateActive && (mainMode === 'aventura' || mainMode === 'musicalidades') && (
+            {!showNeighbors && effectiveIsAventuraActive && (
               <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
                 <MapPinsLayer
                   centroids={centroids}
@@ -1938,7 +2195,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             )}
 
             {/* Layer 3.2: Biodiversity Species Hotspots & Specimen Pins Layer */}
-            {!showNeighbors && mainMode === 'biodiversidade' && (
+            {!showNeighbors && effectiveIsBiodiversityActive && (
               <div style={{ transform: 'translateZ(20px)', transformStyle: 'preserve-3d' }}>
                 <BiodiversityMapLayer
                   activeKingdomFilter={biodiversityKingdom}
@@ -2015,7 +2272,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
             {/* Floating Close 'X' Button on Map next to highlighted state (Universal across all modes) */}
             {(() => {
-              if (showNeighbors || !activeIsolatedStateId || !centroids[activeIsolatedStateId]) return null;
+              if (showNeighbors || !activeIsolatedStateId || !centroids[activeIsolatedStateId] || activeCartographyLayer !== 'none' || Boolean(propSelectedStateId || selectedStateId)) return null;
               const isBio = mainMode === 'biodiversidade';
               const isGeopol = mainMode === 'geopolitica';
               const isMusic = mainMode === 'musicalidades';
@@ -2036,9 +2293,23 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 ? 'text-amber-300'
                 : 'text-cyan-300';
 
+              const badgeMetricLabel = (() => {
+                if (isClimateActive || mainMode === 'clima') {
+                  const temp = stateWeather[activeIsolatedStateId]?.temperature;
+                  return temp !== undefined ? `${Math.round(temp)}°` : 'Clima';
+                }
+                if (mainMode === 'biodiversidade') {
+                  return 'Bioma';
+                }
+                if (mainMode === 'geopolitica') {
+                  return 'Censo IBGE';
+                }
+                return 'Foco';
+              })();
+
               return (
                 <div
-                  className="btn-fechar-foco-estado-flutuante absolute z-50 pointer-events-auto transition-transform hover:scale-110 active:scale-95 animate-in fade-in zoom-in-75 duration-200 touch-manipulation"
+                  className="btn-fechar-foco-estado-flutuante absolute z-50 pointer-events-auto flex flex-col items-center gap-1.5 transition-transform hover:scale-105 animate-in fade-in zoom-in-75 duration-200 touch-manipulation"
                   style={{
                     left: centroids[activeIsolatedStateId][0] + 42,
                     top: centroids[activeIsolatedStateId][1] - 42,
@@ -2053,7 +2324,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                       e.stopPropagation();
                       handleCloseInspection();
                     }}
-                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/95 border-2 ${borderColor} hover:text-white cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-black`}
+                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-950/95 border-2 ${borderColor} hover:text-white cursor-pointer backdrop-blur-md transition-all font-mono text-xs font-black shadow-[0_8px_24px_rgba(0,0,0,0.85)]`}
                     title="Fechar foco no estado e centralizar o mapa do Brasil (Esc)"
                   >
                     <X
@@ -2061,6 +2332,12 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                     />
                     <span className="text-[11px] pr-0.5 font-bold">Fechar Foco</span>
                   </button>
+
+                  <div className="badge-flutuante-estado-metrica px-2.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-slate-200 font-mono text-[11px] font-black shadow-md flex items-center gap-1.5 backdrop-blur-md">
+                    <span className="text-cyan-300 font-black">{activeIsolatedStateId}</span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-amber-300">{badgeMetricLabel}</span>
+                  </div>
                 </div>
               );
             })()}
@@ -2069,7 +2346,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         );
       })()}
 
-      {/* 9. Interactive 3D Antique Compass Rose Gizmo HUD (With Inclination & 3D Globe) */}
+      {/* 9. Interactive 3D Antique Compass Rose Gizmo HUD (With Inclination, Unified Legend & 3D Globe) */}
       {!isGlobe3DActive && !isClimateActive && (
         <GizmoCompassHUD
           headingAngle={headingAngle}
@@ -2088,6 +2365,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           is3D={is3D}
           isGlobe3DActive={isGlobe3DActive}
           onToggleGlobe3D={handleToggleGlobe3D}
+          activeCartographyLayer={activeCartographyLayer}
+          visualStyle={visualStyle}
+          choroplethSubTheme={choroplethSubTheme}
+          completedCount={completedSet.size}
         />
       )}
 
@@ -2129,7 +2410,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       />
 
       {/* 13. Card de Telemetria Flutuante da Estação Selecionada */}
-      {!showNeighbors && !selectedClimateStateId && !selectedStateId && isClimateActive && selectedClimateStation && (
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && !selectedClimateStateId && !selectedStateId && isClimateActive && selectedClimateStation && (
         <ClimateStationTelemetryCard
           station={selectedClimateStation}
           onClose={() => setSelectedClimateStation(null)}
@@ -2138,7 +2419,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       )}
 
       {/* 13.6. Diálogo Completo de Climatologia, Relevos, Enchentes e Extremos Históricos (Ativado por Botão Esquerdo no Modo Clima) */}
-      {!showNeighbors && isClimateActive && selectedClimateStateId && (
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && isClimateActive && selectedClimateStateId && (
         <StateClimateDialog
           stateId={selectedClimateStateId}
           weatherData={stateWeather[selectedClimateStateId]}
@@ -2167,7 +2448,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       )}
 
       {/* 13.7. Diálogo Completo de Biodiversidade do Estado (Fauna, Flora, Microorganismos, GBIF, IBAMA SisCITES & Wikipedia) */}
-      {!showNeighbors && mainMode === 'biodiversidade' && selectedBiodiversityStateId && (
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && mainMode === 'biodiversidade' && selectedBiodiversityStateId && (
         <StateBiodiversityDialog
           stateId={selectedBiodiversityStateId}
           onClose={handleCloseInspection}
@@ -2195,7 +2476,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 13.8. Painel Flutuante de Controle e Filtros de Biodiversidade */}
       <BiodiversityControlPanel
-        isOpen={!showNeighbors && !selectedBiodiversityStateId && !selectedStateId && isBiodiversityPanelOpen && mainMode === 'biodiversidade'}
+        isOpen={!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && !selectedBiodiversityStateId && !selectedStateId && isBiodiversityPanelOpen && mainMode === 'biodiversidade'}
         onClose={() => {
           if (onToggleBiodiversityPanel) {
             onToggleBiodiversityPanel();
@@ -2246,7 +2527,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       />
 
       {/* 13.9. Diálogo Completo de Geopolítica e Demografia do Estado (Censo 2022, IBGE, TSE, Eleições & Saúde) */}
-      {!showNeighbors && mainMode === 'geopolitica' && selectedGeopoliticaStateId && (
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && mainMode === 'geopolitica' && selectedGeopoliticaStateId && (
         <StateGeopoliticsDialog
           stateId={selectedGeopoliticaStateId}
           onClose={handleCloseInspection}
@@ -2273,7 +2554,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       {/* 13.10. Painel Flutuante de Controle e Métricas Geopolíticas (Nacional, Regional, Estadual) */}
       <GeopoliticsControlPanel
-        isOpen={!selectedGeopoliticaStateId && !selectedStateId && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
+        isOpen={(!activeCartographyLayer || activeCartographyLayer === 'none') && !selectedGeopoliticaStateId && !selectedStateId && isGeopoliticaPanelOpen && mainMode === 'geopolitica'}
         onClose={() => {
           if (onToggleGeopoliticaPanel) {
             onToggleGeopoliticaPanel();
@@ -2331,6 +2612,98 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         }}
       />
 
+      {/* 13.6. AppLateral de Território e Redes Vivas (Bacias Hidrográficas, Biomas, Rotas de Integração & Censo) */}
+      {activeCartographyLayer && activeCartographyLayer !== 'none' && (selectedTerritoryStateId || selectedStateId) && (
+        <StateTerritoryDialog
+          stateId={(selectedTerritoryStateId || selectedStateId)!}
+          activeLayer={activeCartographyLayer}
+          onClose={handleCloseInspection}
+          onToggleExpand={(expanded) => {
+            const currentId = selectedTerritoryStateId || selectedStateId;
+            if (!currentId) return;
+            const centroid = centroids[currentId];
+            if (centroid) {
+              const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+                stateId: currentId,
+                centroid,
+                containerWidth: getContainerWidth(),
+                is3D,
+                isPanelOpen: true,
+                isExpanded: expanded,
+              });
+              setTransitionMode('button');
+              setPan(targetPan);
+              setZoom(targetZoom);
+              baseUserPanRef.current = targetPan;
+              baseUserZoomRef.current = targetZoom;
+            }
+          }}
+        />
+      )}
+
+      {/* 13.7. AppLateral de Aventura & Guardiões (Perfil do Guardião, Biografia, Relíquias e Desafio RPG) */}
+      {mainMode === 'aventura' && selectedStateId && (!activeCartographyLayer || activeCartographyLayer === 'none') && (
+        <StateAdventureDialog
+          stateId={selectedStateId}
+          isCompleted={completedStateIds.includes(selectedStateId)}
+          hasInsignia={completedStateIds.includes(selectedStateId)}
+          onClose={handleCloseInspection}
+          onEnterGuardianScene={(guardian) => {
+            handleEnterGuardianScene(guardian.id);
+          }}
+          onToggleExpand={(expanded) => {
+            const centroid = centroids[selectedStateId];
+            if (centroid) {
+              const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+                stateId: selectedStateId,
+                centroid,
+                containerWidth: getContainerWidth(),
+                is3D,
+                isPanelOpen: true,
+                isExpanded: expanded,
+              });
+              setTransitionMode('button');
+              setPan(targetPan);
+              setZoom(targetZoom);
+              baseUserPanRef.current = targetPan;
+              baseUserZoomRef.current = targetZoom;
+            }
+          }}
+        />
+      )}
+
+      {/* 13.8. AppLateral de Musicalidades (Rádios Retrô, Frequências kHz, Hinos Oficiais e Canções Tradicionais) */}
+      {mainMode === 'musicalidades' && selectedStateId && (!activeCartographyLayer || activeCartographyLayer === 'none') && (
+        <StateMusicDialog
+          stateId={selectedStateId}
+          selectedRadioEraId={selectedRadioEraId}
+          onClose={handleCloseInspection}
+          onTuneState={(sId) => {
+            if (onFocusStateHandled) {
+              onFocusStateHandled();
+            }
+          }}
+          onToggleExpand={(expanded) => {
+            const centroid = centroids[selectedStateId];
+            if (centroid) {
+              const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
+                stateId: selectedStateId,
+                centroid,
+                containerWidth: getContainerWidth(),
+                is3D,
+                isPanelOpen: true,
+                isExpanded: expanded,
+              });
+              setTransitionMode('button');
+              setPan(targetPan);
+              setZoom(targetZoom);
+              baseUserPanRef.current = targetPan;
+              baseUserZoomRef.current = targetZoom;
+            }
+          }}
+        />
+      )}
+
       {/* 14. Cursor Virtual Personalizado com Efeito Mão "Grab" / "Grabbing" e Tração Suave (Apenas modo 2D cartográfico) */}
       {!isGlobe3DActive && (
         <CustomCanvasCursor
@@ -2341,25 +2714,6 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           containerRef={containerRef}
         />
       )}
-
-      {/* 15. Balão Universal de Hover dos Estados com Cálculo de Posicionamento Inteligente (Anti-Corte / Clamping / Z-Index Superior) */}
-      <UnifiedStateHoverTooltip
-        hoveredStateId={hoveredStateId}
-        centroids={centroids}
-        mainMode={mainMode}
-        isClimateActive={isClimateActive}
-        climateMode={currentClimateMode}
-        stateWeather={stateWeather}
-        geopoliticaMetric={geopoliticaMetric}
-        biodiversityKingdom={biodiversityKingdom}
-        pan={pan}
-        zoom={zoom}
-        rotateX={is3D ? sphericalAngles.rotateX : 0}
-        selectedStateId={selectedStateId || selectedGeopoliticaStateId || selectedBiodiversityStateId || selectedClimateStateId}
-        showNeighbors={showNeighbors}
-        selectedRadioEraId={selectedRadioEraId}
-        mousePos={mousePos}
-      />
     </div>
   );
 };

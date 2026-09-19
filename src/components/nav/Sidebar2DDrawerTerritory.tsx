@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronUp, ChevronDown, Waves, Trees, Compass, BarChart3 } from 'lucide-react';
+import { ChevronUp, ChevronDown, Waves, Trees, Compass } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
 import { CartographyLayerMode } from '../../types/cartography';
 
@@ -14,6 +14,7 @@ export interface Sidebar2DDrawerTerritoryProps {
     badgeColor?: string;
     description: string;
   }) => Record<string, unknown>;
+  onRegisterButtonRef?: (layer: CartographyLayerMode, el: HTMLButtonElement | null) => void;
 }
 
 /**
@@ -27,6 +28,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
   activeLayer,
   onSelectLayer,
   bindTooltip,
+  onRegisterButtonRef,
 }) => {
   const handleLayerClick = (layer: CartographyLayerMode) => {
     audioEngine.playSfx('click');
@@ -77,6 +79,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
           {/* 1. Bacias Hidrográficas */}
           <button
             id="btn-camada-hidrografia"
+            ref={(el) => onRegisterButtonRef?.('bacias_hidrograficas', el)}
             type="button"
             onClick={() => handleLayerClick('bacias_hidrograficas')}
             {...bindTooltip({
@@ -88,12 +91,12 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
             })}
             className={`btn-camada-hidrografia relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'bacias_hidrograficas'
-                ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)] scale-105'
-                : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-cyan-300 hover:bg-slate-800'
+                ? 'bg-slate-900 border-cyan-400 text-cyan-300 shadow-[0_0_14px_rgba(6,182,212,0.6)] scale-105 ring-1 ring-cyan-400/80'
+                : 'bg-slate-900/90 border-slate-700/60 text-slate-400 hover:text-cyan-300 hover:bg-slate-850 hover:border-cyan-500/40'
             }`}
             aria-label="Camada de Bacias Hidrográficas"
           >
-            <Waves className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Waves className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
             {activeLayer === 'bacias_hidrograficas' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-300 ring-2 ring-slate-950 shadow-[0_0_8px_#06b6d4] animate-pulse pointer-events-none" />
             )}
@@ -102,6 +105,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
           {/* 2. Biomas Nacionais */}
           <button
             id="btn-camada-biomas"
+            ref={(el) => onRegisterButtonRef?.('biomas_relevo', el)}
             type="button"
             onClick={() => handleLayerClick('biomas_relevo')}
             {...bindTooltip({
@@ -113,12 +117,12 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
             })}
             className={`btn-camada-biomas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'biomas_relevo'
-                ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.5)] scale-105'
-                : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-800'
+                ? 'bg-slate-900 border-emerald-400 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.6)] scale-105 ring-1 ring-emerald-400/80'
+                : 'bg-slate-900/90 border-slate-700/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-850 hover:border-emerald-500/40'
             }`}
             aria-label="Camada de Biomas Nacionais"
           >
-            <Trees className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Trees className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
             {activeLayer === 'biomas_relevo' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-300 ring-2 ring-slate-950 shadow-[0_0_8px_#10b981] animate-pulse pointer-events-none" />
             )}
@@ -127,6 +131,7 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
           {/* 3. Rotas & Integração */}
           <button
             id="btn-camada-rotas"
+            ref={(el) => onRegisterButtonRef?.('rotas_integracao', el)}
             type="button"
             onClick={() => handleLayerClick('rotas_integracao')}
             {...bindTooltip({
@@ -138,39 +143,14 @@ export const Sidebar2DDrawerTerritory: React.FC<Sidebar2DDrawerTerritoryProps> =
             })}
             className={`btn-camada-rotas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
               activeLayer === 'rotas_integracao'
-                ? 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)] scale-105'
-                : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-amber-300 hover:bg-slate-800'
+                ? 'bg-slate-900 border-amber-400 text-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.6)] scale-105 ring-1 ring-amber-400/80'
+                : 'bg-slate-900/90 border-slate-700/60 text-slate-400 hover:text-amber-300 hover:bg-slate-850 hover:border-amber-500/40'
             }`}
             aria-label="Camada de Rotas e Conectividade"
           >
-            <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Compass className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
             {activeLayer === 'rotas_integracao' && (
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-slate-950 shadow-[0_0_8px_#f59e0b] animate-pulse pointer-events-none" />
-            )}
-          </button>
-
-          {/* 4. Dados Coropléticos */}
-          <button
-            id="btn-camada-coropletica"
-            type="button"
-            onClick={() => handleLayerClick('dados_coropleticos')}
-            {...bindTooltip({
-              title: 'Dados Coropléticos IBGE',
-              badge: activeLayer === 'dados_coropleticos' ? 'Camada Ativa' : 'Censo 2022',
-              badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/40',
-              description:
-                'Mapas temáticos por estado: Densidade demográfica Censo 2022, PIB estadual e indicadores sociais do Brasil.',
-            })}
-            className={`btn-camada-coropletica relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-              activeLayer === 'dados_coropleticos'
-                ? 'bg-indigo-500/30 border-indigo-400 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.5)] scale-105'
-                : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-indigo-300 hover:bg-slate-800'
-            }`}
-            aria-label="Camada de Dados Coropléticos"
-          >
-            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
-            {activeLayer === 'dados_coropleticos' && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-300 ring-2 ring-slate-950 shadow-[0_0_8px_#818cf8] animate-pulse pointer-events-none" />
             )}
           </button>
         </div>

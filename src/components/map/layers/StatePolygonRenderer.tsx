@@ -1,6 +1,7 @@
 import React from 'react';
 import { StateVisualProperties } from '../stateStyling/stateFillStyler';
 import { MapVisualStyle } from '../../../lib/mapColorScales';
+import { CartographyLayerMode } from '../../../types/cartography';
 
 export interface StatePolygonRendererProps {
   stateId: string;
@@ -17,6 +18,7 @@ export interface StatePolygonRendererProps {
   isClimateActive: boolean;
   isGeopoliticaActive: boolean;
   visualStyle: MapVisualStyle;
+  activeCartographyLayer?: CartographyLayerMode;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
   onStateClick: (stateId: string, e: React.MouseEvent) => void;
@@ -38,6 +40,7 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
   isClimateActive,
   isGeopoliticaActive,
   visualStyle,
+  activeCartographyLayer,
   onStateEnter,
   onStateLeave,
   onStateClick,
@@ -48,11 +51,27 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
   let effectiveStroke = visuals.strokeColor;
   let effectiveStrokeWidth = visuals.strokeWidth;
 
-  if (activeIsolatedState) {
+  const isCartographyActive = Boolean(activeCartographyLayer && activeCartographyLayer !== 'none');
+
+  if (isCartographyActive) {
+    // CAMADAS CARTOGRÁFICAS DE TERRITÓRIO (BACIAS, BIOMAS/RELEVO, ROTAS, CENSO):
+    // Respeita as propriedades visuais calculadas para o subitem/agrupamento filtrado ou estado
     effectiveFill = visuals.stateFill;
     effectiveOpacity = visuals.stateFillOpacity;
-    effectiveStroke = visuals.strokeColor;
-    effectiveStrokeWidth = visuals.strokeWidth;
+    effectiveStroke = isSelected ? '#fef08a' : isHovered ? '#ffffff' : visuals.strokeColor;
+    effectiveStrokeWidth = isSelected ? 3.6 : isHovered ? 2.6 : visuals.strokeWidth;
+  } else if (activeIsolatedState) {
+    if (stateId === activeIsolatedState) {
+      effectiveFill = visuals.stateFill;
+      effectiveOpacity = 1.0;
+      effectiveStroke = '#fef08a';
+      effectiveStrokeWidth = 3.6;
+    } else {
+      effectiveFill = '#070b14';
+      effectiveOpacity = 0.94;
+      effectiveStroke = '#1e293b';
+      effectiveStrokeWidth = 0.75;
+    }
   } else if (isRegionActive) {
     effectiveFill = regionColor;
     effectiveOpacity = belongsToActiveRegion ? (isHovered ? 0.75 : 0.60) : 0.18;
@@ -81,8 +100,10 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
     effectiveStrokeWidth = isSelected ? 3.0 : isHovered ? 2.4 : visuals.strokeWidth;
   }
 
-  const finalStroke = activeIsolatedState
-    ? visuals.strokeColor
+  const finalStroke = isCartographyActive
+    ? (isSelected ? '#fef08a' : isHovered ? '#ffffff' : visuals.strokeColor)
+    : activeIsolatedState
+    ? (stateId === activeIsolatedState ? '#fef08a' : '#1e293b')
     : isRegionActive && belongsToActiveRegion
     ? regionColor
     : isNeighborOfSelected
@@ -93,15 +114,17 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
     ? '#fef08a'
     : effectiveStroke;
 
-  const finalStrokeWidth = activeIsolatedState
-    ? visuals.strokeWidth
+  const finalStrokeWidth = isCartographyActive
+    ? (isSelected ? 3.6 : isHovered ? 2.6 : visuals.strokeWidth)
+    : activeIsolatedState
+    ? (stateId === activeIsolatedState ? 3.6 : 0.75)
     : isRegionActive && belongsToActiveRegion
     ? 2.2
     : isNeighborOfSelected
     ? 2.0
     : effectiveStrokeWidth;
 
-  const isInteractionDisabled = showNeighbors || (activeIsolatedState && stateId !== activeIsolatedState);
+  const isInteractionDisabled = showNeighbors || (!isCartographyActive && activeIsolatedState && stateId !== activeIsolatedState);
 
   return (
     <g

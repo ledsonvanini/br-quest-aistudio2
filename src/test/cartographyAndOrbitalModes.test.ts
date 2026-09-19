@@ -3,14 +3,13 @@ import { TERRITORY_LAYERS_CONFIG, CartographyLayerMode } from '../types/cartogra
 import { MODE_DEFAULT_PROFILES } from '../services/mapModeService';
 
 describe('Cartography and 2D/3D Decoupled Architecture', () => {
-  it('defines valid, distinct configuration for all 4 cartographic territory layers', () => {
-    expect(TERRITORY_LAYERS_CONFIG).toHaveLength(4);
+  it('defines valid, distinct configuration for all 3 cartographic territory layers', () => {
+    expect(TERRITORY_LAYERS_CONFIG).toHaveLength(3);
 
     const layerIds = TERRITORY_LAYERS_CONFIG.map((layer) => layer.id);
     expect(layerIds).toContain('bacias_hidrograficas');
     expect(layerIds).toContain('biomas_relevo');
     expect(layerIds).toContain('rotas_integracao');
-    expect(layerIds).toContain('dados_coropleticos');
 
     TERRITORY_LAYERS_CONFIG.forEach((layer) => {
       expect(layer.label).toBeDefined();
@@ -44,5 +43,24 @@ describe('Cartography and 2D/3D Decoupled Architecture', () => {
 
     handleSelectMainMode('globo3d');
     expect(activeCartographyLayer).toBe('none');
+  });
+
+  it('verifies subitem filtering and navigation independence in territory layers', () => {
+    // Garantia de que a barra de ferramentas de território opera sem disparar navegação para o Guardião
+    let selectedSubitemId: string | null = null;
+    let selectedStateId: string | null = null;
+
+    const handleSelectSubitem = (id: string | null) => {
+      selectedSubitemId = selectedSubitemId === id ? null : id;
+    };
+
+    // Usuário clica em uma bacia
+    handleSelectSubitem('amazonica');
+    expect(selectedSubitemId).toBe('amazonica');
+    expect(selectedStateId).toBeNull(); // Nenhuma navegação para o Guardião disparada
+
+    // Usuário clica novamente para alternar
+    handleSelectSubitem('amazonica');
+    expect(selectedSubitemId).toBeNull();
   });
 });

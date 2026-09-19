@@ -260,169 +260,31 @@ export const CartographicGraticuleLayer: React.FC<CartographicGraticuleLayerProp
         ))}
       </g>
 
-      {/* 4. LINHA DO EQUADOR (Latitude 0°) - Linha Cartográfica Distinta */}
+      {/* 4. LINHA DO EQUADOR (Latitude 0°) - Linha Cartográfica Discreta */}
       {equatorPath && (
         <g className="linha-equador-cartografica">
-          {/* Sombra de apoio suave */}
-          <path
-            d={equatorPath}
-            fill="none"
-            stroke={isParchmentMode ? '#fef3c7' : '#020d1c'}
-            strokeWidth="2.2"
-            strokeOpacity={0.35}
-          />
-          {/* Linha principal do Equador */}
           <path
             d={equatorPath}
             fill="none"
             stroke={strokeMajor}
-            strokeWidth="1.3"
-            strokeDasharray="14 4 2 4"
-            strokeOpacity={majorOpacity}
+            strokeWidth="1.1"
+            strokeDasharray="12 6"
+            strokeOpacity={majorOpacity * 0.7}
           />
-          {/* Rótulo Central Oceânico: LINHA DO EQUADOR */}
-          {equatorLabelPos && (
-            <g
-              transform={`translate(${equatorLabelPos[0]}, ${equatorLabelPos[1]})`}
-              opacity={majorOpacity}
-            >
-              {/* Badge cartográfico */}
-              <rect
-                x="-140"
-                y="-13"
-                width="280"
-                height="24"
-                rx="5"
-                fill={badgeBg}
-                fillOpacity="0.9"
-                stroke={badgeBorder}
-                strokeWidth="1"
-                strokeDasharray="3 2"
-              />
-              <circle cx="-130" cy="-1" r="2" fill={strokeMajor} />
-              <circle cx="130" cy="-1" r="2" fill={strokeMajor} />
-              <text
-                x="0"
-                y="3"
-                textAnchor="middle"
-                fontSize="10"
-                fontFamily="'Cinzel', 'Trajan Pro', Georgia, serif"
-                fontWeight="bold"
-                letterSpacing="3"
-                fill={strokeMajor}
-              >
-                LINHA DO EQUADOR • 0° LAT
-              </text>
-            </g>
-          )}
         </g>
       )}
 
       {/* 5. TRÓPICO DE CAPRICÓRNIO (Latitude 23°26' S) */}
       {tropicPath && (
         <g className="linha-tropico-capricornio">
-          {/* Sombra de apoio */}
-          <path
-            d={tropicPath}
-            fill="none"
-            stroke={isParchmentMode ? '#fef3c7' : '#020d1c'}
-            strokeWidth="2.2"
-            strokeOpacity={0.35}
-          />
-          {/* Linha do Trópico */}
           <path
             d={tropicPath}
             fill="none"
             stroke={strokeMajor}
-            strokeWidth="1.2"
-            strokeDasharray="9 4 2 4"
-            strokeOpacity={majorOpacity}
+            strokeWidth="1.0"
+            strokeDasharray="8 6"
+            strokeOpacity={majorOpacity * 0.6}
           />
-          {/* Rótulo Central Oceânico: TRÓPICO DE CAPRICÓRNIO */}
-          {tropicLabelPos && (
-            <g
-              transform={`translate(${tropicLabelPos[0]}, ${tropicLabelPos[1]})`}
-              opacity={majorOpacity}
-            >
-              <rect
-                x="-155"
-                y="-13"
-                width="310"
-                height="24"
-                rx="5"
-                fill={badgeBg}
-                fillOpacity="0.9"
-                stroke={badgeBorder}
-                strokeWidth="1"
-                strokeDasharray="3 2"
-              />
-              <circle cx="-145" cy="-1" r="2" fill={strokeMajor} />
-              <circle cx="145" cy="-1" r="2" fill={strokeMajor} />
-              <text
-                x="0"
-                y="3"
-                textAnchor="middle"
-                fontSize="9.5"
-                fontFamily="'Cinzel', 'Trajan Pro', Georgia, serif"
-                fontWeight="bold"
-                letterSpacing="2.5"
-                fill={strokeMajor}
-              >
-                TRÓPICO DE CAPRICÓRNIO • 23°26' S
-              </text>
-            </g>
-          )}
-        </g>
-      )}
-
-      {/* 6. Indicador e Rumo para o MERIDIANO DE GREENWICH (0° Longitude ➔ Leste) */}
-      {greenwichPos && (
-        <g
-          className="indicador-meridiano-greenwich"
-          transform={`translate(${greenwichPos[0]}, ${greenwichPos[1]})`}
-          opacity={isParchmentMode ? 0.85 : 0.65}
-        >
-          <g transform="translate(0, 0)">
-            <rect
-              x="-18"
-              y="-14"
-              width="236"
-              height="28"
-              rx="6"
-              fill={badgeBg}
-              fillOpacity="0.88"
-              stroke={isParchmentMode ? '#92400e' : '#0284c7'}
-              strokeWidth="1"
-              strokeDasharray="4 2"
-            />
-            {/* Seta náutica apontando para o Leste */}
-            <path
-              d="M 194 -6 L 204 0 L 194 6 Z"
-              fill={strokeMajor}
-              stroke={badgeBorder}
-              strokeWidth="0.5"
-            />
-            <line
-              x1="176"
-              y1="0"
-              x2="200"
-              y2="0"
-              stroke={strokeMajor}
-              strokeWidth="1.5"
-            />
-            <text
-              x="84"
-              y="4"
-              textAnchor="middle"
-              fontSize="9"
-              fontFamily="Georgia, serif"
-              fontWeight="bold"
-              letterSpacing="1.5"
-              fill={isParchmentMode ? '#78350f' : '#38bdf8'}
-            >
-              MERIDIANO DE GREENWICH (0°) ➔
-            </text>
-          </g>
         </g>
       )}
 

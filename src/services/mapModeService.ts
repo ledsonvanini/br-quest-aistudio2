@@ -79,7 +79,7 @@ export const MODE_DEFAULT_PROFILES: Record<AppMainMode, ModeDefaultProfile> = {
     isWavesDefault: true,
     isAtmosphereDefault: true,
     isRainSimDefault: false,
-    defaultPanelOpen: true,
+    defaultPanelOpen: false,
   },
   musicalidades: {
     id: 'musicalidades',
@@ -103,7 +103,7 @@ export const MODE_DEFAULT_PROFILES: Record<AppMainMode, ModeDefaultProfile> = {
     isWavesDefault: true,
     isAtmosphereDefault: true,
     isRainSimDefault: false,
-    defaultPanelOpen: true,
+    defaultPanelOpen: false,
   },
   aventura: {
     id: 'aventura',

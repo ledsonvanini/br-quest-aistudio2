@@ -56,10 +56,10 @@ export function useAppModes(initialMode: AppMainMode = 'clima') {
     setMainMode(newMode);
     const profile = MODE_DEFAULT_PROFILES[newMode];
 
-    // Reset cross-mode panels to guarantee isolation
+    // Reset cross-mode panels to guarantee isolation - todos os AppLaterais começam fechados
     setIsObservatorioOpen(false);
     setIsBiodiversityPanelOpen(false);
-    setIsGeopoliticaPanelOpen(newMode === 'geopolitica');
+    setIsGeopoliticaPanelOpen(false);
     setIsRadioOpen(false);
     setFocusedStateId(newMode === 'musicalidades' ? 'RESET_CENTRAL_BRAZIL' : null);
     setSelectedRegionFilter('todos');

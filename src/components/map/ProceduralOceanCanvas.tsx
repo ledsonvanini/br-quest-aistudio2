@@ -7,6 +7,7 @@ interface ProceduralOceanCanvasProps {
   isParchmentMode?: boolean;
   isBiodiversityMode?: boolean;
   isMusicalMode?: boolean;
+  isTerritoryMode?: boolean;
   mode?: AppMainMode;
 }
 
@@ -25,6 +26,7 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
   isParchmentMode = false,
   isBiodiversityMode = false,
   isMusicalMode = false,
+  isTerritoryMode = false,
   mode,
 }) => {
   const currentMode: AppMainMode = useMemo(() => {
@@ -35,6 +37,10 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
   }, [mode, isBiodiversityMode, isMusicalMode]);
 
   const oceanGradient = useMemo(() => {
+    if (isTerritoryMode) {
+      // Oceano Cartográfico Técnico Exclusivo: tons índigo e estuarinos com batimetria nítida
+      return 'radial-gradient(circle 3400px at 50% 50%, #062340 0%, #041a32 24%, #021223 52%, #010a14 85%)';
+    }
     if (isParchmentMode) {
       return 'radial-gradient(circle 2200px at 50% 50%, #fbf2df 0%, #eedbb8 25%, #dfc59b 50%, #b08f58 75%, #8c6a38 100%)';
     }
@@ -47,7 +53,7 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
       return 'radial-gradient(circle 2600px at 55% 45%, #0e243d 0%, #091a2e 25%, #061120 52%, #030a14 78%, #010408 100%)';
     }
     return 'radial-gradient(circle 3800px at 50% 50%, #0c487c 0%, #072a4e 25%, #03172e 55%, #010d1c 85%)';
-  }, [isBiodiversityMode, isMusicalMode, isParchmentMode]);
+  }, [isBiodiversityMode, isMusicalMode, isParchmentMode, isTerritoryMode]);
 
   return (
     <div
@@ -63,9 +69,10 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
       }}
     >
       {/* 0. Camada Base: Shader Fractal do Oceano Profundo (14.000 x 10.000px, 100% da Área Navegável) */}
-      {!isParchmentMode && (
+      {(!isParchmentMode || isTerritoryMode) && (
         <OceanDeepFractalCanvas
           mode={currentMode}
+          isTerritoryMode={isTerritoryMode}
           waveSpeed={0.72}
           isPlayingAnimation={isPlayingAnimation}
         />
@@ -174,6 +181,34 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
             style={{ mixBlendMode: 'screen' }}
             opacity="0.75"
           />
+        </svg>
+      )}
+
+      {/* 4. Textura Cartográfica Técnica Náutica e Linhas de Grade de Estuários Exclusiva do Modo Território */}
+      {isTerritoryMode && (
+        <svg
+          id="camada-textura-mar-territorio"
+          className="camada-textura-mar-territorio absolute inset-0 w-full h-full pointer-events-none opacity-25 mix-blend-screen"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern
+              id="pattern-grade-cartografica-mar"
+              width="120"
+              height="120"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 120 0 L 0 0 0 120"
+                fill="none"
+                stroke="rgba(6, 182, 212, 0.25)"
+                strokeWidth="0.8"
+                strokeDasharray="4 4"
+              />
+              <circle cx="0" cy="0" r="1.5" fill="rgba(6, 182, 212, 0.5)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#pattern-grade-cartografica-mar)" />
         </svg>
       )}
     </div>

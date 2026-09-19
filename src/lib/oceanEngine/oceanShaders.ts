@@ -60,6 +60,14 @@ void getOceanPalette(
     causticHighlight = vec3(0.500, 0.780, 0.950);
     shallowWater     = vec3(0.055, 0.280, 0.480); // Ciano safira suave
     beachSand        = vec3(0.930, 0.960, 1.000); // Espuma noturna luminosa
+  } else if (mode == 4) {
+    // Território & Redes Vivas (Batimetria e Estuários Técnicos Cartográficos):
+    deepAbyss        = vec3(0.005, 0.045, 0.110); // Índigo abissal cartográfico
+    midOcean         = vec3(0.015, 0.110, 0.220); // Azul batimétrico técnico
+    lightAzure       = vec3(0.035, 0.220, 0.380); // Azul oceânico límpido
+    causticHighlight = vec3(0.250, 0.750, 0.900); // Cáusticas estuarinas e fluviais
+    shallowWater     = vec3(0.030, 0.260, 0.400); // Água costeira translúcida
+    beachSand        = vec3(0.920, 0.960, 0.990); // Linha de praia e foz dos rios
   } else {
     // Aventura, Clima, Geopolítica (Padrão Cartográfico de Alta Fidelidade):
     // Paleta cartográfica refinada e harmoniosa, sem saturação excessiva

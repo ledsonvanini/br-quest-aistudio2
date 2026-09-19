@@ -43,7 +43,7 @@ import {
 import { audioEngine } from '../lib/audioSynth';
 import { apiTracker } from '../services/apiTracker';
 import { ClimateMode } from './map/ClimatePhenomenaLayer';
-import { TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from '../types';
+import { AppMainMode, MenuTooltipInfo, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome } from '../types';
 import { GeopoliticaMetricKey } from '../types/geopolitica';
 import { QuestThemePillar } from '../data/brQuestQuestionsData';
 import { NavFlyoutMenu } from './nav/NavFlyoutMenu';
@@ -52,20 +52,19 @@ import { Sidebar2DDrawerTerritory } from './nav/Sidebar2DDrawerTerritory';
 import { Sidebar3DDrawerOrbital } from './nav/Sidebar3DDrawerOrbital';
 import { SidebarUserAndConfigsGroup } from './nav/SidebarUserAndConfigsGroup';
 import { CartographyLayerMode } from '../types/cartography';
+import { TerritoryInteractiveLegend } from './map/territory/TerritoryInteractiveLegend';
 
-export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
-
-export interface MenuTooltipInfo {
-  title: string;
-  badge?: string;
-  badgeColor?: string;
-  description: string;
-}
+export type { AppMainMode, MenuTooltipInfo };
 
 interface Props {
   // Cartography Layers (Gaveta 2 de Território)
   activeCartographyLayer?: CartographyLayerMode;
   onSelectCartographyLayer?: (layer: CartographyLayerMode) => void;
+  selectedTerritorySubitemId?: string | null;
+  onSelectTerritorySubitem?: (subitemId: string | null) => void;
+  isTerritorySubmenuOpen?: boolean;
+  onToggleTerritorySubmenu?: () => void;
+  onSelectState?: (stateId: string | null) => void;
   // Active App Module
   mainMode: AppMainMode;
   onSelectMainMode: (mode: AppMainMode) => void;
@@ -242,8 +241,17 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   onOpenApiStatus,
   onOpenDailyTips,
   dailyTipsUnreadCount,
+  selectedTerritorySubitemId,
+  onSelectTerritorySubitem,
+  isTerritorySubmenuOpen,
+  onToggleTerritorySubmenu,
+  onSelectState,
 }) => {
   const activeCelestialMode = timeOverride || celestialTimeOverride;
+
+  // Submenu lateral conectado de Território (fechado por padrão no boot; abre ao selecionar camada de território)
+  const [localTerritorySubmenuOpen, setLocalTerritorySubmenuOpen] = useState<boolean>(false);
+  const isTerritorySubmenuEffective = isTerritorySubmenuOpen !== undefined ? isTerritorySubmenuOpen : localTerritorySubmenuOpen;
 
   // Monitoramento reativo das chamadas de APIs hoje
   const [apiCallsCount, setApiCallsCount] = useState<number>(() => apiTracker.getTotalCallsToday());
@@ -253,8 +261,17 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     return () => unsub();
   }, []);
 
-  // Controle de qual submenu/flyout flutuante está aberto no momento
-  const [openFlyoutMode, setOpenFlyoutMode] = useState<AppMainMode | null>(null);
+  // Controle de qual submenu/flyout flutuante está aberto no momento (Clima aberto por padrão)
+  const [openFlyoutMode, setOpenFlyoutMode] = useState<AppMainMode | null>('clima');
+
+  // Garante exclusividade mútua estrita: se um estado estiver isolado no AppLateral,
+  // fecha qualquer flyout ou submenu lateral aberto imediatamente
+  useEffect(() => {
+    if (selectedStateId) {
+      setOpenFlyoutMode(null);
+      setLocalTerritorySubmenuOpen(false);
+    }
+  }, [selectedStateId]);
 
   // Posição calculada do flyout vertical com seta direcionada ao botão pai
   const [flyoutPos, setFlyoutPos] = useState<{ top: number; arrowTop: number } | null>(null);
@@ -265,68 +282,131 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     top: number;
   } | null>(null);
 
-  // Comportamento Accordion da Sidebar:
-  // - Por padrão: 'Menu Principal' expandido (true), 'Ambiente & Sistema' recolhido (false) e 'Território & Camadas' recolhido (false).
-  // - A seta de recolher no Menu Principal só aparece quando uma das gavetas estiver expandida.
-  // - Ao expandir uma seção, as outras são automaticamente recolhidas (apenas uma por vez).
+  // Comportamento Accordion Estrito da Sidebar:
+  // - Menu Principal: aberto por padrão com Clima selecionado.
+  // - Se abrirmos outro menu (Território ou Ambiente), os demais são recolhidos automaticamente.
   const [isToolsSectionExpanded, setIsToolsSectionExpanded] = useState<boolean>(false);
   const [isTerritorySectionExpanded, setIsTerritorySectionExpanded] = useState<boolean>(false);
-  const [isGlobeSectionExpanded, setIsGlobeSectionExpanded] = useState<boolean>(true);
+  const [isGlobeSectionExpanded, setIsGlobeSectionExpanded] = useState<boolean>(false);
   const [isMainMenuExpanded, setIsMainMenuExpanded] = useState<boolean>(true);
 
-  // Camada Cartográfica Ativa (Gaveta 2: Território)
+  // Camada Cartográfica Ativa (Gaveta 2: Território) - 'none' por padrão para não misturar com Clima
   const [internalCartographyLayer, setInternalCartographyLayer] = useState<CartographyLayerMode>('none');
   const currentCartographyLayer = activeCartographyLayer !== undefined ? activeCartographyLayer : internalCartographyLayer;
   const handleSelectCartographyLayer = (layer: CartographyLayerMode) => {
+    if (layer === currentCartographyLayer) {
+      setInternalCartographyLayer('none');
+      onSelectCartographyLayer?.('none');
+      setLocalTerritorySubmenuOpen(false);
+      onSelectState?.(null);
+      return;
+    }
+
     setInternalCartographyLayer(layer);
     onSelectCartographyLayer?.(layer);
+    if (layer !== 'none') {
+      // Abre o submenu lateral com os itens da camada
+      setLocalTerritorySubmenuOpen(true);
+      setOpenFlyoutMode(null);
+      // Fecha o AppLateral para não abrir AppLateral + Menu Lateral ao mesmo tempo
+      onSelectState?.(null);
+      onResetView?.();
+    } else {
+      setLocalTerritorySubmenuOpen(false);
+      onSelectState?.(null);
+    }
   };
 
-  // Handlers do Accordion
+  // Handlers Accordion: ao abrir uma seção, todas as outras são recolhidas automaticamente
   const handleToggleToolsSection = () => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
-    setOpenFlyoutMode(null);
-    if (!isToolsSectionExpanded) {
-      setIsToolsSectionExpanded(true);
-      setIsTerritorySectionExpanded(false);
+    const willOpen = !isToolsSectionExpanded;
+    setIsToolsSectionExpanded(willOpen);
+    if (willOpen) {
       setIsMainMenuExpanded(false);
-    } else {
-      setIsToolsSectionExpanded(false);
-      setIsMainMenuExpanded(true);
+      setIsTerritorySectionExpanded(false);
+      setIsGlobeSectionExpanded(false);
+      setOpenFlyoutMode(null);
+      handleSelectCartographyLayer('none');
     }
   };
 
   const handleToggleTerritorySection = () => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
-    setOpenFlyoutMode(null);
-    if (!isTerritorySectionExpanded) {
-      setIsTerritorySectionExpanded(true);
-      setIsToolsSectionExpanded(false);
+    const willOpen = !isTerritorySectionExpanded;
+    setIsTerritorySectionExpanded(willOpen);
+    if (willOpen) {
       setIsMainMenuExpanded(false);
+      setIsToolsSectionExpanded(false);
+      setIsGlobeSectionExpanded(false);
+      setOpenFlyoutMode(null);
+      // Ao expandir a gaveta de Território, o primeiro item (Bacias Hidrográficas) vem ativo por padrão
+      if (currentCartographyLayer === 'none') {
+        handleSelectCartographyLayer('bacias_hidrograficas');
+      }
     } else {
-      setIsTerritorySectionExpanded(false);
-      setIsMainMenuExpanded(true);
+      handleSelectCartographyLayer('none');
     }
   };
 
   const handleToggleMainMenu = () => {
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
-    if (!isMainMenuExpanded) {
-      setIsMainMenuExpanded(true);
-      setIsToolsSectionExpanded(false);
+    const willOpen = !isMainMenuExpanded;
+    setIsMainMenuExpanded(willOpen);
+    if (willOpen) {
       setIsTerritorySectionExpanded(false);
+      setIsToolsSectionExpanded(false);
+      setIsGlobeSectionExpanded(false);
+      // Modos independentes: desativa camadas territoriais
+      if (currentCartographyLayer !== 'none') {
+        handleSelectCartographyLayer('none');
+      }
+      setOpenFlyoutMode(mainMode === 'globo3d' ? 'clima' : mainMode);
     } else {
-      setIsMainMenuExpanded(false);
-      setIsToolsSectionExpanded(true);
+      setOpenFlyoutMode(null);
     }
   };
 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<{ [key in AppMainMode]?: HTMLButtonElement | null }>({});
+  const territoryButtonRefs = useRef<{ [key in CartographyLayerMode]?: HTMLButtonElement | null }>({});
+  const [territoryLegendPos, setTerritoryLegendPos] = useState<{ top: number; arrowTop: number } | null>(null);
+
+  // Recalcula o posicionamento vertical do submenu de Território para alinhar a seta com precisão ao ícone selecionado
+  const updateTerritoryLegendPosition = useCallback((targetLayer?: CartographyLayerMode) => {
+    const layer = targetLayer || currentCartographyLayer;
+    if (!layer || layer === 'none') {
+      setTerritoryLegendPos(null);
+      return;
+    }
+    const btn = territoryButtonRefs.current[layer];
+    if (!btn) return;
+    const btnRect = btn.getBoundingClientRect();
+    const btnCenterY = btnRect.top + btnRect.height / 2;
+
+    const viewportHeight = window.innerHeight;
+    const legendHeight = 360;
+    const margin = 12;
+
+    let targetTop = btnCenterY - 48;
+    if (targetTop < margin) {
+      targetTop = margin;
+    } else if (targetTop + legendHeight > viewportHeight - margin) {
+      targetTop = Math.max(margin, viewportHeight - margin - legendHeight);
+    }
+
+    let arrowOffset = btnCenterY - targetTop;
+    arrowOffset = Math.max(20, Math.min(legendHeight - 20, arrowOffset));
+
+    setTerritoryLegendPos({
+      top: Math.round(targetTop),
+      arrowTop: Math.round(arrowOffset),
+    });
+  }, [currentCartographyLayer]);
 
   // Recalcula o posicionamento vertical e a posição da seta de balão para que caiba na tela
   const updateFlyoutPosition = useCallback((targetMode?: AppMainMode | null) => {
@@ -374,14 +454,27 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   }, [openFlyoutMode, updateFlyoutPosition]);
 
   useEffect(() => {
+    if (isTerritorySubmenuEffective && currentCartographyLayer !== 'none') {
+      updateTerritoryLegendPosition(currentCartographyLayer);
+      const timer = setTimeout(() => {
+        updateTerritoryLegendPosition(currentCartographyLayer);
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [isTerritorySubmenuEffective, currentCartographyLayer, updateTerritoryLegendPosition]);
+
+  useEffect(() => {
     const handleResize = () => {
       if (openFlyoutMode) {
         updateFlyoutPosition(openFlyoutMode);
       }
+      if (isTerritorySubmenuEffective && currentCartographyLayer !== 'none') {
+        updateTerritoryLegendPosition(currentCartographyLayer);
+      }
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [openFlyoutMode, updateFlyoutPosition]);
+  }, [openFlyoutMode, updateFlyoutPosition, isTerritorySubmenuEffective, currentCartographyLayer, updateTerritoryLegendPosition]);
 
   // Fecha o flyout se o usuário clicar fora da sidebar e do painel flutuante
   useEffect(() => {
@@ -410,13 +503,28 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
     audioEngine.playSfx('click');
     setHoveredMenuTooltip(null);
 
+    // REGRA DE OURO: Ao clicar na Sidebar, fecha o AppLateral e recentraliza o mapa
+    onSelectState?.(null);
+    onResetView?.();
+
+    // Accordion: Garante que o Menu Principal permaneça aberto e as demais gavetas recolhidas
+    setIsMainMenuExpanded(true);
+    setIsTerritorySectionExpanded(false);
+    setIsToolsSectionExpanded(false);
+    setIsGlobeSectionExpanded(false);
+
+    // MODOS INDEPENDENTES: desativa qualquer camada territorial (ex: Bacias) para nunca combinar com Modos Principais!
+    if (currentCartographyLayer !== 'none') {
+      handleSelectCartographyLayer('none');
+    }
+    setLocalTerritorySubmenuOpen(false);
+
     // Isolar painéis: fecha telemetria do globo se aberta ao interagir com a sidebar
     if (isGlobeTelemetryOpen && onToggleGlobeTelemetry) {
       onToggleGlobeTelemetry();
     }
 
     // No modo Globo 3D, as ferramentas agora residem no Footer do aplicativo.
-    // O botão na sidebar alterna o modo diretamente sem exibir subitens legados.
     if (mode === 'globo3d') {
       setOpenFlyoutMode(null);
       if (mainMode === 'globo3d') {
@@ -427,15 +535,20 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
       return;
     }
 
-    // Se já estiver com o menu flyout deste modo aberto, fecha o flyout
-    if (openFlyoutMode === mode) {
-      setOpenFlyoutMode(null);
-      return;
-    }
-
     // Se estiver em outro modo, seleciona o modo clicado
     if (mainMode !== mode) {
       onSelectMainMode(mode);
+    }
+
+    // Garante que o primeiro subitem venha ativo por padrão para cada modo
+    if (mode === 'clima' && !climateMode) {
+      onClimateModeChange?.('temperaturas_frentes');
+    } else if (mode === 'biodiversidade' && !biodiversityKingdom) {
+      onBiodiversityKingdomChange?.('all');
+    } else if (mode === 'geopolitica' && !geopoliticaMetric) {
+      onGeopoliticaMetricChange?.('miscigenacao');
+    } else if (mode === 'musicalidades' && !activeMusicCategory) {
+      onSelectMusicCategory?.('state_anthems');
     }
 
     // Abre o menu flyout do modo selecionado
@@ -700,7 +813,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
             {/* Quando expandido (padrão): renderiza os 6 modos com botões padronizados */}
             {isMainMenuExpanded && (
               <div className="flex flex-col items-center gap-1 transition-all duration-200">
-                {/* 1. CLIMA */}
+                {/* 1. CLIMA - Fundo Escuro Sólido de Alto Contraste */}
                 <div className="relative">
                   <button
                     id="btn-modo-clima"
@@ -717,8 +830,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-modo-clima relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'clima'
-                        ? 'bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 text-slate-950 border-amber-300 shadow-[0_0_16px_rgba(249,115,22,0.6)] font-black scale-105 ring-2 ring-orange-400/80'
-                        : 'text-slate-400 hover:text-orange-300 hover:bg-slate-800/80 border-transparent hover:border-orange-500/30'
+                        ? 'bg-slate-900 border-amber-400 text-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.6)] scale-105 ring-1 ring-amber-400/80 font-bold'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-amber-300 hover:bg-slate-800 hover:border-amber-500/40'
                     }`}
                     aria-label="Temperatura e Clima"
                   >
@@ -729,7 +842,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 2. BIODIVERSIDADE */}
+                {/* 2. BIODIVERSIDADE - Fundo Escuro Sólido de Alto Contraste */}
                 <div className="relative">
                   <button
                     id="btn-modo-biodiversidade"
@@ -746,8 +859,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-modo-biodiversidade relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'biodiversidade'
-                        ? 'bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 text-slate-950 border-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.6)] font-black scale-105 ring-2 ring-emerald-400/80'
-                        : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-800/80 border-transparent hover:border-emerald-500/30'
+                        ? 'bg-slate-900 border-emerald-400 text-emerald-300 shadow-[0_0_14px_rgba(16,185,129,0.6)] scale-105 ring-1 ring-emerald-400/80 font-bold'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-emerald-300 hover:bg-slate-800 hover:border-emerald-500/40'
                     }`}
                     aria-label="Biodiversidade e Biomas"
                   >
@@ -758,7 +871,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 3. GEOPOLÍTICA */}
+                {/* 3. GEOPOLÍTICA - Fundo Escuro Sólido de Alto Contraste */}
                 <div className="relative">
                   <button
                     id="btn-modo-geopolitica"
@@ -775,8 +888,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-modo-geopolitica relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'geopolitica'
-                        ? 'bg-gradient-to-br from-blue-400 via-blue-500 to-cyan-600 text-slate-950 border-blue-300 shadow-[0_0_16px_rgba(59,130,246,0.6)] font-black scale-105 ring-2 ring-blue-400/80'
-                        : 'text-slate-400 hover:text-blue-300 hover:bg-slate-800/80 border-transparent hover:border-blue-500/30'
+                        ? 'bg-slate-900 border-cyan-400 text-cyan-300 shadow-[0_0_14px_rgba(6,182,212,0.6)] scale-105 ring-1 ring-cyan-400/80 font-bold'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-cyan-300 hover:bg-slate-800 hover:border-cyan-500/40'
                     }`}
                     aria-label="Geopolítica e Demografia"
                   >
@@ -787,7 +900,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 4. MUSICALIDADES */}
+                {/* 4. MUSICALIDADES - Fundo Escuro Sólido de Alto Contraste */}
                 <div className="relative">
                   <button
                     id="btn-modo-musicalidades"
@@ -804,8 +917,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-modo-musicalidades relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'musicalidades'
-                        ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-slate-950 border-amber-300 shadow-[0_0_16px_rgba(245,158,11,0.6)] font-black scale-105 ring-2 ring-amber-400/80'
-                        : 'text-slate-400 hover:text-amber-300 hover:bg-slate-800/80 border-transparent hover:border-amber-500/30'
+                        ? 'bg-slate-900 border-yellow-400 text-yellow-300 shadow-[0_0_14px_rgba(250,204,21,0.6)] scale-105 ring-1 ring-yellow-400/80 font-bold'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-yellow-300 hover:bg-slate-800 hover:border-yellow-500/40'
                     }`}
                     aria-label="Musicalidades e Rádio Retrô"
                   >
@@ -816,7 +929,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 </div>
 
-                {/* 5. AVENTURA & MAPA */}
+                {/* 5. AVENTURA & MAPA - Fundo Escuro Sólido de Alto Contraste */}
                 <div className="relative">
                   <button
                     id="btn-modo-aventura"
@@ -833,8 +946,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-modo-aventura relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
                       mainMode === 'aventura'
-                        ? 'bg-gradient-to-br from-teal-400 via-emerald-500 to-amber-500 text-slate-950 border-teal-300 shadow-[0_0_16px_rgba(20,184,166,0.6)] font-black scale-105 ring-2 ring-teal-400/80'
-                        : 'text-slate-400 hover:text-teal-300 hover:bg-slate-800/80 border-transparent hover:border-teal-500/30'
+                        ? 'bg-slate-900 border-teal-400 text-teal-300 shadow-[0_0_14px_rgba(20,184,166,0.6)] scale-105 ring-1 ring-teal-400/80 font-bold'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-teal-300 hover:bg-slate-800 hover:border-teal-500/40'
                     }`}
                     aria-label="Aventura e Exploração"
                   >
@@ -860,6 +973,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
             activeLayer={currentCartographyLayer}
             onSelectLayer={handleSelectCartographyLayer}
             bindTooltip={bindTooltip}
+            onRegisterButtonRef={(layer, el) => {
+              territoryButtonRefs.current[layer] = el;
+            }}
           />
 
           {/* Divisor Horizontal */}
@@ -902,7 +1018,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
             {/* Controles expansíveis (Chuva, Nuvens, Ondas, Astro) com tamanho padronizado */}
             {isToolsSectionExpanded && (
               <div className="flex flex-col items-center gap-1 transition-all duration-200">
-                {/* 1. Simulador de Chuva */}
+                {/* 1. Simulador de Chuva - Textura de Precipitação com Gotas Diagonais */}
                 {onToggleRainSim && (
                   <button
                     id="btn-sidebar-chuva"
@@ -920,8 +1036,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-sidebar-chuva relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isRainSimActive
-                        ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
-                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                        ? 'bg-slate-900 border-cyan-400 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.5)] font-bold ring-1 ring-cyan-400/80'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-cyan-300 hover:bg-slate-800 hover:border-cyan-500/40'
                     }`}
                     aria-label="Simulador de Chuva"
                   >
@@ -929,7 +1045,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 )}
 
-                {/* 2. Nuvens Volumétricas */}
+                {/* 2. Nuvens Volumétricas - Fundo Escuro Sólido de Alto Contraste */}
                 {onToggleClouds && (
                   <button
                     id="btn-sidebar-nuvens"
@@ -947,8 +1063,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-sidebar-nuvens relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isCloudsActive
-                        ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)]'
-                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                        ? 'bg-slate-900 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)] font-bold ring-1 ring-sky-400/80'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-sky-200 hover:bg-slate-800 hover:border-sky-500/40'
                     }`}
                     aria-label="Nuvens Volumétricas"
                   >
@@ -956,7 +1072,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 )}
 
-                {/* 3. Ventos Alísios e Ondas */}
+                {/* 3. Ventos Alísios e Ondas - Fundo Escuro Sólido de Alto Contraste */}
                 {onToggleWaves && (
                   <button
                     id="btn-sidebar-ventos-ondas"
@@ -974,8 +1090,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     })}
                     className={`btn-sidebar-ventos-ondas relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isWavesActive
-                        ? 'bg-teal-500/30 border-teal-400 text-teal-300 shadow-[0_0_12px_rgba(20,184,166,0.5)]'
-                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                        ? 'bg-slate-900 border-teal-400 text-teal-300 shadow-[0_0_12px_rgba(20,184,166,0.5)] font-bold ring-1 ring-teal-400/80'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-teal-300 hover:bg-slate-800 hover:border-teal-500/40'
                     }`}
                     aria-label="Ventos Alísios e Ondas"
                   >
@@ -983,7 +1099,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                   </button>
                 )}
 
-                {/* 4. Astro e Ciclo Solar/Noturno */}
+                {/* 4. Astro e Ciclo Solar/Noturno - Fundo Escuro Sólido de Alto Contraste */}
                 {(onToggleAtmosphere || onTimeOverrideChange) && (
                   <button
                     id="btn-sidebar-astro-atmosfera"
@@ -1009,9 +1125,9 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
                     className={`btn-sidebar-astro-atmosfera relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                       isAtmosphereActive
                         ? activeCelestialMode === 'auto'
-                          ? 'bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)]'
-                          : 'bg-amber-500/30 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
-                        : 'bg-slate-900/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                          ? 'bg-slate-900 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.5)] font-bold ring-1 ring-sky-400/80'
+                          : 'bg-slate-900 border-amber-400 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.5)] font-bold ring-1 ring-amber-400/80'
+                        : 'bg-slate-900/90 border-slate-700/60 text-slate-300 hover:text-amber-300 hover:bg-slate-800 hover:border-amber-500/40'
                     }`}
                     aria-label="Astro e Atmosfera"
                   >
@@ -1082,7 +1198,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         {/* ========================================================================= */}
         {/* PAINEL FLYOUT VERTICAL FLUTUANTE COM BALÃO DE DIÁLOGO E CLAMPING         */}
         {/* ========================================================================= */}
-        {openFlyoutMode && (
+        {openFlyoutMode && !selectedStateId && (
           <NavFlyoutMenu
             openFlyoutMode={openFlyoutMode}
             flyoutPos={flyoutPos}
@@ -1149,9 +1265,30 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         )}
 
         {/* ========================================================================= */}
+        {/* SUBMENU LATERAL CONECTADO À SIDEBAR: TERRITÓRIO E REDES VIVAS            */}
+        {/* ========================================================================= */}
+        {isTerritorySubmenuEffective && currentCartographyLayer !== 'none' && !openFlyoutMode && !selectedStateId && (
+          <TerritoryInteractiveLegend
+            activeLayer={currentCartographyLayer}
+            selectedSubitemId={selectedTerritorySubitemId}
+            onSelectSubitem={onSelectTerritorySubitem}
+            onSelectState={onSelectState}
+            targetTop={territoryLegendPos?.top}
+            arrowTop={territoryLegendPos?.arrowTop}
+            onClose={() => {
+              if (onToggleTerritorySubmenu) {
+                onToggleTerritorySubmenu();
+              } else {
+                setLocalTerritorySubmenuOpen(false);
+              }
+            }}
+          />
+        )}
+
+        {/* ========================================================================= */}
         {/* BALÃO / TOOLTIP FLUTUANTE CONTEXTUAL ONHOVER (AO LADO DO ITEM)             */}
         {/* ========================================================================= */}
-        {hoveredMenuTooltip && !openFlyoutMode && (
+        {hoveredMenuTooltip && !openFlyoutMode && !selectedStateId && (
           <div
             id="balao-ferramenta-sidebar"
             className="balao-ferramenta-sidebar fixed left-[58px] sm:left-[66px] pointer-events-none z-50 flex flex-col gap-1 p-2.5 rounded-xl bg-slate-950/95 backdrop-blur-md border border-amber-400/60 shadow-[0_12px_40px_rgba(0,0,0,0.95)] text-white text-xs max-w-xs sm:max-w-sm animate-in fade-in zoom-in-95 duration-150"
@@ -1183,7 +1320,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         )}
 
         {/* LEMBRETE DE NAVEGAÇÃO QUANDO SOBRE O MAPA */}
-        {!hoveredMenuTooltip && !openFlyoutMode && hoveredStateId && mainMode === 'aventura' && (
+        {!hoveredMenuTooltip && !openFlyoutMode && !selectedStateId && hoveredStateId && mainMode === 'aventura' && (
           <div
             id="lembrete-navegacao-fixo-sidebar"
             className="lembrete-navegacao-fixo-sidebar fixed left-[58px] sm:left-[66px] top-4 pointer-events-none z-50 flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-950/90 backdrop-blur-md border border-amber-400/40 shadow-lg shadow-black text-white text-[10px] sm:text-[11px] font-sans shrink-0 animate-in fade-in duration-200"

@@ -30,4 +30,14 @@ A engine do oceano segue a especificação técnica cartográfica procedural:
 3. **Camada Base - Fundo Infinito (`ProceduralOceanCanvas`)**:
    - Dimensão de 14.000 x 10.000px com gradiente radial abissal e grão fino de papel neutro (`FINE_PAPER_NOISE_SVG`), garantindo cobertura total e suave em qualquer nível de zoom out.
 
+## Regra Arquitetural: Precisão Cartográfica Orgânica e Isolamento do Módulo Território
+1. **Contornos Orgânicos Precisos**:
+   - Bacias Hidrográficas (ANA) e Biomas (IBGE) devem ser traçados com caminhos orgânicos contínuos fiéis aos divisores orográficos de água e às fronteiras reais do Brasil, banindo formas geométricas arbitrárias (como elipses ou bolhas sintéticas).
+2. **Diagramação e Balões de Dados**:
+   - Balões e selos de dados devem possuir dimensões amplas (>= 340px largura), tipografia legível, padding generoso e hierarquia clara para evitar quebra, corte ou sobreposição de textos.
+3. **Estados Muted Elegantes**:
+   - Estados não selecionados recebem atenuação cartográfica em ardósia/índigo suave (`#0e1726`, opacidade 0.80, bordas `#223249`), preservando as divisas e a geografia sem pintar o mapa com preto sólido.
+4. **Isolamento Estrito de Módulos**:
+   - O módulo de Território é 100% técnico e cartográfico. Fotos, avatares, standees e textos do módulo dos Guardiões são terminantemente proibidos na visualização de Território.
+
 

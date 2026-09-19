@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { AppMainMode } from '../TopGlobalNavMenu';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 import { StateWeatherData, getEcmwfTempColor } from '../../services/climateService';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
-import { BiodiversityKingdom } from '../../types';
+import { AppMainMode, BiodiversityKingdom } from '../../types';
+import { CartographyLayerMode } from '../../types/cartography';
+import { TerritoryStateHoverTooltip } from './territory/TerritoryStateHoverTooltip';
 import { BRAZIL_STATES_GEOPOLITICS } from '../../data/geopoliticaData';
 import { STATE_BIODIVERSITY_PROFILES } from '../../data/brazilBiodiversityData';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
@@ -60,6 +61,7 @@ interface UnifiedStateHoverTooltipProps {
   showNeighbors?: boolean;
   selectedRadioEraId?: string;
   mousePos?: { x: number; y: number };
+  activeCartographyLayer?: CartographyLayerMode;
 }
 
 export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> = ({
@@ -78,14 +80,22 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   showNeighbors,
   selectedRadioEraId = 'catedral_1930_1940',
   mousePos,
+  activeCartographyLayer,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [screenPos, setScreenPos] = useState<{ x: number; y: number; isNearTop: boolean } | null>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number>(280);
 
-  // Aparece nos modos Clima, Bio, Geopolítica e Musicalidade ao passar o mouse sobre o estado.
-  // No Modo Aventura, o Guardião à esquerda já exibe as informações, portanto o tooltip sobre o estado fica oculto.
-  const shouldHide = !hoveredStateId || showNeighbors || Boolean(selectedStateId) || mainMode === 'globo3d' || mainMode === 'aventura';
+  const isTerritoryActive = Boolean(activeCartographyLayer && activeCartographyLayer !== 'none');
+
+  // Aparece nos modos Clima, Bio, Geopolítica, Musicalidade ou quando Camada de Território ativa.
+  // No Modo Aventura padrão (sem camada de território), o Guardião à esquerda já exibe as informações.
+  const shouldHide =
+    !hoveredStateId ||
+    showNeighbors ||
+    Boolean(selectedStateId) ||
+    mainMode === 'globo3d' ||
+    (!isTerritoryActive && mainMode === 'aventura');
 
   useEffect(() => {
     if (!hoveredStateId || shouldHide) {
@@ -171,7 +181,13 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
     >
       <div
         className={`card-balao-conteudo-unificado rounded-2xl p-3.5 sm:p-4 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.4)] backdrop-blur-xl border-2 text-white space-y-2.5 overflow-hidden break-words ${
-          isClimateActive
+          isTerritoryActive
+            ? activeCartographyLayer === 'bacias_hidrograficas'
+              ? 'bg-slate-950/95 border-cyan-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.4)]'
+              : activeCartographyLayer === 'biomas_relevo'
+              ? 'bg-slate-950/95 border-emerald-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(16,185,129,0.4)]'
+              : 'bg-slate-950/95 border-amber-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(245,158,11,0.4)]'
+            : isClimateActive
             ? climateMode === 'previsao_tempo'
               ? 'bg-slate-950/95 border-yellow-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(250,204,21,0.4)]'
               : 'bg-slate-950/95 border-cyan-400'
@@ -183,9 +199,19 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         }`}
       >
         {/* ========================================================================= */}
+        {/* MODO 0: CAMADAS CARTOGRÁFICAS DE TERRITÓRIO (ISOLAMENTO ESTRITO)          */}
+        {/* ========================================================================= */}
+        {isTerritoryActive && (
+          <TerritoryStateHoverTooltip
+            stateId={stateId}
+            activeLayer={activeCartographyLayer!}
+          />
+        )}
+
+        {/* ========================================================================= */}
         {/* MODO 1: CLIMA E TELEMETRIA (Com suporte especial a Previsão do Tempo 7D)  */}
         {/* ========================================================================= */}
-        {isClimateActive && weather && (
+        {!isTerritoryActive && isClimateActive && weather && (
           <>
             {/* Header: Bandeira + UF + Nome + Capital + Temperatura ou Badge Forecast */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -352,7 +378,7 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {/* MODO 2: BIODIVERSIDADE (Espécies, Biomas, Reinos)                          */}
         {/* ========================================================================= */}
-        {!isClimateActive && mainMode === 'biodiversidade' && bioProfile && (
+        {!isTerritoryActive && !isClimateActive && mainMode === 'biodiversidade' && bioProfile && (
           <>
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
@@ -426,7 +452,7 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {/* MODO 3: GEOPOLÍTICA & DEMOGRAFIA (IBGE Censo 2022)                         */}
         {/* ========================================================================= */}
-        {!isClimateActive && mainMode === 'geopolitica' && geoProfile && (
+        {!isTerritoryActive && !isClimateActive && mainMode === 'geopolitica' && geoProfile && (
           <>
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -597,7 +623,7 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
         {/* ========================================================================= */}
         {/* MODO 5: AVENTURA / CARTOGRAFIA / BRQUEST                                  */}
         {/* ========================================================================= */}
-        {!isClimateActive && mainMode !== 'biodiversidade' && mainMode !== 'geopolitica' && mainMode !== 'musicalidades' && guardian && (
+        {!isTerritoryActive && !isClimateActive && mainMode !== 'biodiversidade' && mainMode !== 'geopolitica' && mainMode !== 'musicalidades' && guardian && (
           <div className="balao-hover-aventura space-y-2">
             {/* Header: Bandeira + Brasão + UF + Nome + Capital + Badge Região */}
             <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">

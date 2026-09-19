@@ -14,6 +14,7 @@ export interface SouthAmericaLandmassLayerProps {
   showNeighbors?: boolean;
   hoveredCountryId?: string | null;
   isClimateActive?: boolean;
+  isTerritoryActive?: boolean;
   terrainProvider?: TerrainTileProvider;
   onCountryEnter?: (countryId: string) => void;
   onCountryLeave?: (countryId: string) => void;
@@ -25,12 +26,13 @@ export const SouthAmericaLandmassLayer: React.FC<SouthAmericaLandmassLayerProps>
   showNeighbors = false,
   hoveredCountryId = null,
   isClimateActive = false,
+  isTerritoryActive = false,
   terrainProvider = 'shaded_relief',
   onCountryEnter,
   onCountryLeave,
   onCountryClick,
 }) => {
-  const isParchment = !isClimateActive && terrainProvider === 'voyager_parchment';
+  const isParchment = !isClimateActive && !isTerritoryActive && terrainProvider === 'voyager_parchment';
 
   return (
     <g
@@ -81,6 +83,8 @@ export const SouthAmericaLandmassLayer: React.FC<SouthAmericaLandmassLayerProps>
               fill={
                 isCurrentHovered
                   ? 'url(#neighborHighlightGrad)'
+                  : isTerritoryActive
+                  ? 'url(#saContinentTerritoryGrad)'
                   : isParchment
                   ? '#eedbb8'
                   : 'url(#saContinentEarthGrad)'
@@ -88,6 +92,8 @@ export const SouthAmericaLandmassLayer: React.FC<SouthAmericaLandmassLayerProps>
               stroke={
                 isCurrentHovered
                   ? '#fbbf24'
+                  : isTerritoryActive
+                  ? '#1e293b'
                   : isParchment
                   ? '#92400e'
                   : showNeighbors
