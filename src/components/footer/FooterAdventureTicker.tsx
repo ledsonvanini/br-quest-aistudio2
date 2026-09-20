@@ -10,7 +10,7 @@ import {
   Mountain,
   Search,
 } from 'lucide-react';
-import { StateSearchSelectorModal } from '../map/StateSearchSelectorModal';
+import { StateSearchSelectorModal } from '../search/StateSearchSelectorModal';
 import { audioEngine } from '../../lib/audioSynth';
 import { REGION_STATES_MAP } from '../map/stateStyling/stateFillStyler';
 
@@ -278,8 +278,8 @@ export const FooterAdventureTicker: React.FC<FooterAdventureTickerProps> = ({
       <StateSearchSelectorModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        completedStateIds={completedSet}
-        onStateClick={onStateClick}
+        completedStateIds={Array.from(completedSet)}
+        onSelectState={onStateClick}
       />
     </>
   );

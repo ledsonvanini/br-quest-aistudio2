@@ -156,6 +156,7 @@ interface Props {
   // General Settings & System Utilities
   onOpenSettings?: () => void;
   onOpenUserProfile?: () => void;
+  onOpenSearchSelector?: () => void;
   onResetView?: () => void;
   onResetViewIfNotCentered?: () => void;
   hoveredStateId?: string | null;
@@ -232,6 +233,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   onResetGlobeCamera,
   onOpenSettings,
   onOpenUserProfile,
+  onOpenSearchSelector,
   onResetView,
   onResetViewIfNotCentered,
   hoveredStateId,

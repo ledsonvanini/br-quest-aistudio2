@@ -2,7 +2,7 @@ import React from 'react';
 import { GUARDIANS_DATA } from '../../data/guardiansData';
 import { ALL_BRAZIL_STATES } from '../../data/brazilStatesRegistry';
 import { MAP_CANVAS_WIDTH, MAP_CANVAS_HEIGHT } from '../../lib/mapProjections';
-import { Shield, Sparkles, CheckCircle2, Lock } from 'lucide-react';
+import { Shield, Sparkles, CheckCircle2, Swords, Trophy, MapPin, Compass } from 'lucide-react';
 import { StateFlag } from '../StateFlag';
 import { getStateHeraldicInfo } from '../../data/coatOfArms';
 import { getStateRegion } from './stateStyling/stateFillStyler';
@@ -35,7 +35,7 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
   selectedCampaign = 'todos',
   mainMode = 'aventura',
 }) => {
-  // Quando qualquer estado estiver selecionado/isolado, oculta os pins do mapa
+  // Quando qualquer estado estiver selecionado/isolado em outro modo, oculta os pins do mapa
   if (selectedStateId) return null;
 
   const isRegionCampaignActive = selectedCampaign && selectedCampaign !== 'todos' && selectedCampaign !== 'livre';
@@ -65,6 +65,7 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
 
         const heraldic = getStateHeraldicInfo(stateId);
         const coatUrl = heraldic?.coatUrl || stateInfo.coatOfArmsUrl || heraldic?.fallbackUrl;
+        const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
 
         // Counter-tilt for orthogonal view so the banner faces the player camera
         const effectiveTilt = Math.round(tiltAngle || 42);
@@ -85,10 +86,10 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
             className={`ancora-estado-pin ancora-pin-${stateId.toLowerCase()} select-none`}
           >
             {/* ==================================================================== */}
-            {/* 0. EXPANDED HIT TRIGGER FOR SMALL GEOGRAPHIC STATES (DF, SE, AL, etc.)*/}
+            {/* 0. EXPANDED HIT TRIGGER FOR ACCURATE CLICK & HOVER DETECTION          */}
             {/* ==================================================================== */}
             <div
-              className="hitbox-estado-expandida absolute -left-7 -top-7 w-14 h-14 rounded-full pointer-events-auto cursor-pointer z-20"
+              className="hitbox-estado-expandida absolute -left-8 -top-8 w-16 h-16 rounded-full pointer-events-auto cursor-pointer z-20"
               style={{ transform: 'translateZ(0px)' }}
               onMouseEnter={() => onStateEnter(stateId)}
               onMouseLeave={() => onStateLeave(stateId)}
@@ -104,11 +105,10 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
             />
 
             {/* ==================================================================== */}
-            {/* 1. GROUND BEACON CIRCLE & PERMANENT HIGH-CONTRAST STATE LABEL       */}
-            {/* Beautiful, animated cartographic jewel at the center of each state   */}
+            {/* 1. GROUND BEACON CIRCLE - BEAUTIFUL, ANIMATED CARTOGRAPHIC JEWEL     */}
             {/* ==================================================================== */}
             <div
-              className={`circulo-beacon-terreno absolute -left-5 -top-5 w-10 h-10 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-transform duration-300 ${
+              className={`circulo-beacon-terreno absolute -left-6 -top-6 w-12 h-12 rounded-full flex items-center justify-center pointer-events-auto cursor-pointer transition-all duration-300 ${
                 isActive ? 'scale-125 z-40' : 'hover:scale-115'
               }`}
               onMouseEnter={() => onStateEnter(stateId)}
@@ -122,49 +122,64 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                 e.stopPropagation();
               }}
             >
-              {/* Outer Radiant Echo Wave (Primary Pulse) */}
+              {/* Ripple Ring 1 (Continuous Pulse) */}
               <div
-                className={`anel-radar-pulso absolute inset-0 rounded-full anim-ground-beacon-pulse pointer-events-none ${
+                className={`anel-radar-pulso-1 absolute inset-0 rounded-full animate-ping pointer-events-none opacity-40 ${
                   isActive
-                    ? 'border-2 border-amber-300 bg-amber-400/30 shadow-[0_0_18px_rgba(245,158,11,0.8)]'
+                    ? 'border-2 border-amber-300 bg-amber-400/30'
                     : isCompleted
-                    ? 'border-2 border-emerald-400/80 bg-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                    ? 'border-2 border-emerald-400 bg-emerald-500/20'
                     : isLocked
-                    ? 'border border-slate-700/60 bg-slate-900/10'
-                    : 'border-2 border-amber-400/70 bg-amber-500/15 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
+                    ? 'border border-slate-700 bg-slate-900/10'
+                    : 'border-2 border-amber-400 bg-amber-500/20'
+                }`}
+                style={{ animationDuration: isActive ? '1.5s' : '2.5s' }}
+              />
+
+              {/* Ripple Ring 2 (Steady Wave) */}
+              <div
+                className={`anel-radar-pulso-2 absolute -inset-1.5 rounded-full pointer-events-none transition-all duration-300 ${
+                  isActive
+                    ? 'border-2 border-amber-300/80 shadow-[0_0_20px_rgba(245,158,11,0.9)] scale-110'
+                    : isCompleted
+                    ? 'border border-emerald-400/60 shadow-[0_0_14px_rgba(16,185,129,0.6)]'
+                    : isLocked
+                    ? 'border border-slate-800'
+                    : 'border border-amber-400/50 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
                 }`}
               />
 
-              {/* Secondary Harmonic Ring */}
+              {/* Spinning Dashed Halo Ring */}
               <div
-                className={`absolute -inset-1 rounded-full border border-dashed pointer-events-none ${
+                className={`absolute -inset-1 rounded-full border-2 border-dashed pointer-events-none animate-spin ${
                   isActive
-                    ? 'border-amber-300/80 anim-beacon-halo-rotate'
+                    ? 'border-amber-200 shadow-[0_0_10px_#fef08a]'
                     : isCompleted
-                    ? 'border-emerald-400/50 anim-beacon-halo-rotate'
+                    ? 'border-emerald-300/60'
                     : isLocked
                     ? 'border-slate-800'
-                    : 'border-amber-400/40 anim-beacon-halo-rotate'
+                    : 'border-amber-400/40'
                 }`}
+                style={{ animationDuration: '8s' }}
               />
 
-              {/* Antique Brass Cartographic Dial Plate */}
+              {/* Antique Brass & Obsidian Dial Plate */}
               <div
-                className={`anel-mostrador-solo relative w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                className={`anel-mostrador-solo relative w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                   isActive
-                    ? 'border-amber-300 bg-gradient-to-br from-amber-900 via-amber-950 to-black shadow-[0_0_16px_rgba(245,158,11,0.9)]'
+                    ? 'border-amber-200 bg-gradient-to-br from-amber-800 via-amber-950 to-slate-950 shadow-[0_0_18px_rgba(245,158,11,0.9)]'
                     : isCompleted
-                    ? 'border-emerald-300 bg-gradient-to-br from-emerald-900 via-emerald-950 to-black shadow-[0_0_12px_rgba(52,211,153,0.7)]'
+                    ? 'border-emerald-300 bg-gradient-to-br from-emerald-800 via-emerald-950 to-slate-950 shadow-[0_0_14px_rgba(52,211,153,0.7)]'
                     : isLocked
                     ? 'border-slate-700 bg-slate-950/95 opacity-60'
-                    : 'border-amber-400/90 bg-gradient-to-br from-slate-900 via-slate-950 to-black shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                    : 'border-amber-400 bg-gradient-to-br from-slate-900 via-slate-950 to-black shadow-[0_0_12px_rgba(245,158,11,0.5)]'
                 }`}
               >
                 {/* Concentric Golden Inset Ring */}
                 <div
-                  className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center ${
+                  className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                     isActive
-                      ? 'border-amber-200 bg-amber-400/30'
+                      ? 'border-amber-200 bg-amber-400/35'
                       : isCompleted
                       ? 'border-emerald-300 bg-emerald-400/25'
                       : isLocked
@@ -172,43 +187,45 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                       : 'border-amber-400/70 bg-amber-500/20'
                   }`}
                 >
-                  {/* Central Radiant Gem Orb */}
+                  {/* Central Radiant Jewel Orb */}
                   <div
-                    className={`w-2.5 h-2.5 rounded-full anim-beacon-orb-glow ${
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                       isActive
-                        ? 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-white shadow-[0_0_10px_#fef08a]'
+                        ? 'bg-gradient-to-tr from-amber-300 via-yellow-100 to-white shadow-[0_0_12px_#fef08a] scale-125'
                         : isCompleted
-                        ? 'bg-gradient-to-tr from-emerald-400 via-emerald-200 to-white shadow-[0_0_8px_#6ee7b7]'
+                        ? 'bg-gradient-to-tr from-emerald-400 via-emerald-200 to-white shadow-[0_0_10px_#6ee7b7]'
                         : isLocked
                         ? 'bg-slate-600 shadow-none'
-                        : 'bg-gradient-to-tr from-amber-500 via-yellow-300 to-white shadow-[0_0_6px_#fde047]'
+                        : 'bg-gradient-to-tr from-amber-400 via-yellow-200 to-white shadow-[0_0_8px_#fde047]'
                     }`}
                   />
                 </div>
               </div>
 
-              {/* Tag Permanente da Sigla do Estado para Leitura Imediata */}
-              <div
-                className={`tag-sigla-permanente absolute top-8 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-md border shadow-xl font-mono font-black text-[11px] sm:text-xs tracking-wider whitespace-nowrap select-none pointer-events-none transition-all duration-200 ${
-                  isActive
-                    ? 'bg-amber-950 text-amber-200 border-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.8)] scale-110 opacity-0'
-                    : isCompleted
-                    ? 'bg-slate-950/95 text-emerald-300 border-emerald-400/80 shadow-[0_2px_10px_rgba(16,185,129,0.5)]'
-                    : isLocked
-                    ? 'bg-slate-950/95 text-slate-400 border-slate-800'
-                    : 'bg-slate-950/95 text-amber-200 border-amber-400/80 shadow-[0_2px_10px_rgba(0,0,0,0.85)]'
-                }`}
-              >
-                {stateId}
-              </div>
+              {/* Tag Permanente da Sigla do Estado para Leitura Imediata (Oculta durante Hover pois o balão assume) */}
+              {!isActive && (
+                <div
+                  className={`tag-sigla-permanente absolute top-8.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-md border shadow-xl font-mono font-black text-[11px] sm:text-xs tracking-wider whitespace-nowrap select-none pointer-events-none transition-all duration-200 ${
+                    isCompleted
+                      ? 'bg-slate-950/95 text-emerald-300 border-emerald-400/80 shadow-[0_2px_10px_rgba(16,185,129,0.5)]'
+                      : isLocked
+                      ? 'bg-slate-950/95 text-slate-400 border-slate-800'
+                      : 'bg-slate-950/95 text-amber-200 border-amber-400/80 shadow-[0_2px_10px_rgba(0,0,0,0.85)]'
+                  }`}
+                >
+                  {stateId}
+                </div>
+              )}
             </div>
 
-            {/* Resting Hoisted Flag Pin with Official Coat of Arms Overlay (Shown ONLY for CONQUERED states when not hovered) */}
+            {/* ==================================================================== */}
+            {/* 2. RESTING HOISTED FLAG (APARECE APENAS QUANDO CONQUISTADO E NÃO HOVER)*/}
+            {/* ==================================================================== */}
             {!isActive && isCompleted && (
               <div
                 className="pin-repouso-hasteado pin-estado-conquistado absolute left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-auto cursor-pointer group select-none transition-transform duration-200"
                 style={{
-                  bottom: '14px',
+                  bottom: '16px',
                   transformOrigin: 'bottom center',
                   transform: `rotateX(-${effectiveTilt}deg)`,
                 }}
@@ -219,20 +236,17 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                 onMouseEnter={() => onStateEnter(stateId)}
                 onMouseLeave={() => onStateLeave(stateId)}
               >
-                {/* Wooden / Brass Mast Pole connecting Ground Pin to Flag */}
-                <div className="haste-mastro-mini w-1 h-7 bg-gradient-to-b from-amber-300 via-amber-600 to-amber-900 rounded-sm shadow-md" />
+                {/* Mastro Dourado */}
+                <div className="haste-mastro-mini w-1 h-8 bg-gradient-to-b from-amber-300 via-amber-600 to-amber-900 rounded-sm shadow-md" />
 
-                {/* Flag Banner with Victory Frame */}
-                <div
-                  className="quadro-bandeira-repouso absolute -top-6 w-11 h-7 flex items-center justify-center rounded-md overflow-hidden border-2 border-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.7)] bg-slate-950 group-hover:scale-110 transition-all duration-200"
-                >
-                  {/* State Flag SVG Background */}
+                {/* Quadro da Bandeira Conquistada */}
+                <div className="quadro-bandeira-repouso absolute -top-7 w-12 h-7.5 flex items-center justify-center rounded-md overflow-hidden border-2 border-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.75)] bg-slate-950 group-hover:scale-110 transition-all duration-200">
                   <StateFlag uf={stateId} className="w-full h-full object-cover brightness-105" alt={`Bandeira Conquistada ${stateId}`} />
 
-                  {/* Official Coat of Arms Badge Overlay in Center */}
+                  {/* Brasão central */}
                   {coatUrl ? (
                     <div className="brasao-selo-centro absolute inset-0 flex items-center justify-center p-0.5">
-                      <div className="w-4.5 h-4.5 sm:w-5 sm:h-5 rounded-full bg-slate-950/80 border border-emerald-300 p-0.5 shadow-md flex items-center justify-center overflow-hidden">
+                      <div className="w-5 h-5 rounded-full bg-slate-950/85 border border-emerald-300 p-0.5 shadow-md flex items-center justify-center overflow-hidden">
                         <img
                           src={coatUrl}
                           alt={`Brasão ${stateId}`}
@@ -246,7 +260,7 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
                     </div>
                   ) : null}
 
-                  {/* Conquered Seal badge */}
+                  {/* Selo de Conquista */}
                   <div className="selo-conquistado absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-amber-300 flex items-center justify-center shadow-md">
                     <CheckCircle2 className="w-3 h-3 text-white" />
                   </div>
@@ -255,84 +269,106 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
             )}
 
             {/* ==================================================================== */}
-            {/* 2. FLAGPOLE & MAST TILTED AT -tiltAngle DEGREES (SHOWN ON HOVER)    */}
-            {/* Aligned to the center (0,0) in the map on the pulsing ground circle */}
-            {/* Acts as the majestic FRAME for the Real State Flag                  */}
+            {/* 3. FLOATING SUMMARY BALLOON & FLAG ON HOVER                          */}
+            {/* Mostra resumo rico com bandeira, guardião e atalho para Desafio      */}
             {/* ==================================================================== */}
             {isActive && (
               <div
-                className="container-estandarte-estado absolute left-0 top-0 pointer-events-none z-50"
+                className="container-balao-flutuante-hover absolute left-0 top-0 pointer-events-auto z-50 cursor-pointer"
                 style={{
                   transformStyle: 'preserve-3d',
                   transformOrigin: '0px 0px',
                   transform: `rotateX(-${effectiveTilt}deg)`,
                 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectGuardian(stateId);
+                }}
               >
                 <div
-                  className="anim-pin-spring-in relative pointer-events-none"
+                  className="balao-resumo-estado-mapa animate-in fade-in zoom-in-95 duration-200 relative flex flex-col items-center pointer-events-auto"
                   style={{
-                    transformStyle: 'preserve-3d',
-                    transformOrigin: '0px 0px',
+                    bottom: '72px',
+                    transform: 'translate(-50%, 0%)',
                   }}
                 >
-                  {/* Vertical Flagpole Mast connecting Ground Pin (0,0) to Center of Flag and crowning the top */}
-                  <div
-                    className="haste-mastro-bandeira absolute left-0 -translate-x-1/2 w-2 pointer-events-none"
-                    style={{
-                      bottom: '0px',
-                      height: '148px',
-                      background: 'linear-gradient(to right, #78350f, #d97706, #fbbf24, #fef3c7, #b45309)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                      borderRadius: '2px',
-                      transformStyle: 'preserve-3d',
-                    }}
-                  >
-                    {/* Base collar connecting directly to the ground beacon pin center */}
-                    <div className="anel-base-mastro absolute -bottom-1 left-1/2 -translate-x-1/2 w-4.5 h-2.5 rounded-full bg-gradient-to-r from-amber-700 via-yellow-300 to-amber-700 shadow-[0_0_8px_#f59e0b] border border-amber-400/80" />
+                  {/* Cartão Principal do Balão de Resumo */}
+                  <div className="w-64 sm:w-72 bg-slate-950/95 backdrop-blur-xl border-2 border-amber-400/90 rounded-2xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.95)] shadow-black text-left flex flex-col gap-2 relative group hover:border-amber-300 transition-all">
+                    {/* Header: Bandeira Oficial + Nome do Estado + Região */}
+                    <div className="flex items-center gap-2.5 pb-2 border-b border-amber-500/30">
+                      {/* Mini Moldura de Bandeira */}
+                      <div className="w-12 h-8 rounded-lg overflow-hidden border border-amber-300/80 bg-slate-900 shrink-0 shadow-md relative">
+                        <StateFlag uf={stateId} className="w-full h-full object-cover" alt={stateInfo.name} />
+                        {isCompleted && (
+                          <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border border-white flex items-center justify-center shadow-sm">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        )}
+                      </div>
 
-                    {/* Central Flag Mounting Bracket (Abraçadeira no centro exato da bandeira) */}
-                    <div
-                      className="abracadeira-centro-bandeira absolute left-1/2 -translate-x-1/2 w-3.5 h-7 rounded bg-gradient-to-b from-yellow-300 via-amber-500 to-yellow-200 border border-yellow-200/90 shadow-[0_0_6px_rgba(251,191,36,0.8)]"
-                      style={{ bottom: '80px' }}
-                    />
+                      {/* Nome e Capital */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-black text-amber-300 text-xs px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/40">
+                            {stateId}
+                          </span>
+                          <h4 className="font-serif font-black text-sm text-slate-100 truncate">
+                            {stateInfo.name}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-amber-400/80 shrink-0" />
+                          <span>Capital: <strong className="text-slate-300 font-semibold">{stateInfo.capital}</strong></span>
+                        </p>
+                      </div>
 
-                    {/* Masthead Golden Finial Ball at the very top of the mast */}
-                    <div className="ponta-mastro-dourada absolute -top-3.5 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-200 to-white shadow-[0_0_12px_#fef08a] border border-yellow-300/90" />
-                  </div>
-
-                  {/* State Flag Banner & Name Pill centered exactly on the Mast at height 92px */}
-                  <div
-                    className="estandarte-bandeira-estado absolute left-0 flex flex-col items-center pointer-events-auto cursor-pointer group"
-                    style={{
-                      bottom: '92px',
-                      transform: 'translate(-50%, 50%)',
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGuardian(stateId);
-                    }}
-                  >
-                    {/* Flag Card Frame: The Ornamental Border framing the Real Flag */}
-                    <div className="quadro-moldura-bandeira-real relative w-28 h-18 sm:w-32 sm:h-21 rounded-lg overflow-hidden border-2 border-amber-300 bg-slate-950 ring-1 ring-amber-400/60 shadow-[0_4px_14px_rgba(0,0,0,0.6)] transition-transform duration-300 group-hover:scale-105 flex items-center justify-center">
-                      {/* Real Official State Flag rendered as pure vector SVG */}
-                      <StateFlag
-                        uf={stateId}
-                        className="imagem-bandeira-real-estado w-full h-full object-cover brightness-105 contrast-105"
-                        alt={`Bandeira Oficial de ${stateInfo.name}`}
-                      />
-                      {/* Satin Sheen Overlay to give cloth/flag depth inside the frame */}
-                      <div className="camada-brilho-tecido absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/15 pointer-events-none" />
-                      {/* Inner Bevel Border */}
-                      <div className="borda-bisel-interna absolute inset-0 border border-white/20 pointer-events-none rounded-md" />
+                      {/* Badge Região */}
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 shrink-0">
+                        {stateInfo.region}
+                      </span>
                     </div>
 
-                    {/* State Name Plaque under the Frame (Concise & Legible) */}
-                    <div className="placa-nome-bandeira-estado mt-1.5 px-2.5 py-1 rounded-lg border bg-slate-950/95 border-amber-300/80 text-amber-200 shadow-[0_2px_8px_rgba(0,0,0,0.6)] flex items-center gap-1.5 whitespace-nowrap transition-transform duration-300 group-hover:scale-105">
-                      <span className="font-mono font-bold text-xs text-amber-300">{stateId}</span>
-                      <span className="text-amber-500/70">•</span>
-                      <span className="font-sans font-semibold text-xs tracking-wide text-white">{stateInfo.name}</span>
-                    </div>
+                    {/* Guardião & Lore Rápida */}
+                    {guardian && (
+                      <div className="flex items-center gap-2 py-1 px-2 rounded-xl bg-amber-950/40 border border-amber-500/20">
+                        <div className="w-8 h-8 rounded-full overflow-hidden border border-amber-400/60 bg-slate-900 shrink-0">
+                          <img
+                            src={guardian.avatarUrl}
+                            alt={guardian.guardianName}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80';
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 text-xs">
+                          <div className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">
+                            {guardian.guardianTitlePt}
+                          </div>
+                          <div className="font-serif font-bold text-slate-200 truncate">
+                            {guardian.guardianName}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CTA Botão: Desafiar Guardião */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectGuardian(stateId);
+                      }}
+                      className="btn-acao-viajar-estado w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs font-serif flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/30 transition-all cursor-pointer group-hover:scale-[1.02]"
+                    >
+                      <Swords className="w-3.5 h-3.5 text-slate-950" />
+                      <span>{isCompleted ? 'Revisitar Desafio Guardião' : 'Desafiar Guardião'}</span>
+                    </button>
                   </div>
+
+                  {/* Triângulo / Seta do Balão apontando para o Beacon no Solo */}
+                  <div className="w-4 h-4 bg-slate-950 border-r-2 border-b-2 border-amber-400/90 rotate-45 -mt-2 shadow-md" />
                 </div>
               </div>
             )}
@@ -342,3 +378,4 @@ export const MapPinsLayer: React.FC<MapPinsLayerProps> = ({
     </div>
   );
 };
+

@@ -163,6 +163,9 @@ interface Props {
   onOpenTerritorySubmenu?: () => void;
   selectedStateId?: string | null;
   onSelectStateId?: (stateId: string | null) => void;
+  onStateLocated?: (stateId: string, stateName: string, regionId?: string) => void;
+  onOpenSearchSelector?: () => void;
+  onNotification?: (msg: string) => void;
 }
 
 export const IsometricMapCanvas: React.FC<Props> = ({
@@ -179,6 +182,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   onOpenTerritorySubmenu,
   selectedStateId: propSelectedStateId,
   onSelectStateId,
+  onStateLocated,
   isRadioOpen = true,
   onToggleRadio,
   activeMusicCategory = 'state_anthems',
@@ -235,6 +239,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   onToggleGlobeTelemetry,
   onOpenDailyTips,
   dailyTipsUnreadCount,
+  onOpenSearchSelector,
+  onNotification,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -1875,6 +1881,21 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onOpenDailyTips={onOpenDailyTips}
         dailyTipsUnreadCount={dailyTipsUnreadCount}
         onOpenEducatorPortal={() => setIsEducatorPortalOpen(true)}
+        onOpenSearchSelector={onOpenSearchSelector}
+        onStateLocated={(stateId, stateName, regionId) => {
+          handleStateClick(stateId);
+          if (!isGlobe3DActive) {
+            const centroid = centroids[stateId];
+            if (centroid) {
+              const targetZoom = 2.2;
+              const targetPan = calculateStateCenterPan(centroid, targetZoom, is3D);
+              setPan(targetPan);
+              setZoom(targetZoom);
+            }
+          }
+          onStateLocated?.(stateId, stateName, regionId);
+        }}
+        onNotification={onNotification}
       />
 
       {/* 4.5. Top HUD Celestial Orb (Sol / Lua de Brasília na HUD de Topo - apenas nos modos 2D/isométrico, oculto no Globo 3D) */}

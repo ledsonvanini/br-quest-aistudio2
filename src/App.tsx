@@ -14,7 +14,7 @@ import { GeopoliticaMetricKey } from './types/geopolitica';
 import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
 import { audioEngine } from './lib/audioSynth';
 import { GUARDIANS_DATA } from './data/guardiansData';
-import { Sparkles, Activity, Gauge } from 'lucide-react';
+import { Sparkles, Activity, Gauge, X } from 'lucide-react';
 import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
 import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFetchTimestamp } from './services/climateService';
@@ -22,10 +22,12 @@ import { apiTracker } from './services/apiTracker';
 import { QuestThemePillar } from './data/brQuestQuestionsData';
 import { DailyTipsModal } from './components/quest/DailyTipsModal';
 import { useDailyTips } from './hooks/useDailyTips';
+import { StateSearchSelectorModal } from './components/search/StateSearchSelectorModal';
 import { CartographyLayerMode } from './types/cartography';
 
 import { useAppModes } from './hooks/useAppModes';
 import { centralizarZoomMapa } from './services/mapModeService';
+import { getStateDefaultBiome } from './services/geolocationService';
 
 export function App() {
   const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
@@ -38,11 +40,24 @@ export function App() {
   const [isAboutInfoOpen, setIsAboutInfoOpen] = useState<boolean>(false);
   const [isUserProfileOpen, setIsUserProfileOpen] = useState<boolean>(false);
   const [isBrQuestHubOpen, setIsBrQuestHubOpen] = useState<boolean>(false);
+  const [isSearchSelectorOpen, setIsSearchSelectorOpen] = useState<boolean>(false);
   const [brQuestInitialPillar, setBrQuestInitialPillar] = useState<QuestThemePillar | 'nacional' | null>(null);
   const [isDailyTipsOpen, setIsDailyTipsOpen] = useState<boolean>(false);
   const [showFps, setShowFps] = useState<boolean>(false);
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    stateId: string;
+    stateName: string;
+    regionId: string;
+  } | null>(() => {
+    try {
+      const cached = localStorage.getItem('brquest_user_geolocation');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // App Modes Orchestration with custom hook
   const {
@@ -183,6 +198,23 @@ export function App() {
     }
   };
 
+  const handleStateLocated = (stateId: string, stateName: string, regionId?: string) => {
+    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
+    const resolvedRegion = regionId || guardian?.regionId || 'sudeste';
+    const loc = { stateId, stateName, regionId: resolvedRegion };
+    setUserLocation(loc);
+    try {
+      localStorage.setItem('brquest_user_geolocation', JSON.stringify(loc));
+    } catch {}
+
+    setSelectedStateId(stateId);
+    setFocusedStateId(stateId);
+    setSelectedRegionFilter(resolvedRegion);
+    if (mainMode === 'biodiversidade') {
+      setBiodiversityBiome(getStateDefaultBiome(stateId));
+    }
+  };
+
   const handleSelectMainMode = (newMode: AppMainMode) => {
     selectMainMode(newMode);
 
@@ -190,6 +222,16 @@ export function App() {
     setActiveCartographyLayer('none');
     setSelectedTerritorySubitemId(null);
     setIsTerritorySubmenuOpen(false);
+
+    // Se o usuário foi geolocalizado, aplica por padrão sua região e estado de origem
+    if (userLocation) {
+      setSelectedRegionFilter(userLocation.regionId);
+      setSelectedStateId(userLocation.stateId);
+      setFocusedStateId(userLocation.stateId);
+      if (newMode === 'biodiversidade') {
+        setBiodiversityBiome(getStateDefaultBiome(userLocation.stateId));
+      }
+    }
 
     if (activeTab !== 'map') {
       setActiveTab('map');
@@ -235,6 +277,18 @@ export function App() {
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Atalho global de teclado Ctrl+K ou Cmd+K para busca rápida de estados
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchSelectorOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
   // Save progress on change
@@ -477,16 +531,38 @@ export function App() {
     audioEngine.playSfx('click');
   };
 
+  // Auto-dismiss notification toast
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => {
+      setNotification(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [notification]);
+
   return (
     <div
       className="container-app-principal h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 select-none"
     >
       
-      {/* Toast Notification Banner */}
+      {/* Toast Notification Banner (Auto-dismiss + Non-blocking top-center with close button) */}
       {notification && (
-        <div className="banner-notificacao-toast fixed top-4 right-4 z-50 bg-slate-900/95 backdrop-blur-md text-amber-300 font-bold px-4 py-3 rounded-2xl shadow-2xl border-2 border-amber-400 text-xs sm:text-sm animate-in slide-in-from-top-4 duration-200 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-          <span>{notification}</span>
+        <div
+          id="banner-notificacao-toast"
+          className="banner-notificacao-toast fixed top-16 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-auto mx-auto bg-slate-950/95 backdrop-blur-xl text-amber-200 font-medium px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-500/60 text-xs sm:text-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-3 pointer-events-auto"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span className="font-semibold text-slate-100">{notification}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotification(null)}
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-300 transition cursor-pointer"
+            aria-label="Fechar notificação"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -661,6 +737,7 @@ export function App() {
           onToggleTerritorySubmenu={() => setIsTerritorySubmenuOpen((prev) => !prev)}
           onOpenDailyTips={() => setIsDailyTipsOpen(true)}
           dailyTipsUnreadCount={dailyTips.unreadCount}
+          onOpenSearchSelector={() => setIsSearchSelectorOpen(true)}
           onOpenBrQuestHub={(pillar) => {
             setBrQuestInitialPillar(pillar || null);
             setIsBrQuestHubOpen(true);
@@ -768,6 +845,9 @@ export function App() {
               onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
               onOpenDailyTips={() => setIsDailyTipsOpen(true)}
               dailyTipsUnreadCount={dailyTips.unreadCount}
+              onOpenSearchSelector={() => setIsSearchSelectorOpen(true)}
+              onStateLocated={handleStateLocated}
+              onNotification={(msg) => setNotification(msg)}
             />
           </div>
 
@@ -853,6 +933,20 @@ export function App() {
         onTeleportToState={handleTeleportFromDailyTip}
         onGainXp={handleGainXp}
         dailyTipsController={dailyTips}
+      />
+
+      {/* Seletor & Busca Rápida de Estados (Ctrl+K) */}
+      <StateSearchSelectorModal
+        isOpen={isSearchSelectorOpen}
+        onClose={() => setIsSearchSelectorOpen(false)}
+        completedStateIds={progress.completedStateIds}
+        onSelectState={(stateId) => {
+          setIsSearchSelectorOpen(false);
+          const found = GUARDIANS_DATA.find((g) => g.id === stateId);
+          if (found) {
+            handleSelectGuardian(found);
+          }
+        }}
       />
 
       {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS Swap | APIs ] */}

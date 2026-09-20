@@ -7,6 +7,7 @@ export interface SidebarUserAndConfigsGroupProps {
   onOpenUserProfile?: () => void;
   onOpenSettings?: () => void;
   onOpenAboutInfo?: () => void;
+  onOpenSearchSelector?: () => void;
   onToggleFps?: () => void;
   showFps?: boolean;
   onOpenApiStatus?: () => void;
@@ -24,8 +25,7 @@ export interface SidebarUserAndConfigsGroupProps {
 /**
  * SidebarUserAndConfigsGroup
  * Grupo fixo inferior compacto da barra lateral de navegação:
- * Ordem estrita: 1. Saiba Mais ('Saiba+') | 2. Usuário (Perfil) | 3. Configurações Gerais
- * FPS e Monitor de APIs foram centralizados exclusivamente dentro do painel de Configurações.
+ * Ordem: 1. Saiba Mais ('Saiba+') | 2. Usuário (Perfil) | 3. Configurações Gerais
  */
 export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProps> = ({
   playerLevel,
@@ -120,3 +120,5 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
     </div>
   );
 };
+
+

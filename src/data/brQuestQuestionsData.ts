@@ -10,13 +10,72 @@ export type QuestThemePillar =
 
 export type QuestScope = 'nacional' | 'regional' | 'estadual';
 
+export type EducationTier = 'fundamental' | 'medio' | 'avancado';
+
+export type QuestDifficulty =
+  | 'fundamental'
+  | 'medio'
+  | 'avancado'
+  | 'iniciante'
+  | 'aventureiro'
+  | 'mestre';
+
+export function getTierFromDifficulty(diff?: QuestDifficulty | string): EducationTier {
+  if (diff === 'fundamental' || diff === 'iniciante') return 'fundamental';
+  if (diff === 'avancado' || diff === 'mestre') return 'avancado';
+  return 'medio';
+}
+
+export function getTierMetrics(diffOrTier?: string): {
+  tier: EducationTier;
+  points: number;
+  xp: number;
+  labelPt: string;
+  shortBadge: string;
+  enemCategory: string;
+} {
+  const tier = getTierFromDifficulty(diffOrTier);
+  switch (tier) {
+    case 'fundamental':
+      return {
+        tier: 'fundamental',
+        points: 100,
+        xp: 50,
+        labelPt: 'Ensino Fundamental (6º ao 9º Anos)',
+        shortBadge: 'Fundamental',
+        enemCategory: 'Conceitos Básicos & BNCC',
+      };
+    case 'medio':
+      return {
+        tier: 'medio',
+        points: 200,
+        xp: 100,
+        labelPt: 'Ensino Médio (1º ao 3º Anos & ENEM)',
+        shortBadge: 'Médio / ENEM',
+        enemCategory: 'Matriz ENEM & Vestibulares',
+      };
+    case 'avancado':
+      return {
+        tier: 'avancado',
+        points: 350,
+        xp: 200,
+        labelPt: 'Avançado (Nível Pesquisador)',
+        shortBadge: 'Pesquisador',
+        enemCategory: 'Geociências & Modelagem Superior',
+      };
+  }
+}
+
 export interface BrQuestQuestion {
   id: string;
   scope: QuestScope;
   regionId?: 'norte' | 'nordeste' | 'centro_oeste' | 'sudeste' | 'sul';
   stateId?: string;
   pillar: QuestThemePillar;
-  difficulty: 'iniciante' | 'aventureiro' | 'mestre';
+  difficulty: QuestDifficulty;
+  tier?: EducationTier;
+  points?: number;
+  xp?: number;
   questionPt: string;
   questionEn: string;
   optionsPt: string[];
@@ -181,39 +240,39 @@ export const BR_QUEST_QUESTIONS: BrQuestQuestion[] = [
   },
 
   // =========================================================================
-  // 3. BLOCO NACIONAL - DEMOGRAFIA & SOCIEDADE (Censo IBGE 2022)
+  // 3. BLOCO NACIONAL - DEMOGRAFIA & SOCIEDADE (IBGE Censo & Estimativas 2024/2025)
   // =========================================================================
   {
     id: 'nat_demo_01',
     scope: 'nacional',
     pillar: 'demografia',
-    difficulty: 'iniciante',
-    questionPt: 'Segundo os dados consolidados do Censo Demográfico do IBGE 2022, qual é a população aproximada do Brasil?',
-    questionEn: 'According to the 2022 IBGE Demographic Census, what is Brazil’s approximate population?',
+    difficulty: 'fundamental',
+    questionPt: 'Segundo os dados consolidados do Censo Demográfico e Estimativas Oficiais do IBGE 2024/2025, qual é a população aproximada do Brasil?',
+    questionEn: 'According to the consolidated Demographic Census and official IBGE estimates for 2024/2025, what is Brazil’s approximate population?',
     optionsPt: [
-      '203 milhões de habitantes',
+      '203 a 205 milhões de habitantes',
       '155 milhões de habitantes',
       '275 milhões de habitantes',
       '310 milhões de habitantes'
     ],
     optionsEn: [
-      '203 million inhabitants',
+      '203 to 205 million inhabitants',
       '155 million inhabitants',
       '275 million inhabitants',
       '310 million inhabitants'
     ],
     correctIndex: 0,
-    explanationPt: 'O Censo 2022 contabilizou exatamente 203.080.756 habitantes no território brasileiro, confirmando o Brasil como o 7º país mais populoso do mundo.',
-    explanationEn: 'The 2022 Census registered 203,080,756 inhabitants, ranking Brazil as the 7th most populous nation on Earth.',
-    sourceRef: 'IBGE Censo 2022'
+    explanationPt: 'O Censo contabilizou 203.080.756 habitantes no território nacional (com projeções estabilizadas em ~205 milhões em 2024/2025), posicionando o Brasil como a 7ª nação mais populosa do planeta.',
+    explanationEn: 'The Census counted 203,080,756 inhabitants (with estimates around 205 million for 2024/2025), ranking Brazil as the 7th most populous nation on Earth.',
+    sourceRef: 'IBGE Censo Demográfico & Estimativas 2024/2025'
   },
   {
     id: 'nat_demo_02',
     scope: 'nacional',
     pillar: 'demografia',
-    difficulty: 'aventureiro',
-    questionPt: 'Qual estado brasileiro possui a maior taxa de alfabetização da população (superior a 97%) segundo o Censo 2022?',
-    questionEn: 'Which Brazilian state has the highest literacy rate (above 97%) according to the 2022 Census?',
+    difficulty: 'medio',
+    questionPt: 'Qual estado brasileiro possui a maior taxa de alfabetização da população (superior a 97%) segundo os relatórios de Educação do IBGE?',
+    questionEn: 'Which Brazilian state has the highest literacy rate (above 97%) according to IBGE education reports?',
     optionsPt: [
       'Santa Catarina (SC)',
       'Amazonas (AM)',
@@ -227,17 +286,17 @@ export const BR_QUEST_QUESTIONS: BrQuestQuestion[] = [
       'Tocantins (TO)'
     ],
     correctIndex: 0,
-    explanationPt: 'Santa Catarina atingiu 97,4% de taxa de alfabetização no Censo 2022, seguido de perto pelo Distrito Federal (97,2%) e Rio Grande do Sul (96,9%).',
-    explanationEn: 'Santa Catarina reached a 97.4% literacy rate in the 2022 Census, followed closely by the Federal District (97.2%) and Rio Grande do Sul (96.9%).',
-    sourceRef: 'IBGE Censo 2022 / Educação'
+    explanationPt: 'Santa Catarina atingiu 97,4% de taxa de alfabetização no Censo, seguido de perto pelo Distrito Federal (97,2%) e Rio Grande do Sul (96,9%).',
+    explanationEn: 'Santa Catarina reached a 97.4% literacy rate, followed closely by the Federal District (97.2%) and Rio Grande do Sul (96.9%).',
+    sourceRef: 'IBGE / PNAD Contínua & Educação 2024/2025'
   },
   {
     id: 'nat_demo_03',
     scope: 'nacional',
     pillar: 'demografia',
-    difficulty: 'mestre',
-    questionPt: 'Qual é o grupo étnico autodeclarado mais numeroso do Brasil de acordo com o Censo 2022, representando cerca de 45,3% da população?',
-    questionEn: 'Which self-declared ethnic group is the largest in Brazil according to the 2022 Census, representing about 45.3% of the population?',
+    difficulty: 'avancado',
+    questionPt: 'Qual é o grupo étnico autodeclarado mais numeroso do Brasil de acordo com os dados consolidados do IBGE, representando cerca de 45,3% da população?',
+    questionEn: 'Which self-declared ethnic group is the largest in Brazil according to IBGE consolidated data, representing about 45.3% of the population?',
     optionsPt: [
       'Pardos (Miscigenados)',
       'Brancos',
@@ -251,9 +310,9 @@ export const BR_QUEST_QUESTIONS: BrQuestQuestion[] = [
       'Indigenous'
     ],
     correctIndex: 0,
-    explanationPt: 'Pela primeira vez desde o início da série histórica moderna do IBGE em 1991, os pardos tornaram-se o maior contingente populacional do Brasil (45,3%), superando os brancos (43,5%).',
-    explanationEn: 'In 2022, Pardos (multiracial individuals) officially became the largest demographic group in Brazil (45.3%), surpassing self-declared whites (43.5%).',
-    sourceRef: 'IBGE Censo 2022 / Cor ou Raça'
+    explanationPt: 'Os pardos consolidaram-se como o maior contingente populacional do Brasil (45,3%), superando os autodeclarados brancos (43,5%), evidenciando a pluralidade étnica nacional.',
+    explanationEn: 'Pardos (multiracial individuals) officially became the largest demographic group in Brazil (45.3%), surpassing self-declared whites (43.5%).',
+    sourceRef: 'IBGE / Cor ou Raça & Diversidade 2024/2025'
   },
 
   // =========================================================================
@@ -868,7 +927,16 @@ export function getQuestionsByPillar(pillar: QuestThemePillar): BrQuestQuestion[
   return BR_QUEST_QUESTIONS.filter((q) => q.pillar === pillar);
 }
 
-export function getRandomQuizBatch(count = 5, filter?: { scope?: QuestScope; pillar?: QuestThemePillar; regionId?: string }): BrQuestQuestion[] {
+export function getRandomQuizBatch(
+  count = 5,
+  filter?: {
+    scope?: QuestScope;
+    pillar?: QuestThemePillar;
+    regionId?: string;
+    tier?: EducationTier | 'todos';
+    difficulty?: QuestDifficulty | 'todos';
+  }
+): BrQuestQuestion[] {
   let pool = [...BR_QUEST_QUESTIONS];
   if (filter?.scope) {
     pool = pool.filter((q) => q.scope === filter.scope);
@@ -879,6 +947,12 @@ export function getRandomQuizBatch(count = 5, filter?: { scope?: QuestScope; pil
   if (filter?.regionId) {
     pool = pool.filter((q) => q.regionId === filter.regionId);
   }
+  if (filter?.tier && filter.tier !== 'todos') {
+    pool = pool.filter((q) => getTierFromDifficulty(q.difficulty) === filter.tier);
+  } else if (filter?.difficulty && filter.difficulty !== 'todos') {
+    const targetTier = getTierFromDifficulty(filter.difficulty);
+    pool = pool.filter((q) => q.difficulty === filter.difficulty || getTierFromDifficulty(q.difficulty) === targetTier);
+  }
   
   // Shuffle array
   for (let i = pool.length - 1; i > 0; i--) {
@@ -886,5 +960,14 @@ export function getRandomQuizBatch(count = 5, filter?: { scope?: QuestScope; pil
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   
-  return pool.slice(0, count).map((q) => shuffleQuestionOptions(q));
+  return pool.slice(0, count).map((q) => {
+    const shuffled = shuffleQuestionOptions(q);
+    const metrics = getTierMetrics(shuffled.difficulty);
+    return {
+      ...shuffled,
+      tier: metrics.tier,
+      points: metrics.points,
+      xp: metrics.xp,
+    };
+  });
 }

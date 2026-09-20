@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../services/auth/AuthContext';
-import { User, LogIn, LogOut, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { User, LogIn, LogOut, UserPlus, AlertCircle, CheckCircle2, Shield, Cloud, Key } from 'lucide-react';
 import { ExplorerAuthForms } from './ExplorerAuthForms';
 
 interface ExplorerIdentityTabProps {
   playerLevel: number;
   playerXp: number;
   unlockedInsigniaCount: number;
+  activeSubSection?: 'all' | 'profile' | 'cloud' | 'auth';
 }
 
 export const ExplorerIdentityTab: React.FC<ExplorerIdentityTabProps> = ({
   playerLevel,
   playerXp,
   unlockedInsigniaCount,
+  activeSubSection = 'all',
 }) => {
   const { user, isGuest, login, register, loginWithGoogle, logout, vendorName } = useAuth();
 
@@ -65,181 +67,212 @@ export const ExplorerIdentityTab: React.FC<ExplorerIdentityTabProps> = ({
     setErrorMsg(null);
     setIsSubmitting(true);
     try {
-      await register(username, displayName || username, email, password);
-      setSuccessMsg('Conta criada e salva no Firebase Cloud!');
+      await register(username, password, email || undefined, displayName || undefined);
+      setSuccessMsg('Conta criada com sucesso!');
       setTimeout(() => {
         setSuccessMsg(null);
         setFormMode('view');
       }, 1000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao registrar');
+      setErrorMsg(err.message || 'Falha ao registrar conta');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleLogout = async () => {
-    setErrorMsg(null);
-    setIsSubmitting(true);
-    try {
-      await logout();
-      setSuccessMsg('Sessão desconectada. Modo visitante reativado.');
-      setTimeout(() => setSuccessMsg(null), 1500);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Falha ao desconectar');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await logout();
+    setSuccessMsg('Sessão encerrada.');
+    setTimeout(() => setSuccessMsg(null), 1500);
   };
 
+  const showProfile = activeSubSection === 'all' || activeSubSection === 'profile';
+  const showCloud = activeSubSection === 'all' || activeSubSection === 'cloud';
+  const showAuth = activeSubSection === 'all' || activeSubSection === 'auth';
+
   return (
-    <div className="painel-aba-identidade space-y-4 text-stone-200 text-sm">
+    <div className="painel-aba-identidade space-y-4 text-slate-200 text-sm">
+      {/* Mensagens de Alerta / Sucesso */}
       {errorMsg && (
-        <div className="p-3 rounded-xl bg-red-950/70 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
+        <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
+
       {successMsg && (
-        <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-400" />
+        <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {formMode === 'view' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-stone-800/60 border border-stone-700/60 flex items-center justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {/* 1. Status da Conta Atual */}
+        {showProfile && (
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3.5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider">
+              <Shield className="w-4 h-4" />
+              <span>Identidade do Explorador</span>
+            </div>
+
             <div className="flex items-center gap-3">
               {user?.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
-                  alt={user.displayName || 'Avatar'}
+                  alt={user.displayName}
                   referrerPolicy="no-referrer"
-                  className="w-12 h-12 rounded-xl object-cover border border-amber-500/40 shadow-sm"
+                  className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
                 />
               ) : (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                  <User className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-slate-950 font-bold text-lg shadow-sm">
+                  {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="w-6 h-6" />}
                 </div>
               )}
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-stone-100">{user?.displayName || 'Explorador Convidado'}</span>
-                  {isGuest ? (
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-stone-700 text-stone-300 uppercase">
-                      Convidado
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
-                      Verificado
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-stone-400 mt-0.5">@{user?.username || 'guest'}</div>
-                <div className="text-[11px] text-amber-400 font-mono mt-1">
-                  Nuvem: {vendorName === 'firebase-cloud' ? 'Google Firebase Cloud' : vendorName}
+
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-slate-100 text-sm truncate">{user?.displayName || 'Explorador'}</div>
+                <div className="text-xs text-slate-400 font-mono truncate">{user?.email || `@${user?.username}`}</div>
+                <div className="text-[10px] text-amber-300/80 font-mono mt-0.5">
+                  Provedor: {user?.email?.includes('@') ? 'Conta Registrada' : 'Local / Convidado'} ({vendorName})
                 </div>
               </div>
             </div>
 
-            <div className="text-right">
-              <div className="text-sm font-bold text-amber-400">Nível {playerLevel}</div>
-              <div className="text-xs text-stone-400">{playerXp.toLocaleString('pt-BR')} XP</div>
-              <div className="text-[10px] text-stone-500 mt-1">{unlockedInsigniaCount} insígnias</div>
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-400">Status de Conexão:</span>
+              <span className={`px-2 py-0.5 rounded-full font-mono font-bold text-[10px] ${
+                isGuest ? 'bg-slate-800 text-slate-300' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
+              }`}>
+                {isGuest ? 'Modo Convidado' : 'Conta Sincronizada'}
+              </span>
             </div>
-          </div>
 
-          <div className="pt-2 space-y-3">
-            {isGuest ? (
-              <>
-                {/* Botão de Login com Google Oficial/Direto */}
-                <button
-                  type="button"
-                  id="btn-login-google"
-                  onClick={handleGoogleLogin}
-                  disabled={isSubmitting}
-                  className="btn-login-google w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-stone-100 text-stone-900 font-semibold text-xs transition shadow-md border border-stone-300 disabled:opacity-50"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Continuar com Google</span>
-                </button>
-
-                <div className="flex items-center gap-3 my-1">
-                  <div className="flex-1 h-px bg-stone-800" />
-                  <span className="text-[11px] text-stone-500 uppercase tracking-wider font-semibold">ou</span>
-                  <div className="flex-1 h-px bg-stone-800" />
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormMode('login')}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold transition"
-                  >
-                    <LogIn className="w-4 h-4 text-amber-400" />
-                    Entrar com Usuário
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormMode('register')}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-semibold transition shadow-md"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Criar Conta
-                  </button>
-                </div>
-              </>
-            ) : (
+            {!isGuest && (
               <button
                 type="button"
-                id="btn-logout-conta"
                 onClick={handleLogout}
-                disabled={isSubmitting}
-                className="btn-logout-conta w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-800/80 border border-stone-700 text-stone-300 hover:text-red-300 text-xs font-semibold transition disabled:opacity-50"
+                className="w-full mt-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-rose-950 hover:text-rose-300 border border-slate-700 hover:border-rose-500/50 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <LogOut className="w-4 h-4 text-stone-400" />
-                {isSubmitting ? 'Desconectando...' : 'Desconectar da Conta'}
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Encerrar Sessão</span>
               </button>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      {formMode !== 'view' && (
-        <ExplorerAuthForms
-          formMode={formMode}
-          username={username}
-          setUsername={setUsername}
-          displayName={displayName}
-          setDisplayName={setDisplayName}
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          isSubmitting={isSubmitting}
-          onCancel={() => setFormMode('view')}
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-        />
-      )}
+        {/* 2. Sincronia Nuvem Firebase */}
+        {showCloud && (
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3.5 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold text-sky-400 uppercase tracking-wider">
+              <Cloud className="w-4 h-4" />
+              <span>Armazenamento & Nuvem</span>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-300 leading-relaxed">
+              <p>
+                Seus dados de progresso (XP, insígnias, preferências sonoras e biomas favoritos) são salvos com segurança.
+              </p>
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] font-mono space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Banco de Dados:</span>
+                  <span className="text-amber-300 font-bold">Google Cloud Firestore</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Sincronização:</span>
+                  <span className="text-emerald-300 font-bold">Tempo Real</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Persistência Local:</span>
+                  <span className="text-sky-300 font-bold">Offline First</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Ações de Login / Cadastro se for Convidado */}
+        {showAuth && isGuest && (
+          <div className="p-4 rounded-2xl bg-slate-900/80 border border-amber-500/30 space-y-3 shadow-sm md:col-span-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-300 uppercase tracking-wider">
+                <Key className="w-4 h-4 text-amber-400" />
+                <span>Conectar ou Criar Conta na Nuvem</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setFormMode('view')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    formMode === 'view' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Opções
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormMode('login')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    formMode === 'login' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormMode('register')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    formMode === 'register' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Registrar
+                </button>
+              </div>
+            </div>
+
+            {formMode === 'view' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isSubmitting}
+                  className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-amber-500/40 text-slate-200 font-bold text-xs flex items-center justify-center gap-2.5 transition shadow-sm cursor-pointer"
+                >
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
+                  <span>Entrar com Conta Google</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormMode('login')}
+                  className="p-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Entrar com Usuário & Senha</span>
+                </button>
+              </div>
+            )}
+
+            {(formMode === 'login' || formMode === 'register') && (
+              <ExplorerAuthForms
+                formMode={formMode}
+                username={username}
+                setUsername={setUsername}
+                displayName={displayName}
+                setDisplayName={setDisplayName}
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                isSubmitting={isSubmitting}
+                onLogin={handleLogin}
+                onRegister={handleRegister}
+                onCancel={() => setFormMode('view')}
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
