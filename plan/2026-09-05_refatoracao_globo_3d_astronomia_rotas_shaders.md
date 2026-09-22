@@ -321,7 +321,10 @@ Este plano fornece uma base técnica e arquitetural robusta para elevar o modo *
 
 REFERÊNCIAS:
 https://www.cienciaviva.pt/equinocio/lat_long/index.asp
-
+https://science.nasa.gov/earth/explore/el-nino/
+https://www.noaa.gov/climate
+https://www.gov.br/agricultura/pt-br/assuntos/inmet 
+https://www.simepar.br/simepar
 
 
 

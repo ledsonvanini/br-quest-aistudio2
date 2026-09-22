@@ -195,8 +195,23 @@ export function centralizarZoomMapa(
         stateId
       );
 
+    case 'aventura': {
+      const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
+      const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
+      let baseZoom = isSmallState ? 1.95 : isLargeState ? 1.30 : 1.55;
+      let screenOffsetX = 0;
+
+      // O painel de aventura é o ÚNICO que fica na DIREITA. Portanto, deslocamos para a ESQUERDA (offset negativo)
+      // para manter o estado e o mapa perfeitamente visíveis na área livre da esquerda
+      if (isPanelOpen && containerWidth >= 640) {
+        screenOffsetX = -Math.round(containerWidth * 0.14);
+      }
+
+      const targetPan = calculateStateCenterPan(effectiveCentroid, baseZoom, is3D, screenOffsetX);
+      return { targetZoom: baseZoom, targetPan };
+    }
+
     case 'geopolitica':
-    case 'aventura':
     default: {
       const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
       const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);

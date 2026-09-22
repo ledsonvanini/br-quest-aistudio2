@@ -266,12 +266,17 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   // Controle de qual submenu/flyout flutuante está aberto no momento (Clima aberto por padrão)
   const [openFlyoutMode, setOpenFlyoutMode] = useState<AppMainMode | null>('clima');
 
-  // Garante exclusividade mútua estrita: se um estado estiver isolado no AppLateral,
-  // fecha qualquer flyout ou submenu lateral aberto imediatamente
+  // Garante exclusividade mútua estrita: se um estado estiver selecionado no AppLateral,
+  // fecha qualquer flyout, submenu de território, gavetas ou tooltips imediatamente
   useEffect(() => {
     if (selectedStateId) {
       setOpenFlyoutMode(null);
       setLocalTerritorySubmenuOpen(false);
+      setIsTerritorySectionExpanded(false);
+      setIsToolsSectionExpanded(false);
+      setIsGlobeSectionExpanded(false);
+      setHoveredMenuTooltip(null);
+      setFlyoutPos(null);
     }
   }, [selectedStateId]);
 

@@ -74,8 +74,10 @@ export const StateMusicDialog: React.FC<StateMusicDialogProps> = ({
       id={`dialog-applateral-musical-${stateId.toLowerCase()}`}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className={`painel-applateral-musical fixed top-16 sm:top-20 right-2 sm:right-4 z-40 flex flex-col bg-[#0b0c16]/95 backdrop-blur-2xl border-2 border-amber-500/60 rounded-2xl shadow-2xl shadow-black/90 text-white transition-all duration-300 pointer-events-auto select-none overflow-hidden ${
-        isExpanded ? 'w-[340px] sm:w-[420px] md:w-[460px] max-h-[85vh]' : 'w-[300px] sm:w-[340px] max-h-[70vh]'
+      className={`painel-applateral-musical fixed top-3 sm:top-3.5 md:top-4 bottom-14 sm:bottom-16 left-2 sm:left-[76px] md:left-[84px] lg:left-[88px] z-40 max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] flex flex-col bg-[#0b0c16]/95 backdrop-blur-2xl border-2 border-amber-500/60 rounded-2xl shadow-2xl shadow-black/90 text-white transition-all duration-300 pointer-events-auto select-none overflow-hidden ${
+        isExpanded
+          ? 'w-[calc(100vw-16px)] sm:w-[calc(50vw-44px)] lg:w-[calc(50vw-48px)] xl:w-[calc(50vw-52px)]'
+          : 'w-[calc(100vw-16px)] sm:w-[480px] md:w-[520px]'
       }`}
       aria-label={`Patrimônio Musical de ${stateData.stateName}`}
     >

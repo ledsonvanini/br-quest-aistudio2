@@ -1244,6 +1244,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       setSelectedStateId(stateId);
       setSelectedClimateStateId(stateId);
+      onSelectStateId?.(stateId);
       audioEngine.playSfx('travel');
       return;
     }
@@ -1272,6 +1273,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       setSelectedStateId(stateId);
       setSelectedBiodiversityStateId(stateId);
+      onSelectStateId?.(stateId);
       audioEngine.playSfx('travel');
       return;
     }
@@ -1300,6 +1302,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
       setSelectedStateId(stateId);
       setSelectedGeopoliticaStateId(stateId);
+      onSelectStateId?.(stateId);
       audioEngine.playSfx('travel');
       return;
     }
@@ -1310,6 +1313,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onToggleRadio();
       }
       setSelectedStateId(stateId);
+      onSelectStateId?.(stateId);
       setInternalIsBiodiversityPanelOpen(false);
       setInternalIsGeopoliticaPanelOpen(false);
       const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
@@ -1329,15 +1333,32 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 3. MODO AVENTURA / BRQUEST: Ao clicar no estado, viaja direto para 'Desafiar Guardião' sem perguntas
+    // 3. MODO AVENTURA / BRQUEST: Abre o StateAdventureDialog à direita para exibir o Guardião e jornada
     if (mainMode === 'aventura') {
+      setSelectedStateId(stateId);
+      onSelectStateId?.(stateId);
+
+      const { targetZoom, targetPan } = centralizarZoomMapa('aventura', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
+
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
       audioEngine.playSfx('travel');
-      handleEnterGuardianScene(stateId);
       return;
     }
 
     // 4. MODO GERAL: Seleciona o estado com suavidade, mantendo navegação livre
     setSelectedStateId(stateId);
+    onSelectStateId?.(stateId);
     audioEngine.playSfx('click');
 
     if (centroid) {
@@ -2699,7 +2720,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           onToggleExpand={(expanded) => {
             const centroid = centroids[selectedStateId];
             if (centroid) {
-              const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+              const { targetZoom, targetPan } = centralizarZoomMapa('aventura', {
                 stateId: selectedStateId,
                 centroid,
                 containerWidth: getContainerWidth(),
