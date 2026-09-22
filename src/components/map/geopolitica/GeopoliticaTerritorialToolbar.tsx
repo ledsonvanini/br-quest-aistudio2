@@ -1,5 +1,5 @@
-import React from 'react';
-import { Globe2, Scale, MapPin, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe2, Scale, Check, Layers } from 'lucide-react';
 import { audioEngine } from '../../../lib/audioSynth';
 
 interface GeopoliticaTerritorialToolbarProps {
@@ -11,7 +11,7 @@ interface GeopoliticaTerritorialToolbarProps {
   onSelectRegionFilter?: (region: string) => void;
 }
 
-const REGION_OPTIONS = [
+const IBGE_REGION_OPTIONS = [
   { id: 'todos', label: 'Brasil (Todos)', sigla: 'BR' },
   { id: 'norte', label: 'Norte', sigla: 'NO' },
   { id: 'nordeste', label: 'Nordeste', sigla: 'NE' },
@@ -20,13 +20,20 @@ const REGION_OPTIONS = [
   { id: 'sul', label: 'Sul', sigla: 'SU' },
 ];
 
+const GEIGER_COMPLEX_OPTIONS = [
+  { id: 'todos', label: 'Brasil (Todos)', sigla: 'BR' },
+  { id: 'amazonia', label: 'Complexo da Amazônia', sigla: 'AMZ' },
+  { id: 'nordeste_geiger', label: 'Complexo do Nordeste', sigla: 'C.NE' },
+  { id: 'centro_sul', label: 'Complexo Centro-Sul', sigla: 'C.SUL' },
+];
+
 /**
  * GeopoliticaTerritorialToolbar
  * Toolbar de ferramentas de análise territorial geopolítica encapsulada no painel lateral.
  * Agrupa funções sem poluir o canvas:
- * 1. Toggle de Fronteiras / Países Vizinhos Sul-Americanos (reaproveitando a lógica global)
+ * 1. Toggle de Fronteiras / Países Vizinhos Sul-Americanos
  * 2. Comparador Interestadual (Split-View / Comparativo A/B)
- * 3. Seletor compacto de Macrorregiões do IBGE
+ * 3. Seletor de Divisões Regionais Modernas: Macrorregiões IBGE e Complexos Geoeconômicos (Geiger)
  */
 export const GeopoliticaTerritorialToolbar: React.FC<GeopoliticaTerritorialToolbarProps> = ({
   showNeighbors = false,
@@ -36,6 +43,10 @@ export const GeopoliticaTerritorialToolbar: React.FC<GeopoliticaTerritorialToolb
   selectedRegionFilter,
   onSelectRegionFilter,
 }) => {
+  const [divisionModel, setDivisionModel] = useState<'ibge' | 'geiger'>('ibge');
+
+  const currentOptions = divisionModel === 'ibge' ? IBGE_REGION_OPTIONS : GEIGER_COMPLEX_OPTIONS;
+
   return (
     <div
       id="toolbar-ferramentas-territoriais-geopolitica"
@@ -89,13 +100,34 @@ export const GeopoliticaTerritorialToolbar: React.FC<GeopoliticaTerritorialToolb
           <Scale className={`w-3.5 h-3.5 ${isCompareOpen ? 'text-cyan-400' : 'text-slate-400'}`} />
           <span className="text-[11px] font-bold">Comparar UFs</span>
         </button>
+
+        {/* 3. Alternador de Modelo Regional (IBGE vs Complexos Geoeconômicos Geiger) */}
+        <button
+          id="btn-geopolitica-modelo-regional"
+          type="button"
+          onClick={() => {
+            audioEngine.playSfx('click');
+            const nextModel = divisionModel === 'ibge' ? 'geiger' : 'ibge';
+            setDivisionModel(nextModel);
+            onSelectRegionFilter?.('todos');
+          }}
+          className="px-2 py-1.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 bg-slate-950/80 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-950/40 transition-all cursor-pointer"
+          title={
+            divisionModel === 'ibge'
+              ? 'Modelo atual: Macrorregiões Oficiais IBGE. Clique para alternar para Complexos Geoeconômicos de Pedro Pinchas Geiger.'
+              : 'Modelo atual: Complexos Geoeconômicos de Pedro Pinchas Geiger (Amazônia, Nordeste, Centro-Sul). Clique para alternar para Macrorregiões IBGE.'
+          }
+        >
+          <Layers className="w-3 h-3 text-cyan-400" />
+          <span>{divisionModel === 'ibge' ? 'IBGE' : 'Geiger'}</span>
+        </button>
       </div>
 
-      {/* Grupo Direita: Pílulas de Macrorregião */}
+      {/* Grupo Direita: Pílulas da Divisão Regional Selecionada */}
       {onSelectRegionFilter && (
         <div className="flex items-center gap-1">
           <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
-            {REGION_OPTIONS.map((reg) => {
+            {currentOptions.map((reg) => {
               const isSelected = selectedRegionFilter.toLowerCase() === reg.id.toLowerCase();
               return (
                 <button
@@ -111,7 +143,7 @@ export const GeopoliticaTerritorialToolbar: React.FC<GeopoliticaTerritorialToolb
                       ? 'bg-cyan-500 text-slate-950 font-black'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
-                  title={`Filtrar macrorregião: ${reg.label}`}
+                  title={`Filtrar: ${reg.label}`}
                 >
                   {reg.sigla}
                 </button>

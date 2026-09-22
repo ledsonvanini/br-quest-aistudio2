@@ -10,6 +10,9 @@ export interface OceanShaderCanvasProps {
   enabled?: boolean;
   mode?: AppMainMode;
   isTerritoryMode?: boolean;
+  climateMode?: string;
+  isElNinoActive?: boolean;
+  elNinoPhase?: 'El Niño' | 'La Niña' | 'Neutro';
   waveSpeed?: number;
   onWaterClick?: (x: number, y: number) => void;
   customBrazilGeo?: any;
@@ -37,6 +40,9 @@ export const OceanShaderCanvas: React.FC<OceanShaderCanvasProps> = ({
   enabled = true,
   mode = 'aventura',
   isTerritoryMode = false,
+  climateMode,
+  isElNinoActive,
+  elNinoPhase = 'El Niño',
   waveSpeed = 0.6,
   onWaterClick,
   customBrazilGeo,
@@ -50,6 +56,9 @@ export const OceanShaderCanvas: React.FC<OceanShaderCanvasProps> = ({
     waveSpeed,
     mode,
     isTerritoryMode,
+    climateMode,
+    isElNinoActive,
+    elNinoPhase,
     customBrazilGeo,
     mapScale: [1.0, 1.0],
   });

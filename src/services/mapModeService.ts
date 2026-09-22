@@ -117,6 +117,18 @@ export const MODE_DEFAULT_PROFILES: Record<AppMainMode, ModeDefaultProfile> = {
     isRainSimDefault: false,
     defaultPanelOpen: false,
   },
+  territorio: {
+    id: 'territorio',
+    namePt: 'Território e Cartografia',
+    defaultTerrain: 'shaded_relief',
+    defaultVisualStyle: 'tiles',
+    defaultSubTheme: 'regions',
+    isCloudsDefault: true,
+    isWavesDefault: true,
+    isAtmosphereDefault: true,
+    isRainSimDefault: false,
+    defaultPanelOpen: false,
+  },
 };
 
 /**
@@ -205,6 +217,23 @@ export function centralizarZoomMapa(
       // para manter o estado e o mapa perfeitamente visíveis na área livre da esquerda
       if (isPanelOpen && containerWidth >= 640) {
         screenOffsetX = -Math.round(containerWidth * 0.14);
+      }
+
+      const targetPan = calculateStateCenterPan(effectiveCentroid, baseZoom, is3D, screenOffsetX);
+      return { targetZoom: baseZoom, targetPan };
+    }
+
+    case 'territorio': {
+      const isSmallState = ['DF', 'SE', 'AL', 'RJ', 'ES', 'PB', 'RN', 'SC'].includes(stateId);
+      const isLargeState = ['AM', 'PA', 'MT', 'MG', 'BA'].includes(stateId);
+      let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.35 : 1.68;
+      let screenOffsetX = 0;
+
+      // O AppLateral de Território abre na ESQUERDA. Deslocamos o mapa para a DIREITA (screenOffsetX > 0)
+      // para centralizar o estado perfeitamente nos 50% livres da tela
+      if (isPanelOpen && containerWidth >= 640) {
+        screenOffsetX = Math.round(containerWidth * 0.25);
+        baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.52) / 600));
       }
 
       const targetPan = calculateStateCenterPan(effectiveCentroid, baseZoom, is3D, screenOffsetX);

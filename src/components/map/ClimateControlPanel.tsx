@@ -1,3 +1,6 @@
+// src/components/map/ClimateControlPanel.tsx
+// Painel Lateral do Observatório Meteorológico & Ambiental (Orquestrador Desacoplado)
+
 import React, { useState, useEffect } from 'react';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 import {
@@ -18,16 +21,15 @@ import {
   Radio,
   Sun,
   Moon,
-  Wind,
-  Compass,
-  Sparkles,
-  ShieldAlert,
   Activity,
-  Orbit,
   Clock,
   Maximize2,
   Minimize2,
 } from 'lucide-react';
+import { ClimateAstronomyTab } from './climate/ClimateAstronomyTab';
+import { ClimateStationsTab } from './climate/ClimateStationsTab';
+import { ClimateEnsoTab } from './climate/ClimateEnsoTab';
+import { ClimateSettingsTab } from './climate/ClimateSettingsTab';
 
 interface ClimateControlPanelProps {
   isOpen: boolean;
@@ -36,6 +38,7 @@ interface ClimateControlPanelProps {
   onModeChange: (mode: ClimateMode) => void;
   stations: ClimateStationData[];
   elNinoData: ElNinoIndexData | null;
+  onElNinoPhaseChange?: (phase: 'El Niño' | 'La Niña' | 'Neutro') => void;
   selectedStation: ClimateStationData | null;
   onSelectStation: (station: ClimateStationData | null) => void;
   speedMultiplier: number;
@@ -61,9 +64,9 @@ interface ClimateControlPanelProps {
 
 export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
   isOpen,
-  onClose,
   stations,
   elNinoData,
+  onElNinoPhaseChange,
   selectedStation,
   onSelectStation,
   speedMultiplier,
@@ -90,7 +93,6 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
     setIsExpanded((prev) => !prev);
   };
 
-  // Sincronização de efemérides solares a cada segundo com a Hora de Brasília
   useEffect(() => {
     const tick = () => {
       setEphemeris(getBrasiliaCelestialEphemeris(timeOverride));
@@ -104,7 +106,6 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
 
   return (
     <>
-      {/* Botão Flutuante Discreto para Reabrir Observatório (quando minimizado) */}
       {!isDrawerOpen && (
         <div className="fixed bottom-12 right-4 sm:right-6 z-40 pointer-events-auto">
           <button
@@ -121,7 +122,6 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
         </div>
       )}
 
-      {/* PAINEL OBSERVATÓRIO LATERAL (Alcance até o rodapé com controles de maximizar / restaurar) */}
       {isDrawerOpen && (
         <div
           id="painel-observatorio-ambiental"
@@ -148,7 +148,6 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
               </div>
             </div>
 
-            {/* CONTROLES DE JANELA: Atualizar | Maximizar (50%) / Restaurar | Fechar */}
             <div className="flex items-center gap-1.5 shrink-0 ml-2">
               <button
                 id="btn-atualizar-observatorio"
@@ -256,271 +255,34 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
 
           {/* Conteúdo com Scroll */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-xs">
-            
-            {/* ABA 1: ASTRONOMIA, HORA DE BRASÍLIA, SOL, LUA & OZÔNIO */}
             {activeTab === 'astronomy' && (
-              <div className="space-y-3">
-                {/* Cartão do Relógio Oficial de Brasília */}
-                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                      <Orbit className="w-4 h-4 animate-spin" style={{ animationDuration: '20s' }} />
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-slate-400 font-medium">Horário Oficial de Brasília</div>
-                      <div className="font-mono font-bold text-amber-300 text-xs">
-                        {ephemeris.brasiliaTimeFormatted}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                        ephemeris.isNight
-                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
-                          : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      }`}
-                    >
-                      {ephemeris.isNight ? '🌙 Noite' : '☀️ Dia'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Alternância de Modo / Teste Manual */}
-                <div className="p-2 rounded-xl bg-slate-900/50 border border-slate-800 space-y-1.5">
-                  <div className="text-[10px] text-slate-400 font-semibold flex items-center justify-between">
-                    <span>CICLO DE ILUMINAÇÃO CELO</span>
-                    <span className="font-mono text-slate-500">Auto: Brasília UTC-3</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    <button
-                      onClick={() => onTimeOverrideChange?.('auto')}
-                      className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                        timeOverride === 'auto'
-                          ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      ⏱️ Automático
-                    </button>
-                    <button
-                      onClick={() => onTimeOverrideChange?.('day')}
-                      className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                        timeOverride === 'day'
-                          ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      ☀️ Modo Dia
-                    </button>
-                    <button
-                      onClick={() => onTimeOverrideChange?.('night')}
-                      className={`py-1 px-2 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                        timeOverride === 'night'
-                          ? 'bg-indigo-500/20 border-indigo-400 text-indigo-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      🌙 Modo Noite
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grade de Efemérides: Posição Solar e Lunar */}
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Bloco Sol */}
-                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
-                    <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px] font-serif">
-                      <Sun className="w-3.5 h-3.5" />
-                      <span>Sol em Brasília</span>
-                    </div>
-                    <div className="text-[10px] text-slate-300 font-mono space-y-0.5">
-                      <div>Elevação: <strong className="text-amber-300">{ephemeris.sunElevation}°</strong></div>
-                      <div>Azimute: <strong className="text-amber-300">{ephemeris.sunAzimuth}° ({ephemeris.sunAzimuthCardinal})</strong></div>
-                      <div>Intensidade: <strong className="text-amber-300">{Math.round(ephemeris.sunIntensity * 100)}%</strong></div>
-                    </div>
-                  </div>
-
-                  {/* Bloco Lua */}
-                  <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1">
-                    <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-[11px] font-serif">
-                      <Moon className="w-3.5 h-3.5" />
-                      <span>Lua & Cruzeiro do Sul</span>
-                    </div>
-                    <div className="text-[10px] text-slate-300 font-mono space-y-0.5">
-                      <div>Fase: <strong className="text-indigo-300">{ephemeris.moonPhaseName}</strong></div>
-                      <div>Iluminação: <strong className="text-indigo-300">{ephemeris.moonIlluminationPercent}%</strong></div>
-                      <div>Azimute: <strong className="text-indigo-300">{ephemeris.moonAzimuth}° ({ephemeris.moonAzimuthCardinal})</strong></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Radiação & Ozônio */}
-                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-serif font-bold text-slate-200 flex items-center gap-1.5">
-                      <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
-                      Índice UV & Camada de Ozônio
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                      {ephemeris.ozoneColumnDU} DU
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-                    <div className="p-1.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                      <div className="text-slate-400">Índice Ultravioleta</div>
-                      <div className="font-bold text-xs text-amber-300">
-                        {ephemeris.uvIndex} ({ephemeris.uvCategory})
-                      </div>
-                    </div>
-                    <div className="p-1.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                      <div className="text-slate-400">Coluna de Ozônio</div>
-                      <div className="font-bold text-xs text-emerald-300">
-                        {ephemeris.ozoneColumnDU} Unidades Dobson
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ClimateAstronomyTab
+                ephemeris={ephemeris}
+                timeOverride={timeOverride}
+                onTimeOverrideChange={onTimeOverrideChange}
+              />
             )}
 
-            {/* ABA 2: ESTAÇÕES METEOROLÓGICAS ESTADUAIS */}
             {activeTab === 'stations' && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 font-mono">
-                  <span>CAPITAIS & POLOS CLIMÁTICOS</span>
-                  <span>{stations.length} ESTAÇÕES</span>
-                </div>
-
-                <div className="space-y-1.5 max-h-[46vh] overflow-y-auto pr-1 custom-scrollbar">
-                  {stations.map((st) => {
-                    const isSelected = selectedStation?.id === st.id;
-                    return (
-                      <div
-                        key={st.id}
-                        onClick={() => onSelectStation(isSelected ? null : st)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-amber-950/40 border-amber-500/80 shadow-md'
-                            : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-mono font-black text-[10px] text-amber-400">
-                            {st.id.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-200 text-xs">{st.name}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              {st.windSpeed} km/h • {st.windDirection}° • {st.humidity}% UMID
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div className="font-mono font-black text-amber-300 text-sm">{st.temperature}°C</div>
-                          <div className="text-[9px] text-slate-400">{st.phenomenon}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <ClimateStationsTab
+                stations={stations}
+                selectedStation={selectedStation}
+                onSelectStation={onSelectStation}
+              />
             )}
 
-            {/* ABA 3: ÍNDICE ENSO & PACÍFICO */}
             {activeTab === 'enso' && (
-              <div className="space-y-3">
-                {elNinoData ? (
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-serif font-bold text-amber-300 text-xs">Anomalia Térmica Niño 3.4</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        {elNinoData.phase} ({elNinoData.intensity})
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl font-mono font-black text-rose-400">
-                        {elNinoData.seaTempAnomaly > 0 ? '+' : ''}
-                        {elNinoData.seaTempAnomaly}°C
-                      </div>
-                      <p className="text-[11px] text-slate-300 leading-tight">
-                        {elNinoData.description}
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 space-y-1">
-                      <div>• <strong>Norte:</strong> {elNinoData.impactsBrazil?.norte}</div>
-                      <div>• <strong>Nordeste:</strong> {elNinoData.impactsBrazil?.nordeste}</div>
-                      <div>• <strong>Sul:</strong> {elNinoData.impactsBrazil?.sul}</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-slate-400 text-xs">
-                    Carregando índices oceânicos...
-                  </div>
-                )}
-              </div>
+              <ClimateEnsoTab
+                elNinoData={elNinoData}
+                onPhaseChange={onElNinoPhaseChange}
+              />
             )}
 
-            {/* ABA 4: SLIDER POLIDO DE VELOCIDADE DOS VENTOS */}
             {activeTab === 'settings' && (
-              <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-serif font-bold text-amber-300 flex items-center gap-1.5">
-                      <Wind className="w-3.5 h-3.5 text-cyan-400" />
-                      Velocidade da Dinâmica dos Ventos
-                    </label>
-                    <span className="px-2 py-0.5 rounded font-mono font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 text-xs">
-                      {speedMultiplier.toFixed(1)}x
-                    </span>
-                  </div>
-
-                  {/* Slider com track customizado e responsivo */}
-                  <div className="space-y-1">
-                    <input
-                      type="range"
-                      min="0.2"
-                      max="3.0"
-                      step="0.1"
-                      value={speedMultiplier}
-                      onChange={(e) => onSpeedMultiplierChange(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400 transition-all hover:bg-slate-700"
-                    />
-                    <div className="flex justify-between text-[9px] font-mono text-slate-500 px-0.5">
-                      <span>0.2x (Calmo)</span>
-                      <span>1.0x (Real)</span>
-                      <span>3.0x (Ventania)</span>
-                    </div>
-                  </div>
-
-                  {/* Botões de Presets Rápidos */}
-                  <div className="pt-2 border-t border-slate-800/80 grid grid-cols-4 gap-1 text-[10px] font-mono">
-                    {[
-                      { val: 0.5, label: '0.5x' },
-                      { val: 1.0, label: '1.0x' },
-                      { val: 2.0, label: '2.0x' },
-                      { val: 3.0, label: '3.0x' },
-                    ].map((preset) => (
-                      <button
-                        key={preset.label}
-                        onClick={() => onSpeedMultiplierChange(preset.val)}
-                        className={`py-1 rounded-lg border transition-all cursor-pointer ${
-                          Math.abs(speedMultiplier - preset.val) < 0.05
-                            ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <ClimateSettingsTab
+                speedMultiplier={speedMultiplier}
+                onSpeedMultiplierChange={onSpeedMultiplierChange}
+              />
             )}
           </div>
 
@@ -531,7 +293,7 @@ export const ClimateControlPanel: React.FC<ClimateControlPanelProps> = ({
               <span className="text-slate-400 font-sans">atualizado</span>
               <strong className="text-cyan-200 font-mono">{formatBrasiliaTimeDynamic(updatedAt || dateTimeFormatted)}</strong>
             </div>
-            <span className="text-[9px] text-slate-500">INMET • ECMWF • NOAA</span>
+            <span className="text-[9px] text-slate-500">INMET • ECMWF • NOAA • SIMEPAR</span>
           </div>
         </div>
       )}

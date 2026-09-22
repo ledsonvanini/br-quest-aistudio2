@@ -22,6 +22,8 @@ import { SouthAmericaLandmassLayer, NeighborFeatureItem } from './layers/SouthAm
 import { StatePolygonRenderer } from './layers/StatePolygonRenderer';
 import { StateElevatedHighlightLayer } from './layers/StateElevatedHighlightLayer';
 import { MapCartographicDefs } from './layers/MapCartographicDefs';
+import { getStateTexturePattern } from './stateStyling/modeTextureStyler';
+import { AppMainMode } from '../../types';
 
 // Re-export constants for full backward compatibility
 export { REGION_STATES_MAP, REGION_COLORS_MAP, getStateRegion, STATE_NEIGHBORS_MAP };
@@ -42,6 +44,8 @@ export interface MapStatesLayerProps {
   centroids?: Record<string, [number, number]>;
   isClimateActive?: boolean;
   climateMode?: ClimateMode;
+  elNinoPhase?: 'El Niño' | 'La Niña' | 'Neutro';
+  mainMode?: AppMainMode;
   stateWeather?: Record<string, StateWeatherData>;
   isGeopoliticaActive?: boolean;
   geopoliticaMetric?: GeopoliticaMetricKey;
@@ -77,6 +81,8 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
   hoveredCountryId = null,
   isClimateActive = false,
   climateMode = 'temperaturas_frentes',
+  elNinoPhase = 'El Niño',
+  mainMode,
   stateWeather,
   isGeopoliticaActive = false,
   geopoliticaMetric = 'densidade',
@@ -343,6 +349,27 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
           const stateRegion = getStateRegion(stateId);
           const regionColor = REGION_COLORS_MAP[stateRegion] || '#10b981';
 
+          const effectiveMode: AppMainMode =
+            mainMode ||
+            (isClimateActive
+              ? 'clima'
+              : isGeopoliticaActive
+              ? 'geopolitica'
+              : activeCartographyLayer && activeCartographyLayer !== 'none'
+              ? 'territorio'
+              : 'aventura');
+
+          const texturePattern = getStateTexturePattern({
+            stateId,
+            mainMode: effectiveMode,
+            climateMode,
+            elNinoPhase,
+            activeCartographyLayer,
+            geopoliticaMetric,
+            isSelected,
+            isHovered,
+          });
+
           return (
             <StatePolygonRenderer
               key={stateId}
@@ -361,6 +388,7 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
               isGeopoliticaActive={isGeopoliticaActive}
               visualStyle={visualStyle}
               activeCartographyLayer={activeCartographyLayer}
+              texturePattern={texturePattern}
               onStateEnter={onStateEnter}
               onStateLeave={onStateLeave}
               onStateClick={onStateClick}

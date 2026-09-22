@@ -19,6 +19,7 @@ export interface StatePolygonRendererProps {
   isGeopoliticaActive: boolean;
   visualStyle: MapVisualStyle;
   activeCartographyLayer?: CartographyLayerMode;
+  texturePattern?: string | null;
   onStateEnter: (stateId: string) => void;
   onStateLeave: (stateId: string) => void;
   onStateClick: (stateId: string, e: React.MouseEvent) => void;
@@ -41,6 +42,7 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
   isGeopoliticaActive,
   visualStyle,
   activeCartographyLayer,
+  texturePattern,
   onStateEnter,
   onStateLeave,
   onStateClick,
@@ -202,6 +204,16 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
           onStateContextMenu?.(stateId, e);
         }}
       />
+
+      {/* Shaders & Texturas Procedurais Vetoriais da Skill Ativa */}
+      {texturePattern && (
+        <path
+          d={pathD}
+          fill={texturePattern}
+          stroke="none"
+          className="textura-shader-procedural pointer-events-none transition-opacity duration-300"
+        />
+      )}
 
       {/* Expanded Hit Target for Small States */}
       <path

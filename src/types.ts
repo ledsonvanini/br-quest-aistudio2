@@ -1,6 +1,6 @@
 export type RegionId = 'norte' | 'nordeste' | 'centro_oeste' | 'sudeste' | 'sul';
 
-export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades';
+export type AppMainMode = 'clima' | 'biodiversidade' | 'geopolitica' | 'globo3d' | 'aventura' | 'musicalidades' | 'territorio';
 
 export interface MenuTooltipInfo {
   title: string;

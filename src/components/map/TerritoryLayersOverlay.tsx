@@ -4,6 +4,7 @@ import { CartographyLayerMode } from '../../types/cartography';
 import { ENRICHED_INTEGRATION_ROUTES, BRAZIL_KEY_PORTS } from '../../data/cartographyBasinsData';
 import { HydroBasinsMapLayer } from './territory/HydroBasinsMapLayer';
 import { BiomesReliefMapLayer } from './territory/BiomesReliefMapLayer';
+import { LogisticCorridorsMapLayer } from './territory/LogisticCorridorsMapLayer';
 import { TerritoryFeatureDetailModal, TerritoryFeatureData } from './territory/TerritoryFeatureDetailModal';
 import { HydroRegionInfo } from '../../data/cartography/hydroRegionsData';
 import { BiomeGeoFeature } from '../../data/cartography/biomesData';
@@ -125,7 +126,7 @@ export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
           </style>
         </defs>
 
-        <g id="territory-overlay-root-group" className="territory-overlay-root-group">
+        <g id="territory-overlay-root-group" className="territory-overlay-root-group pointer-events-auto">
           {/* Subcamada 1: BACIAS HIDROGRÁFICAS (ANA / HIDROWEB) */}
           {activeLayer === 'bacias_hidrograficas' && (
             <HydroBasinsMapLayer
@@ -163,117 +164,12 @@ export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
 
           {/* Subcamada 3: ROTAS DE INTEGRAÇÃO & CORREDORES MULTIMODAIS */}
           {activeLayer === 'rotas_integracao' && (
-            <g id="camada-rotas-logistica-viva" className="camada-rotas-logistica-viva pointer-events-auto">
-              {ENRICHED_INTEGRATION_ROUTES.map((route) => {
-                // Se um estado estiver isolado, esconde rotas que não pertençam a ele
-                if (selectedStateId && ROUTE_PRIMARY_STATE[route.id] !== selectedStateId && selectedSubitemId !== route.id) return null;
-
-                const isSelected =
-                  selectedSubitemId === route.id ||
-                  (selectedSubitemId === 'rodovias' && (route.type === 'rodoviaria' || route.type === 'historica')) ||
-                  (selectedSubitemId === 'hidrovias' && route.type === 'fluvial_cabotagem') ||
-                  (selectedSubitemId === 'ferrovias' && route.type === 'ferroviaria');
-                const isDimmed = Boolean(selectedSubitemId && !isSelected);
-
-                return (
-                  <g
-                    key={route.id}
-                    className={`grupo-rota-integracao cursor-pointer group transition-opacity duration-300 ${
-                      isDimmed ? 'opacity-20 hover:opacity-80' : 'opacity-100'
-                    }`}
-                    onClick={() => handleRouteClick(route.id)}
-                  >
-                    <path
-                      d={route.path}
-                      fill="none"
-                      stroke={route.color}
-                      strokeWidth={isSelected ? 8 : route.type === 'fluvial_cabotagem' ? 6 : 4.5}
-                      strokeLinecap="round"
-                      strokeOpacity={isSelected ? 0.95 : 0.65}
-                      filter={isSelected ? 'url(#routeGlow)' : undefined}
-                      className="transition-all"
-                    />
-                    <path
-                      d={route.path}
-                      fill="none"
-                      stroke={route.type === 'historica' ? '#fde047' : '#ffffff'}
-                      strokeWidth={route.type === 'ferroviaria' ? 3 : 2.4}
-                      strokeLinecap="round"
-                      className="linha-transito-logistico"
-                    />
-                    {isSelected && route.cities[0] && (
-                      <g
-                        transform={`translate(${route.cities[0].x}, ${route.cities[0].y - 14})`}
-                        className="transition-transform"
-                      >
-                        <rect
-                          x="-85"
-                          y="-14"
-                          width="170"
-                          height="26"
-                          rx="6"
-                          fill="#0f172a"
-                          fillOpacity="0.96"
-                          stroke="#38bdf8"
-                          strokeWidth={1.8}
-                          filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))"
-                        />
-                        <text textAnchor="middle" y="3.5" fill="#f8fafc" fontSize="11" fontWeight="bold">
-                          {route.name}
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                );
-              })}
-
-              {/* Portos de Cabotagem Estratégicos */}
-              {BRAZIL_KEY_PORTS.map((porto) => {
-                // Se um estado estiver isolado, esconde portos fora desse estado
-                if (selectedStateId && porto.state !== selectedStateId) return null;
-
-                const isPortSelected = selectedSubitemId === 'portos' || selectedSubitemId === porto.id;
-                return (
-                  <g
-                    key={porto.id}
-                    transform={`translate(${porto.x}, ${porto.y})`}
-                    className="marcador-porto-maritimo cursor-pointer group"
-                    onClick={() => handlePortClick(porto)}
-                  >
-                    <circle
-                      r={isPortSelected ? 14 : 9}
-                      fill={porto.type === 'porto_fluvial' ? '#22d3ee' : '#38bdf8'}
-                      fillOpacity={isPortSelected ? 0.6 : 0.35}
-                      className="animate-ping"
-                    />
-                    <circle
-                      r={isPortSelected ? 7 : 5}
-                      fill={isPortSelected ? '#fef08a' : '#ffffff'}
-                      stroke={porto.type === 'porto_fluvial' ? '#0891b2' : '#0284c7'}
-                      strokeWidth={isPortSelected ? 3 : 2}
-                      filter="url(#portBeaconGlow)"
-                    />
-                  <g transform="translate(14, 4)" className="transition-all opacity-0 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
-                    <rect
-                      x="-6"
-                      y="-13"
-                      width={porto.name.length * 7.5 + 28}
-                      height="24"
-                      rx="6"
-                      fill="#030712"
-                      fillOpacity="0.95"
-                      stroke="#38bdf8"
-                      strokeWidth="1.5"
-                      filter="drop-shadow(0 2px 8px rgba(0,0,0,0.85))"
-                    />
-                    <text x="4" y="3.5" fill="#f0f9ff" fontSize="11" fontWeight="bold">
-                      ⚓ {porto.name.replace(/Porto (de|do|Fluvial de) /g, '')} ({porto.state})
-                    </text>
-                  </g>
-                </g>
-              );
-            })}
-            </g>
+            <LogisticCorridorsMapLayer
+              selectedSubitemId={selectedSubitemId}
+              selectedStateId={selectedStateId}
+              onSelectRoute={handleRouteClick}
+              onSelectPort={handlePortClick}
+            />
           )}
         </g>
       </svg>

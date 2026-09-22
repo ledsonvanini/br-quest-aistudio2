@@ -68,6 +68,22 @@ void getOceanPalette(
     causticHighlight = vec3(0.250, 0.750, 0.900); // Cáusticas estuarinas e fluviais
     shallowWater     = vec3(0.030, 0.260, 0.400); // Água costeira translúcida
     beachSand        = vec3(0.920, 0.960, 0.990); // Linha de praia e foz dos rios
+  } else if (mode == 5) {
+    // El Niño (Aquecimento Anômalo SST / NOAA & INMET): Águas tropicais quentes com cáusticas térmicas âmbar
+    deepAbyss        = vec3(0.018, 0.070, 0.140); // Abismo com anomalia térmica
+    midOcean         = vec3(0.040, 0.130, 0.210); // Azul cerúleo aquecido
+    lightAzure       = vec3(0.110, 0.220, 0.280); // Superfície com calor oceânico
+    causticHighlight = vec3(0.920, 0.580, 0.260); // Cáusticas térmicas de anomalia positiva
+    shallowWater     = vec3(0.080, 0.250, 0.300); // Águas costeiras com gradiente quente
+    beachSand        = vec3(0.980, 0.950, 0.880); // Areia dourada aquecida
+  } else if (mode == 6) {
+    // La Niña (Resfriamento Anômalo SST / NOAA & INMET): Águas de ressurgência antártica gélidas
+    deepAbyss        = vec3(0.004, 0.045, 0.130); // Azul gélido profundo
+    midOcean         = vec3(0.012, 0.115, 0.250); // Cerúleo polar cristalino
+    lightAzure       = vec3(0.025, 0.250, 0.410); // Azul glacial translúcido
+    causticHighlight = vec3(0.280, 0.950, 0.880); // Cáusticas turquesa gélidas
+    shallowWater     = vec3(0.035, 0.320, 0.440); // Águas frias oxigenadas
+    beachSand        = vec3(0.920, 0.980, 1.000); // Espuma cristalina polar
   } else {
     // Aventura, Clima, Geopolítica (Padrão Cartográfico de Alta Fidelidade):
     // Paleta cartográfica refinada e harmoniosa, sem saturação excessiva

@@ -17,6 +17,7 @@ import {
   getMusicalFocusZoomAndPan,
   calculateAnchoredZoomPan,
   DEFAULT_BRAZIL_ZOOM,
+  calculateResponsiveDefaultZoom,
   NEIGHBORS_CONTINENT_ZOOM,
   BRAZIL_MAP_PIVOT_CENTER,
   MAP_CANVAS_WIDTH,
@@ -85,8 +86,9 @@ import { GeopoliticsControlPanel } from './map/GeopoliticsControlPanel';
 import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { EducatorPortalModal } from './educator/EducatorPortalModal';
 import { StateAdventureDialog } from './guardian/StateAdventureDialog';
-import { StateMusicDialog } from './music/StateMusicDialog';
 import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
+import { UnifiedBeaconHoverTooltip } from './map/tooltip/UnifiedBeaconHoverTooltip';
+import { BeaconHoverProvider } from '../context/BeaconHoverContext';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio, Music } from 'lucide-react';
@@ -253,6 +255,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     return containerRef.current?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 1280);
   }, []);
 
+  const getContainerHeight = useCallback(() => {
+    return containerRef.current?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 720);
+  }, []);
+
   // Visual Modes & Customization
   const [internalVisualStyle, setVisualStyle] = useState<MapVisualStyle>('tiles');
   const [internalTerrainProvider, setTerrainProvider] = useState<TerrainTileProvider>('shaded_relief');
@@ -379,6 +385,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       const { targetZoom, targetPan } = centralizarZoomMapa('clima', {
         stateId: 'RESET_CENTRAL_BRAZIL',
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: false,
       });
@@ -388,7 +395,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserPanRef.current = targetPan;
       baseUserZoomRef.current = targetZoom;
     }
-  }, [activeCartographyLayer]);
+  }, [activeCartographyLayer, getContainerWidth, getContainerHeight, is3D]);
 
   // Synchronize internal climate active state with global mainMode
   useEffect(() => {
@@ -496,6 +503,65 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     };
   }, [loadClimateData]);
 
+  const handleElNinoPhaseChange = useCallback((phase: 'El Niño' | 'La Niña' | 'Neutro') => {
+    audioEngine.playSfx('click');
+    setElNinoData((prev) => {
+      const base = prev || {
+        phase: 'El Niño',
+        seaTempAnomaly: 2.3,
+        intensity: 'Forte' as const,
+        description: '',
+        impactsBrazil: { norte: '', nordeste: '', centroOeste: '', sudeste: '', sul: '' },
+      };
+      if (phase === 'El Niño') {
+        return {
+          ...base,
+          phase: 'El Niño',
+          seaTempAnomaly: 2.3,
+          intensity: 'Forte' as const,
+          description: 'Aquecimento anômalo intenso das águas do Pacífico Equatorial (Niño 3.4), gerando forte seca no N/NE e enchentes severas no Sul.',
+          impactsBrazil: {
+            norte: 'Seca severa e estiagens prolongadas com baixo nível nos rios.',
+            nordeste: 'Redução drástica das chuvas no semiárido e alto risco de estiagem.',
+            centroOeste: 'Chuvas irregulares e temperaturas acima da média.',
+            sudeste: 'Ondas de calor frequentes e bloqueios atmosféricos.',
+            sul: 'Precipitações volumosas, temporais contínuos e enchentes históricas.',
+          },
+        };
+      } else if (phase === 'La Niña') {
+        return {
+          ...base,
+          phase: 'La Niña',
+          seaTempAnomaly: -0.8,
+          intensity: 'Fraco a Moderado' as const,
+          description: 'Resfriamento das águas superficiais do Pacífico Equatorial (Niño 3.4), intensificando os ventos alísios e concentrando umidade no Norte e Nordeste.',
+          impactsBrazil: {
+            norte: 'Chuvas regulares e abundantes, rios com volume elevado.',
+            nordeste: 'Aumento das chuvas no semiárido e excelente recarga hídrica.',
+            centroOeste: 'Estação chuvosa bem distribuída e favorável ao agronegócio.',
+            sudeste: 'Maior variabilidade térmica com frentes frias regulares.',
+            sul: 'Tendência a estiagens periódicas e estiagem agrícola no extremo sul (SIMEPAR).',
+          },
+        };
+      } else {
+        return {
+          ...base,
+          phase: 'Neutro',
+          seaTempAnomaly: 0.0,
+          intensity: 'Neutro' as const,
+          description: 'Condições térmicas normais no Pacífico Equatorial (Niño 3.4). Padrão climatológico regular sem anomalias forçadas de grande escala.',
+          impactsBrazil: {
+            norte: 'Regime pluviométrico sazonal padrão dentro da média histórica.',
+            nordeste: 'Quadra chuvosa dependente das condições do Atlântico Tropical.',
+            centroOeste: 'Padrão normal de verão chuvoso e inverno seco.',
+            sudeste: 'Passagem regular de sistemas frontais típicos.',
+            sul: 'Distribuição equilibrada de chuvas ao longo do ano.',
+          },
+        };
+      }
+    });
+  }, []);
+
   const handleToggleClimate = () => {
     audioEngine.playSfx('click');
     if (onToggleObservatorio) {
@@ -505,11 +571,15 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     }
   };
 
-  // Camera Pan & Zoom States (Centered mathematically on Brazil with 20% increased default zoom out: DEFAULT_BRAZIL_ZOOM = 0.95)
-  const baseUserZoomRef = useRef<number>(DEFAULT_BRAZIL_ZOOM);
-  const baseUserPanRef = useRef<{ x: number; y: number }>(getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, true));
-  const [pan, setPan] = useState<{ x: number; y: number }>(() => getBrazilACtoPBMidpointPan(DEFAULT_BRAZIL_ZOOM, true));
-  const [zoom, setZoom] = useState<number>(DEFAULT_BRAZIL_ZOOM);
+  // Camera Pan & Zoom States (Centered mathematically on Brazil dynamically adapted to viewport dimensions)
+  const initialZoom = calculateResponsiveDefaultZoom(
+    typeof window !== 'undefined' ? window.innerWidth : 1920,
+    typeof window !== 'undefined' ? window.innerHeight : 1080
+  );
+  const baseUserZoomRef = useRef<number>(initialZoom);
+  const baseUserPanRef = useRef<{ x: number; y: number }>(getBrazilACtoPBMidpointPan(initialZoom, true));
+  const [pan, setPan] = useState<{ x: number; y: number }>(() => getBrazilACtoPBMidpointPan(initialZoom, true));
+  const [zoom, setZoom] = useState<number>(initialZoom);
   const [baseTiltAngle, setBaseTiltAngle] = useState<number>(42);
   const [headingAngle, setHeadingAngle] = useState<number>(0);
   const [internalTimeOverride, setInternalTimeOverride] = useState<'auto' | 'day' | 'night'>('auto');
@@ -586,6 +656,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           stateId: propSelectedStateId,
           centroid,
           containerWidth: getContainerWidth(),
+          containerHeight: getContainerHeight(),
           is3D,
           isPanelOpen: true,
         });
@@ -597,6 +668,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       } else if (propSelectedStateId === null) {
         const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
           containerWidth: getContainerWidth(),
+          containerHeight: getContainerHeight(),
           is3D,
           isPanelOpen: false,
         });
@@ -607,7 +679,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         baseUserZoomRef.current = targetZoom;
       }
     }
-  }, [propSelectedStateId, activeCartographyLayer, mainMode, is3D, centroids, getContainerWidth]);
+  }, [propSelectedStateId, activeCartographyLayer, mainMode, is3D, centroids, getContainerWidth, getContainerHeight]);
 
   // Interatividade das Estações do Observatório: Selecionar e Voar a Câmera
   const handleSelectClimateStation = useCallback((station: ClimateStationData | null) => {
@@ -1307,15 +1379,15 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 2. MODO MUSICALIDADES: Abre apenas o AppLateral Musical do Estado, fecha o rádio vintage para não sobrepor dois painéis e centraliza o mapa
+    // 2. MODO MUSICALIDADES: Abre o AppLateral Oficial de Rádio Vintage, sintonizando no estado selecionado e centralizando o mapa nos 50% livres da direita
     if (mainMode === 'musicalidades') {
-      if (isRadioOpen && onToggleRadio) {
-        onToggleRadio();
-      }
       setSelectedStateId(stateId);
       onSelectStateId?.(stateId);
       setInternalIsBiodiversityPanelOpen(false);
       setInternalIsGeopoliticaPanelOpen(false);
+      if (!isRadioOpen && onToggleRadio) {
+        onToggleRadio();
+      }
       const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
         stateId,
         centroid,
@@ -1329,7 +1401,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       baseUserPanRef.current = targetPan;
       baseUserZoomRef.current = targetZoom;
 
-      audioEngine.playSfx('click');
+      audioEngine.playSfx('travel');
       return;
     }
 
@@ -1356,7 +1428,28 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 4. MODO GERAL: Seleciona o estado com suavidade, mantendo navegação livre
+    // 4. MODO TERRITÓRIO: Abre o AppLateral de Território e centraliza o mapa nos 50% livres da direita (screenOffsetX > 0)
+    if (mainMode === 'territorio') {
+      setSelectedStateId(stateId);
+      onSelectStateId?.(stateId);
+      const { targetZoom, targetPan } = centralizarZoomMapa('territorio', {
+        stateId,
+        centroid,
+        containerWidth: getContainerWidth(),
+        is3D,
+        isPanelOpen: true,
+      });
+      setTransitionMode('button');
+      setPan(targetPan);
+      setZoom(targetZoom);
+      baseUserPanRef.current = targetPan;
+      baseUserZoomRef.current = targetZoom;
+
+      audioEngine.playSfx('click');
+      return;
+    }
+
+    // 5. MODO GERAL: Seleciona o estado com suavidade, mantendo navegação livre
     setSelectedStateId(stateId);
     onSelectStateId?.(stateId);
     audioEngine.playSfx('click');
@@ -1583,6 +1676,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
     const { targetZoom: finalZoom, targetPan: calculatedPan } = centralizarZoomMapa(mainMode, {
       containerWidth: getContainerWidth(),
+      containerHeight: getContainerHeight(),
       is3D,
       isPanelOpen: isAnySidePanelOpen,
       isExpanded,
@@ -1612,6 +1706,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     isGeopoliticaPanelOpen,
     isGeopoliticaPanelExpanded,
     getContainerWidth,
+    getContainerHeight,
     onHoverStateChange,
   ]);
 
@@ -1630,6 +1725,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
 
     const { targetZoom, targetPan } = centralizarZoomMapa(mainMode, {
       containerWidth: getContainerWidth(),
+      containerHeight: getContainerHeight(),
       is3D,
       isPanelOpen: isAnySidePanelOpen,
       showNeighbors,
@@ -1651,19 +1747,46 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     isBiodiversityPanelOpen,
     isGeopoliticaPanelOpen,
     getContainerWidth,
+    getContainerHeight,
   ]);
 
-  // Re-alinhar suavemente quando o usuário alternar de modo no menu principal ou filtro regional
-  const prevModeOrRegionRef = useRef<string>(`${mainMode}_${selectedRegionFilter}`);
+  // b) Ao carregar a Aplicação: garante centralização imediata com os parâmetros calibrados
+  const isAppLoadedRef = useRef<boolean>(false);
   useEffect(() => {
-    const key = `${mainMode}_${selectedRegionFilter}`;
-    if (key !== prevModeOrRegionRef.current) {
-      prevModeOrRegionRef.current = key;
+    if (!isAppLoadedRef.current) {
+      isAppLoadedRef.current = true;
       handleResetView(false);
     }
-  }, [mainMode, selectedRegionFilter, handleResetView]);
+  }, [handleResetView]);
 
-  // Re-align ONLY when top menu "Centralizar Mapa" / "Focar Brasil" button is clicked (centerTrigger increments)
+  // c) Sempre que um Menu (gaveta) ou um de seus subitens for selecionado: centraliza o Mapa Br
+  const prevMenuSelectionKeyRef = useRef<string>(
+    `${mainMode}_${selectedRegionFilter}_${terrainProvider}_${visualStyle}_${choroplethSubTheme}_${climateMode}_${biodiversityKingdom}_${biodiversityBiome}_${geopoliticaMetric}_${activeCartographyLayer}_${selectedTerritorySubitemId}_${activeMusicCategory}_${selectedRadioEraId}`
+  );
+  useEffect(() => {
+    const currentKey = `${mainMode}_${selectedRegionFilter}_${terrainProvider}_${visualStyle}_${choroplethSubTheme}_${climateMode}_${biodiversityKingdom}_${biodiversityBiome}_${geopoliticaMetric}_${activeCartographyLayer}_${selectedTerritorySubitemId}_${activeMusicCategory}_${selectedRadioEraId}`;
+    if (currentKey !== prevMenuSelectionKeyRef.current) {
+      prevMenuSelectionKeyRef.current = currentKey;
+      handleResetView(false);
+    }
+  }, [
+    mainMode,
+    selectedRegionFilter,
+    terrainProvider,
+    visualStyle,
+    choroplethSubTheme,
+    climateMode,
+    biodiversityKingdom,
+    biodiversityBiome,
+    geopoliticaMetric,
+    activeCartographyLayer,
+    selectedTerritorySubitemId,
+    activeMusicCategory,
+    selectedRadioEraId,
+    handleResetView,
+  ]);
+
+  // a) Re-align quando o botão "Centralizar Mapa Br" do Topo for clicado (centerTrigger increments)
   const lastCenterTriggerRef = useRef<number>(centerTrigger || 0);
   useEffect(() => {
     if (centerTrigger !== undefined && centerTrigger > 0 && centerTrigger !== lastCenterTriggerRef.current) {
@@ -1876,7 +1999,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             : 'radial-gradient(circle at 50% 50%, #0e568e 0%, #0a3d68 25%, #062846 50%, #03172b 75%, #020d1c 95%)',
       }}
     >
-      {/* 0. Seamless Full-Viewport Subtle Aged Paper Noise Overlay */}
+      <BeaconHoverProvider>
+        {/* 0. Seamless Full-Viewport Subtle Aged Paper Noise Overlay */}
       <div
         className="camada-ruido-oceano-global absolute inset-0 pointer-events-none z-0 mix-blend-overlay opacity-20 select-none"
         style={{
@@ -2101,6 +2225,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               isBiodiversityMode={effectiveIsBiodiversityActive}
               isMusicalMode={effectiveIsMusicalActive}
               isTerritoryMode={isTerritoryModeActive}
+              isClimateMode={isClimateActive}
+              isElNinoActive={isClimateActive && climateMode === 'el_nino_la_nina'}
+              elNinoPhase={elNinoData?.phase}
             />
 
             {/* Layer 0.1: Coastal Waves, Bathymetric Gradient & Heterogeneous Swell Shader */}
@@ -2108,6 +2235,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               enabled={wavesEnabled}
               mode={mainMode}
               isTerritoryMode={isTerritoryModeActive}
+              climateMode={climateMode}
+              isElNinoActive={isClimateActive && climateMode === 'el_nino_la_nina'}
+              elNinoPhase={elNinoData?.phase}
               waveSpeed={0.6}
               customBrazilGeo={geoData}
             />
@@ -2138,6 +2268,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 centroids={centroids}
                 isClimateActive={effectiveIsClimateActive}
                 climateMode={currentClimateMode}
+                elNinoPhase={elNinoData?.phase}
+                mainMode={mainMode}
                 stateWeather={stateWeather}
                 isGeopoliticaActive={effectiveIsGeopoliticaActive && !showNeighbors}
                 geopoliticaMetric={geopoliticaMetric}
@@ -2164,11 +2296,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             {/* Layer 2.4: Camadas Cartográficas Ricas do Território (Exclusivo 2D e Aventura) */}
             {isTerritoryModeActive && (
               <div
-                className="camada-territorio-wrapper absolute inset-0 pointer-events-none z-20"
+                className="camada-territorio-wrapper absolute inset-0 pointer-events-none z-40"
                 style={{
                   width: MAP_CANVAS_WIDTH,
                   height: MAP_CANVAS_HEIGHT,
-                  transform: 'translateZ(10px)',
+                  transform: 'translateZ(45px)',
                   transformStyle: 'preserve-3d',
                 }}
               >
@@ -2452,6 +2584,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         onModeChange={handleClimateModeChange}
         stations={climateStations}
         elNinoData={elNinoData}
+        onElNinoPhaseChange={handleElNinoPhaseChange}
         selectedStation={selectedClimateStation}
         onSelectStation={handleSelectClimateStation}
         speedMultiplier={climateSpeedMultiplier}
@@ -2642,7 +2775,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             const { targetZoom, targetPan } = getBrazilOverviewFocusZoomAndPan(
               getContainerWidth(),
               is3D,
-              expanded
+              expanded,
+              getContainerHeight()
             );
             setTransitionMode('button');
             setPan(targetPan);
@@ -2693,6 +2827,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 stateId: currentId,
                 centroid,
                 containerWidth: getContainerWidth(),
+                containerHeight: getContainerHeight(),
                 is3D,
                 isPanelOpen: true,
                 isExpanded: expanded,
@@ -2724,39 +2859,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
                 stateId: selectedStateId,
                 centroid,
                 containerWidth: getContainerWidth(),
-                is3D,
-                isPanelOpen: true,
-                isExpanded: expanded,
-              });
-              setTransitionMode('button');
-              setPan(targetPan);
-              setZoom(targetZoom);
-              baseUserPanRef.current = targetPan;
-              baseUserZoomRef.current = targetZoom;
-            }
-          }}
-        />
-      )}
-
-      {/* 13.8. AppLateral de Musicalidades (Rádios Retrô, Frequências kHz, Hinos Oficiais e Canções Tradicionais) */}
-      {mainMode === 'musicalidades' && selectedStateId && (!activeCartographyLayer || activeCartographyLayer === 'none') && (
-        <StateMusicDialog
-          stateId={selectedStateId}
-          selectedRadioEraId={selectedRadioEraId}
-          onSelectState={handleStateClick}
-          onClose={handleCloseInspection}
-          onTuneState={(sId) => {
-            if (onFocusStateHandled) {
-              onFocusStateHandled();
-            }
-          }}
-          onToggleExpand={(expanded) => {
-            const centroid = centroids[selectedStateId];
-            if (centroid) {
-              const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
-                stateId: selectedStateId,
-                centroid,
-                containerWidth: getContainerWidth(),
+                containerHeight: getContainerHeight(),
                 is3D,
                 isPanelOpen: true,
                 isExpanded: expanded,
@@ -2803,6 +2906,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
           containerRef={containerRef}
         />
       )}
+        {/* 13.10. Balão Padronizado de Círculos / Beacons (Clima, Biomas, Bacias, Logística) em Nível de Tela Nativo 1:1 */}
+        <UnifiedBeaconHoverTooltip />
+      </BeaconHoverProvider>
     </div>
   );
 };

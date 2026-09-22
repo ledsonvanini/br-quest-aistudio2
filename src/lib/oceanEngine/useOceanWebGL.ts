@@ -9,6 +9,9 @@ export interface UseOceanWebGLOptions {
   waveSpeed: number;
   mode: AppMainMode;
   isTerritoryMode?: boolean;
+  climateMode?: string;
+  isElNinoActive?: boolean;
+  elNinoPhase?: 'El Niño' | 'La Niña' | 'Neutro';
   customBrazilGeo?: any;
   mapScale?: [number, number];
 }
@@ -32,6 +35,9 @@ export function useOceanWebGL({
   waveSpeed,
   mode,
   isTerritoryMode = false,
+  climateMode,
+  isElNinoActive,
+  elNinoPhase = 'El Niño',
   customBrazilGeo,
   mapScale = [1.0, 1.0],
 }: UseOceanWebGLOptions) {
@@ -52,6 +58,10 @@ export function useOceanWebGL({
 
   const getThemeModeInt = useCallback((themeMode: AppMainMode): number => {
     if (isTerritoryMode) return 4;
+    if (themeMode === 'clima' && (climateMode === 'el_nino_la_nina' || isElNinoActive)) {
+      if (elNinoPhase === 'El Niño') return 5;
+      if (elNinoPhase === 'La Niña') return 6;
+    }
     switch (themeMode) {
       case 'biodiversidade':
         return 1;
@@ -64,7 +74,7 @@ export function useOceanWebGL({
       default:
         return 0;
     }
-  }, [isTerritoryMode]);
+  }, [isTerritoryMode, climateMode, isElNinoActive, elNinoPhase]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

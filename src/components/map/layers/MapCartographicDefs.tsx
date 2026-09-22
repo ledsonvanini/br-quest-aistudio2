@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapCartographicTextures } from '../textures/MapCartographicTextures';
 
 export interface MapCartographicDefsProps {
   brazilBoundaryCombinedPath: string;
@@ -9,6 +10,9 @@ export const MapCartographicDefs: React.FC<MapCartographicDefsProps> = ({
 }) => {
   return (
     <defs>
+      {/* 0. Texturas Vetoriais Procedurais & Shaders por Skills */}
+      <MapCartographicTextures />
+
       <clipPath id="brazil-boundary-clip">
         <path d={brazilBoundaryCombinedPath} />
       </clipPath>

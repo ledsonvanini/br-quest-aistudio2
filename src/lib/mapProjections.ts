@@ -215,45 +215,58 @@ export function clampPanZoom(
 }
 
 /**
- * Mathematical center of Brazil based on the calibrated border between GO, TO, and MT
- * (Rio Araguaia / Ilha do Bananal region, slightly above the geographic center of Goiás).
- * Centers the entire territorial mass of Brazil in the viewport with 20% increased default zoom out (0.95).
+ * Mathematical center of Brazil calibrated between Central Plateau and the North-South centroid:
+ * Enquadra o Brasil inteiro de Roraima (Extremo Norte) ao Rio Grande do Sul (Extremo Sul)
+ * com folga de segurança simétrica e balanceada entre a barra superior e o rodapé.
  */
-export const DEFAULT_BRAZIL_ZOOM = 0.95;
+export const DEFAULT_BRAZIL_ZOOM = 0.98;
+
+/**
+ * Optical vertical centering offset (10 pixels):
+ * Compensação ótica milimétrica entre a barra de status inferior (~56px) e a barra superior (~44px),
+ * mantendo o centroide do Brasil rigorosamente no ponto médio da altura útil visível.
+ */
+export const BRAZIL_OPTICAL_CENTER_OFFSET_Y = 10;
 
 /**
  * Calculates responsive default zoom dynamically based on container/screen dimensions.
- * Ensures that on smaller screens (e.g. 1366x768, 1440x900, 1280x720, mobile) the map is never
- * too close or cropped, scaling smoothly to fit Brazil's entire territorial mass.
+ * Avalia a altura e largura úteis reais da tela (descontando dock superior, barra inferior e respiro)
+ * garantindo que o território brasileiro nunca seja cortado no Norte nem no Sul em nenhuma resolução (1080p, 900p, 768p, 720p, mobile).
  */
-export function calculateResponsiveDefaultZoom(containerWidth = 1920, containerHeight = 1080): number {
-  if (!containerWidth || !containerHeight) return DEFAULT_BRAZIL_ZOOM;
-  const scaleX = containerWidth / 1920;
-  const scaleY = containerHeight / 1080;
-  const scaleFactor = Math.min(scaleX, scaleY);
+export function calculateResponsiveDefaultZoom(containerWidth?: number, containerHeight?: number): number {
+  const width = containerWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+  const height = containerHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080);
   
-  if (scaleFactor >= 1.0) {
-    return DEFAULT_BRAZIL_ZOOM;
-  }
-  // Adaptive exponential scaling that prevents extreme shrinking on ultra-small screens
-  const adaptedZoom = DEFAULT_BRAZIL_ZOOM * Math.pow(scaleFactor, 0.62);
-  return Number(Math.max(0.45, Math.min(DEFAULT_BRAZIL_ZOOM, adaptedZoom)).toFixed(2));
+  // Altura útil livre da janela (descontando dock superior ~48px, barra inferior ~56px e margem de segurança de ~24px)
+  const availableHeight = Math.max(300, height - 128);
+  const availableWidth = Math.max(300, width - 48);
+  
+  // Extensão projetada do Brasil em zoom 1.0 (altura vertical: ~790px, largura horizontal: ~1060px)
+  const fitZoomY = availableHeight / 790;
+  const fitZoomX = availableWidth / 1060;
+  const optimalZoom = Math.min(fitZoomX, fitZoomY);
+  
+  return Number(Math.max(0.35, Math.min(0.98, optimalZoom)).toFixed(2));
 }
 
 /**
  * Pivot center point coordinates on the 2560x1440 canvas:
- * Border between Goiás (GO), Tocantins (TO), and Mato Grosso (MT) [1235, 640].
+ * Calibrated at [1235, 730] representing the true North-South geographical midpoint
+ * of Brazil's total landmass (from Monte Caburaí/RR Y=205 to Arroio Chuí/RS Y=1255).
  */
-export const BRAZIL_MAP_PIVOT_CENTER: [number, number] = [1235, 640];
+export const BRAZIL_MAP_PIVOT_CENTER: [number, number] = [1235, 730];
 
 export function getBrazilACtoPBMidpointPan(zoom = DEFAULT_BRAZIL_ZOOM, is3D = true): { x: number; y: number } {
   const offsetX = BRAZIL_MAP_PIVOT_CENTER[0] - MAP_CANVAS_WIDTH / 2; // 1235 - 1280 = -45
-  const offsetY = BRAZIL_MAP_PIVOT_CENTER[1] - MAP_CANVAS_HEIGHT / 2; // 640 - 720 = -80
+  const offsetY = BRAZIL_MAP_PIVOT_CENTER[1] - MAP_CANVAS_HEIGHT / 2; // 730 - 720 = +10
   const sidebarCompensationX = 0; // Centro matemático e visual exato da tela (Centro do Mapa -> No centro da Tela)
+
+  // Compensação vertical sutil para equilibrar perfeitamente a barra de rodapé e a barra de topo
+  const verticalCorrection = is3D ? -BRAZIL_OPTICAL_CENTER_OFFSET_Y : -(BRAZIL_OPTICAL_CENTER_OFFSET_Y * 0.5);
 
   return {
     x: Math.round((-offsetX + sidebarCompensationX) * zoom),
-    y: Math.round((-offsetY * (is3D ? 0.80 : 1.0) - (is3D ? 20 : 0)) * zoom),
+    y: Math.round((-offsetY * (is3D ? 0.74 : 1.0) + verticalCorrection) * zoom),
   };
 }
 
@@ -476,14 +489,14 @@ export function getMusicalFocusZoomAndPan(
   let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.35 : 1.68;
   let screenOffsetX = 0;
 
-  // The Musicalities AppLateral sits on the RIGHT side (width ~460px / ~50% on tablets/desktops)
-  // To center Brazil and the focused state in the REMAINING 50% space on the LEFT, screenOffsetX must be negative
+  // The Musicalities AppLateral sits on the LEFT side (width ~500px / ~50% on tablets/desktops)
+  // To center Brazil and the focused state in the REMAINING 50% space on the RIGHT, screenOffsetX must be positive
   if (containerWidth >= 640) {
     if (isExpanded) {
-      screenOffsetX = -Math.round(containerWidth * 0.25);
+      screenOffsetX = Math.round(containerWidth * 0.25);
       baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.5) / 600));
     } else {
-      screenOffsetX = -Math.round(Math.min(240, 200));
+      screenOffsetX = Math.round(Math.min(240, 200));
       baseZoom *= Math.max(0.70, Math.min(1.0, (containerWidth - 480) / 600));
     }
   }

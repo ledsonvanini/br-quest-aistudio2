@@ -58,6 +58,23 @@ export const REGION_COLORS_MAP: Record<string, string> = {
   sul: '#a855f7',          // Púrpura nobre (Sul)
 };
 
+export const GEOECONOMIC_COMPLEXES: Record<string, string[]> = {
+  amazonia: ['AC', 'AM', 'RR', 'RO', 'PA', 'AP', 'MT', 'TO', 'MA'],
+  nordeste_geiger: ['PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'],
+  centro_sul: ['GO', 'DF', 'MS', 'MG', 'ES', 'RJ', 'SP', 'PR', 'SC', 'RS'],
+};
+
+export function isStateMatchingRegionOrComplex(stateId: string, filter?: string): boolean {
+  if (!filter || filter === 'todos' || filter === 'livre') return true;
+  const lower = filter.toLowerCase();
+  if (GEOECONOMIC_COMPLEXES[lower]) {
+    return GEOECONOMIC_COMPLEXES[lower].includes(stateId);
+  }
+  const stateRegion = getStateRegion(stateId);
+  const normalized = lower.replace('-', '_');
+  return stateRegion === normalized || stateRegion === lower;
+}
+
 export function getStateRegion(stateId: string): string {
   for (const [region, states] of Object.entries(REGION_STATES_MAP)) {
     if (states.includes(stateId)) return region;
@@ -400,6 +417,18 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
       wallGradId = isDroughtZone ? 'url(#extrusionWallGradGold)' : 'url(#extrusionWallGradCyan)';
     }
   } else if (isGeopoliticaActive) {
+    const isStateInFilter = isStateMatchingRegionOrComplex(stateId, selectedCampaign);
+    if (!isStateInFilter) {
+      return {
+        stateFill: '#0b1626',
+        stateFillOpacity: 0.75,
+        strokeColor: '#1d2c42',
+        strokeWidth: 0.85,
+        underglowColor: 'transparent',
+        wallGradId: 'url(#extrusionWallGradDefault)',
+      };
+    }
+
     const profile = BRAZIL_STATES_GEOPOLITICS[stateId];
     if (profile) {
       switch (geopoliticaMetric) {
@@ -568,8 +597,7 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
   } else {
     // Modo Aventura e visualização padrão do mapa por regiões/campanha
     const stateRegion = getStateRegion(stateId);
-    const isRegionCampaignActive = selectedCampaign && selectedCampaign !== 'todos' && selectedCampaign !== 'livre';
-    const isStateInCampaign = !isRegionCampaignActive || stateRegion === selectedCampaign;
+    const isStateInCampaign = isStateMatchingRegionOrComplex(stateId, selectedCampaign);
 
     if (!isStateInCampaign) {
       // Estado fora da campanha regional ativa: Muted slate cartográfico elegante com divisas visíveis

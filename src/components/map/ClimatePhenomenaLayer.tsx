@@ -15,6 +15,8 @@ import {
 } from '../../services/climateService';
 import { geoPath } from 'd3-geo';
 import { CartographicClimateCard4x2 } from './climate/ClimatePhenomenaCards';
+import { InteractivePulsingBeacon } from './markers/InteractivePulsingBeacon';
+import { ClimateEnsoLayer } from './climate/ClimateEnsoLayer';
 import {
   Wind,
   Thermometer,
@@ -699,6 +701,12 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
             <stop offset="70%" stopColor="#f59e0b" stopOpacity="0.2" />
             <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
           </radialGradient>
+
+          <radialGradient id="ensoCoolGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.55" />
+            <stop offset="60%" stopColor="#06b6d4" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+          </radialGradient>
         </defs>
 
         {/* 3.1 Temperature Badges, Thermal Hotspots & Coldspots on State Centroids */}
@@ -1100,15 +1108,16 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </g>
         )}
 
-        {/* 3.2 Atmospheric Wind Guides with 4x2 Educational Cartographic Cards */}
+        {/* 3.2 Atmospheric Wind Guides with onHover Pulsing Beacons */}
         {mode === 'ventos_aliseos' && (
-          <g className="labels-ventos pointer-events-none animate-in fade-in duration-300">
-            {/* NE Trade Winds Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
+          <g className="labels-ventos pointer-events-auto animate-in fade-in duration-300">
+            {/* NE Trade Winds Beacon */}
+            <InteractivePulsingBeacon
               x={1320}
               y={240}
-              width={360}
-              height={180}
+              color="#38bdf8"
+              pulseColor="rgba(56, 189, 248, 0.45)"
+              badgeLabel="Alísios NE"
               tag="Hadley Circulation • Hemisfério Norte"
               tagColor="#38bdf8"
               tagBg="rgba(14, 165, 233, 0.20)"
@@ -1124,12 +1133,13 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
               telemetryColor="#7dd3fc"
             />
 
-            {/* SE Trade Winds Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
+            {/* SE Trade Winds Beacon */}
+            <InteractivePulsingBeacon
               x={1420}
               y={690}
-              width={360}
-              height={180}
+              color="#60a5fa"
+              pulseColor="rgba(96, 165, 250, 0.45)"
+              badgeLabel="Alísios SE"
               tag="Anticiclone Subtropical (ASAS)"
               tagColor="#60a5fa"
               tagBg="rgba(59, 130, 246, 0.20)"
@@ -1145,12 +1155,13 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
               telemetryColor="#bfdbfe"
             />
 
-            {/* Amazon Flying Rivers Card (380x190 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
-              x={570}
-              y={580}
-              width={380}
-              height={190}
+            {/* Amazon Flying Rivers Beacon */}
+            <InteractivePulsingBeacon
+              x={680}
+              y={560}
+              color="#34d399"
+              pulseColor="rgba(52, 211, 153, 0.45)"
+              badgeLabel="Rios Voadores"
               tag="Bomba Biótica • Jatos de Baixos Níveis"
               tagColor="#34d399"
               tagBg="rgba(16, 185, 129, 0.20)"
@@ -1168,15 +1179,16 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </g>
         )}
 
-        {/* 3.3 ZCAS Precipitation Guides with 4x2 Educational Cards */}
+        {/* 3.3 ZCAS Precipitation Guides with onHover Pulsing Beacons */}
         {mode === 'precipitacao_zcas' && (
-          <g className="labels-zcas pointer-events-none animate-in fade-in duration-300">
-            {/* ZCAS Axis Card (380x190 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
+          <g className="labels-zcas pointer-events-auto animate-in fade-in duration-300">
+            {/* ZCAS Axis Beacon */}
+            <InteractivePulsingBeacon
               x={870}
               y={560}
-              width={380}
-              height={190}
+              color="#38bdf8"
+              pulseColor="rgba(56, 189, 248, 0.45)"
+              badgeLabel="Eixo ZCAS"
               tag="Sistema Convectivo Transcontinental"
               tagColor="#38bdf8"
               tagBg="rgba(2, 132, 199, 0.20)"
@@ -1193,16 +1205,17 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
             />
 
             {/* Cold Front Path */}
-            <g transform="translate(980, 1020)">
+            <g transform="translate(980, 1020)" className="pointer-events-none">
               <path d="M -160,20 L 160,-20" stroke="#3b82f6" strokeWidth="3" strokeDasharray="6 4" />
             </g>
 
-            {/* Cold Front Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
+            {/* Cold Front Beacon */}
+            <InteractivePulsingBeacon
               x={980}
               y={1060}
-              width={360}
-              height={180}
+              color="#93c5fd"
+              pulseColor="rgba(147, 197, 253, 0.45)"
+              badgeLabel="Frente Fria Polar"
               tag="Massa Polar Atlântica (mPa)"
               tagColor="#93c5fd"
               tagBg="rgba(59, 130, 246, 0.20)"
@@ -1221,75 +1234,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
         )}
 
         {/* 3.4 ENSO Pacific Anomaly with 4x2 Educational Cards */}
-        {mode === 'el_nino_la_nina' && (
-          <g className="labels-enso pointer-events-none animate-in fade-in duration-300">
-            {/* Pacific Anomaly Glow */}
-            <circle cx="240" cy="480" r="140" fill="url(#ensoDroughtGrad)" className="animate-pulse" />
-
-            {/* Pacific Anomaly Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
-              x={240}
-              y={480}
-              width={360}
-              height={180}
-              tag="ENSO • Oscilação do Pacífico Equatorial"
-              tagColor="#f59e0b"
-              tagBg="rgba(245, 158, 11, 0.20)"
-              title="🌊 Aquecimento Anômalo TSM (Nino 3.4)"
-              titleColor="#fde047"
-              borderColor="#d97706"
-              lines={[
-                "Enfraquecimento dos ventos alísios no Pacífico aquece as águas",
-                "superficiais (+2.3°C), desarticulando a Célula de Walker",
-                "e alterando profundamente o padrão pluviométrico global."
-              ]}
-              telemetry="Anomalia TSM: +2.3°C • Fase Atual: Super El Niño Ativo"
-              telemetryColor="#fef08a"
-            />
-
-            {/* Drought in North/Northeast Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
-              x={1220}
-              y={430}
-              width={360}
-              height={180}
-              tag="Bloqueio & Subsidência Atmosférica"
-              tagColor="#ef4444"
-              tagBg="rgba(239, 68, 68, 0.20)"
-              title="🔥 Seca Severa & Bloqueio Atmosférico"
-              titleColor="#fca5a5"
-              borderColor="#dc2626"
-              lines={[
-                "Ar descendente seco inibe nuvens convectivas de chuva",
-                "sobre o semiárido nordestino e leste da Amazônia. Provoca",
-                "estiagens prolongadas, quebra de safras e alto risco de fogo."
-              ]}
-              telemetry="Déficit Pluviométrico: -45% • Risco de Incêndio: Crítico"
-              telemetryColor="#fecaca"
-            />
-
-            {/* Floods in the South Card (360x180 - Proporção 4x2) */}
-            <CartographicClimateCard4x2
-              x={860}
-              y={990}
-              width={360}
-              height={180}
-              tag="Aceleração do Jato Subtropical"
-              tagColor="#06b6d4"
-              tagBg="rgba(6, 182, 212, 0.20)"
-              title="🌊 Enchentes & Intensificação do Jato"
-              titleColor="#67e8f9"
-              borderColor="#0891b2"
-              lines={[
-                "O El Niño retém sistemas frontais sobre a Região Sul,",
-                "represando frentes frias contra massas de ar quente e gerando",
-                "sucessivas semanas de temporais e inundações históricas."
-              ]}
-              telemetry="Excedente de Chuva: +90% a +150% • Risco Cheias: Alto"
-              telemetryColor="#a5f3fc"
-            />
-          </g>
-        )}
+        {mode === 'el_nino_la_nina' && <ClimateEnsoLayer elNinoData={elNinoData} />}
       </svg>
 
       {/* 4. Professional ECMWF Thermal Colorbar Legend (Escala Térmica Contínua) */}

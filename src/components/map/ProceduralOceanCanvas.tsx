@@ -8,6 +8,9 @@ interface ProceduralOceanCanvasProps {
   isBiodiversityMode?: boolean;
   isMusicalMode?: boolean;
   isTerritoryMode?: boolean;
+  isClimateMode?: boolean;
+  isElNinoActive?: boolean;
+  elNinoPhase?: 'El Niño' | 'La Niña' | 'Neutro';
   mode?: AppMainMode;
 }
 
@@ -27,19 +30,33 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
   isBiodiversityMode = false,
   isMusicalMode = false,
   isTerritoryMode = false,
+  isClimateMode = false,
+  isElNinoActive = false,
+  elNinoPhase = 'El Niño',
   mode,
 }) => {
   const currentMode: AppMainMode = useMemo(() => {
     if (mode) return mode;
     if (isBiodiversityMode) return 'biodiversidade';
     if (isMusicalMode) return 'musicalidades';
+    if (isClimateMode) return 'clima';
     return 'aventura';
-  }, [mode, isBiodiversityMode, isMusicalMode]);
+  }, [mode, isBiodiversityMode, isMusicalMode, isClimateMode]);
 
   const oceanGradient = useMemo(() => {
     if (isTerritoryMode) {
       // Oceano Cartográfico Técnico Exclusivo: tons índigo e estuarinos com batimetria nítida
       return 'radial-gradient(circle 3400px at 50% 50%, #062340 0%, #041a32 24%, #021223 52%, #010a14 85%)';
+    }
+    if (isClimateMode && (isElNinoActive || elNinoPhase)) {
+      if (elNinoPhase === 'El Niño') {
+        // El Niño: Aquecimento Anômalo do Oceano Equatorial (TSM Positiva / NOAA)
+        return 'radial-gradient(circle 3600px at 50% 50%, #17385c 0%, #102744 26%, #0b1a2e 54%, #060e1b 85%)';
+      }
+      if (elNinoPhase === 'La Niña') {
+        // La Niña: Resfriamento Anômalo do Oceano (Águas Polares Turquesa / NOAA)
+        return 'radial-gradient(circle 3600px at 50% 50%, #063d54 0%, #042939 26%, #021c27 54%, #010c12 85%)';
+      }
     }
     if (isParchmentMode) {
       return 'radial-gradient(circle 2200px at 50% 50%, #fbf2df 0%, #eedbb8 25%, #dfc59b 50%, #b08f58 75%, #8c6a38 100%)';
@@ -53,7 +70,7 @@ export const ProceduralOceanCanvas: React.FC<ProceduralOceanCanvasProps> = ({
       return 'radial-gradient(circle 2600px at 55% 45%, #0e243d 0%, #091a2e 25%, #061120 52%, #030a14 78%, #010408 100%)';
     }
     return 'radial-gradient(circle 3800px at 50% 50%, #0c487c 0%, #072a4e 25%, #03172e 55%, #010d1c 85%)';
-  }, [isBiodiversityMode, isMusicalMode, isParchmentMode, isTerritoryMode]);
+  }, [isBiodiversityMode, isMusicalMode, isParchmentMode, isTerritoryMode, isClimateMode, isElNinoActive, elNinoPhase]);
 
   return (
     <div
