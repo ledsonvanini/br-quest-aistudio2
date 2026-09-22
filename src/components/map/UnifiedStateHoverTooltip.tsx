@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React from 'react';
 import { ClimateMode } from './ClimatePhenomenaLayer';
 import { StateWeatherData, getEcmwfTempColor } from '../../services/climateService';
 import { GeopoliticaMetricKey } from '../../types/geopolitica';
@@ -82,10 +82,6 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   mousePos,
   activeCartographyLayer,
 }) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [screenPos, setScreenPos] = useState<{ x: number; y: number; isNearTop: boolean } | null>(null);
-  const [measuredHeight, setMeasuredHeight] = useState<number>(280);
-
   const isTerritoryActive = Boolean(activeCartographyLayer && activeCartographyLayer !== 'none');
 
   // Balão flutuante unificado exibido ao posicionar o mouse sobre qualquer estado
@@ -95,58 +91,45 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
     Boolean(selectedStateId) ||
     mainMode === 'globo3d';
 
-  useEffect(() => {
-    if (!hoveredStateId || shouldHide) {
-      setScreenPos(null);
-      return;
+  if (shouldHide || !hoveredStateId) return null;
+
+  const cardWidth = typeof window !== 'undefined' && window.innerWidth < 640 ? 300 : 340;
+  const cardHeight = 280;
+
+  let screenPos: { x: number; y: number; isNearTop: boolean } | null = null;
+
+  // 1. Se temos posição de mouse em tempo real
+  if (mousePos && mousePos.x > 0 && mousePos.y > 0) {
+    let x = mousePos.x + 20;
+    if (typeof window !== 'undefined' && x + cardWidth > window.innerWidth - 16) {
+      x = Math.max(16, mousePos.x - cardWidth - 20);
     }
-
-    if (cardRef.current) {
-      const h = cardRef.current.offsetHeight;
-      if (h > 0 && h !== measuredHeight) {
-        setMeasuredHeight(h);
-      }
+    let y = mousePos.y - 70;
+    if (typeof window !== 'undefined') {
+      y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
     }
-
-    const cardWidth = typeof window !== 'undefined' && window.innerWidth < 640 ? 300 : 340;
-    const cardHeight = measuredHeight || 280;
-
-    // 1. Se temos posição de mouse em tempo real
-    if (mousePos && mousePos.x > 0 && mousePos.y > 0) {
-      let x = mousePos.x + 20;
-      if (typeof window !== 'undefined' && x + cardWidth > window.innerWidth - 16) {
-        x = Math.max(16, mousePos.x - cardWidth - 20);
-      }
-      let y = mousePos.y - 70;
-      if (typeof window !== 'undefined') {
-        y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
-      }
-      setScreenPos({ x, y, isNearTop: y < 130 });
-      return;
-    }
-
+    screenPos = { x, y, isNearTop: y < 130 };
+  } else if (hoveredStateId && centroids[hoveredStateId] && typeof window !== 'undefined') {
     // 2. Fallback por projeção do centróide do estado
     const centroid = centroids[hoveredStateId];
-    if (centroid && typeof window !== 'undefined') {
-      const [cx, cy] = centroid;
-      const dx = cx - 1280;
-      const dy = cy - 720;
-      const rad = (rotateX * Math.PI) / 180;
-      const cosX = Math.cos(rad);
-      const projX = window.innerWidth / 2 + (dx * zoom + pan.x);
-      const projY = window.innerHeight / 2 + (dy * cosX * zoom + pan.y);
+    const [cx, cy] = centroid;
+    const dx = cx - 1280;
+    const dy = cy - 720;
+    const rad = (rotateX * Math.PI) / 180;
+    const cosX = Math.cos(rad);
+    const projX = window.innerWidth / 2 + (dx * zoom + pan.x);
+    const projY = window.innerHeight / 2 + (dy * cosX * zoom + pan.y);
 
-      let x = projX + 24;
-      if (x + cardWidth > window.innerWidth - 16) {
-        x = Math.max(16, projX - cardWidth - 24);
-      }
-      let y = projY - 70;
-      y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
-      setScreenPos({ x, y, isNearTop: y < 130 });
+    let x = projX + 24;
+    if (x + cardWidth > window.innerWidth - 16) {
+      x = Math.max(16, projX - cardWidth - 24);
     }
-  }, [hoveredStateId, mousePos, centroids, pan, zoom, rotateX, measuredHeight, shouldHide]);
+    let y = projY - 70;
+    y = Math.max(64, Math.min(y, window.innerHeight - cardHeight - 20));
+    screenPos = { x, y, isNearTop: y < 130 };
+  }
 
-  if (shouldHide || !hoveredStateId) return null;
+  if (!screenPos) return null;
 
   const stateId = hoveredStateId;
   const weather = stateWeather[stateId];
@@ -165,14 +148,13 @@ export const UnifiedStateHoverTooltip: React.FC<UnifiedStateHoverTooltipProps> =
   return (
     <aside
       id="balao-universal-estado-hover"
-      ref={cardRef}
       role="tooltip"
       aria-live="polite"
       className="balao-universal-estado-hover fixed max-h-[calc(100vh-120px)] w-[300px] sm:w-[340px] pointer-events-none select-none z-[99999] transition-all duration-150 ease-out overflow-y-auto custom-scrollbar-gold animate-fadeIn"
       style={{
-        left: screenPos ? `${screenPos.x}px` : undefined,
-        top: screenPos ? `${screenPos.y}px` : undefined,
-        opacity: screenPos ? 1 : 0,
+        left: `${screenPos.x}px`,
+        top: `${screenPos.y}px`,
+        opacity: 1,
         isolation: 'isolate',
         WebkitFontSmoothing: 'antialiased',
       }}

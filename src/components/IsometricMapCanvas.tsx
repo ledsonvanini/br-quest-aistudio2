@@ -86,6 +86,7 @@ import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { EducatorPortalModal } from './educator/EducatorPortalModal';
 import { StateAdventureDialog } from './guardian/StateAdventureDialog';
 import { StateMusicDialog } from './music/StateMusicDialog';
+import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
 import { BiodiversityKingdom, BrazilBiome, BiodiversitySpecimen } from '../types';
 import { GeopoliticaMetricKey, GeopoliticaScope } from '../types/geopolitica';
 import { Compass, LocateFixed, MapPin, Flag, Plus, Minus, X, Crosshair, RotateCcw, Radio, Music } from 'lucide-react';
@@ -164,6 +165,8 @@ interface Props {
   selectedStateId?: string | null;
   onSelectStateId?: (stateId: string | null) => void;
   onStateLocated?: (stateId: string, stateName: string, regionId?: string) => void;
+  isUserLocatedActive?: boolean;
+  onClearUserLocation?: () => void;
   onOpenSearchSelector?: () => void;
   onNotification?: (msg: string) => void;
 }
@@ -183,6 +186,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
   selectedStateId: propSelectedStateId,
   onSelectStateId,
   onStateLocated,
+  isUserLocatedActive = false,
+  onClearUserLocation,
   isRadioOpen = true,
   onToggleRadio,
   activeMusicCategory = 'state_anthems',
@@ -1299,8 +1304,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 2. MODO MUSICALIDADES: Abre o AppLateral Musical do Estado, sintoniza sua rádio e centraliza nos 50% restantes
+    // 2. MODO MUSICALIDADES: Abre apenas o AppLateral Musical do Estado, fecha o rádio vintage para não sobrepor dois painéis e centraliza o mapa
     if (mainMode === 'musicalidades') {
+      if (isRadioOpen && onToggleRadio) {
+        onToggleRadio();
+      }
       setSelectedStateId(stateId);
       setInternalIsBiodiversityPanelOpen(false);
       setInternalIsGeopoliticaPanelOpen(false);
@@ -1882,9 +1890,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         dailyTipsUnreadCount={dailyTipsUnreadCount}
         onOpenEducatorPortal={() => setIsEducatorPortalOpen(true)}
         onOpenSearchSelector={onOpenSearchSelector}
+        isUserLocatedActive={isUserLocatedActive}
+        onClearUserLocation={onClearUserLocation}
         onStateLocated={(stateId, stateName, regionId) => {
           handleStateClick(stateId);
-          if (!isGlobe3DActive) {
+          if (!isGlobe3DActive && mainMode !== 'musicalidades') {
             const centroid = centroids[stateId];
             if (centroid) {
               const targetZoom = 2.2;
@@ -1925,7 +1935,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       )}
 
       {/* 7.5. MODO MUSICALIDADES: APLICAÇÃO AUTÔNOMA DO RÁDIO VINTAGE (Com 70% de Opacidade e Card Independente) */}
-      {!showNeighbors && mainMode === 'musicalidades' && isRadioOpen && (
+      {!showNeighbors && mainMode === 'musicalidades' && isRadioOpen && !selectedStateId && (
         <section
           id="coluna-radio-vintage-independente"
           className="coluna-radio-vintage-independente painel-split-radio-esquerda fixed left-2 right-2 sm:right-auto sm:left-[76px] md:left-[84px] lg:left-[88px] top-13 sm:top-15 md:top-[58px] bottom-8 sm:bottom-10 md:bottom-[42px] max-w-[calc(100vw-16px)] sm:max-w-[calc(100vw-96px)] z-30 pointer-events-auto flex flex-col min-h-0 cursor-default"
@@ -2082,7 +2092,15 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             />
 
             {/* Layer 1 & 2: D3 Clipped Map Tiles & States Layer (Base Terrain Plan Z=0) */}
-            <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
+            <div
+              className="camada-base-terreno-wrapper absolute inset-0 z-10 pointer-events-none"
+              style={{
+                width: MAP_CANVAS_WIDTH,
+                height: MAP_CANVAS_HEIGHT,
+                transform: 'translateZ(0px)',
+                transformStyle: 'preserve-3d',
+              }}
+            >
               <MapStatesLayer
                 geoData={geoData}
                 projection={projection}
@@ -2125,7 +2143,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             {/* Layer 2.4: Camadas Cartográficas Ricas do Território (Exclusivo 2D e Aventura) */}
             {isTerritoryModeActive && (
               <div
-                className="camada-territorio-wrapper absolute inset-0 pointer-events-none"
+                className="camada-territorio-wrapper absolute inset-0 pointer-events-none z-20"
                 style={{
                   width: MAP_CANVAS_WIDTH,
                   height: MAP_CANVAS_HEIGHT,
@@ -2144,8 +2162,8 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Layer 2.5: Real-Time Climate Phenomena & Streamlines (Coplanar with map base at Z=0px) */}
-            <div style={{ transform: 'translateZ(0px)', transformStyle: 'preserve-3d' }}>
+            {/* Layer 2.5: Real-Time Climate Phenomena & Streamlines (Coplanar at Z=1px to align perfectly with base map without parallax duplication) */}
+            <div style={{ transform: 'translateZ(1px)', transformStyle: 'preserve-3d', zIndex: 30 }}>
               <ClimatePhenomenaLayer
                 active={effectiveIsClimateActive}
                 mode={currentClimateMode}
@@ -2241,9 +2259,9 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Layer 3.3: Geopolitics & Demographics Map Pins Layer */}
+            {/* Layer 3.3: Geopolitics & Demographics Map Pins Layer (Elevated at Z=30px for sharp readability) */}
             {!showNeighbors && mainMode === 'geopolitica' && (
-              <div style={{ transform: 'translateZ(20px)', transformStyle: 'preserve-3d' }}>
+              <div style={{ transform: 'translateZ(30px)', transformStyle: 'preserve-3d', zIndex: 35 }}>
                 <GeopoliticsMapLayer
                   activeMetric={geopoliticaMetric}
                   selectedStateId={selectedGeopoliticaStateId || selectedStateId}
@@ -2704,6 +2722,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         <StateMusicDialog
           stateId={selectedStateId}
           selectedRadioEraId={selectedRadioEraId}
+          onSelectState={handleStateClick}
           onClose={handleCloseInspection}
           onTuneState={(sId) => {
             if (onFocusStateHandled) {
@@ -2728,6 +2747,28 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               baseUserZoomRef.current = targetZoom;
             }
           }}
+        />
+      )}
+
+      {/* 13.9. Balão de Informações Unificado OnHover dos Estados (Clima, Musicalidades, Geopolítica, Biodiversidade e Aventura) */}
+      {!isGlobe3DActive && hoveredStateId && !selectedStateId && !showNeighbors && (
+        <UnifiedStateHoverTooltip
+          hoveredStateId={hoveredStateId}
+          centroids={centroids}
+          mainMode={mainMode}
+          isClimateActive={Boolean((isClimateActive || mainMode === 'clima') && !isTerritoryModeActive)}
+          climateMode={currentClimateMode}
+          stateWeather={stateWeather}
+          geopoliticaMetric={geopoliticaMetric}
+          biodiversityKingdom={biodiversityKingdom}
+          pan={pan}
+          zoom={zoom}
+          rotateX={is3D ? sphericalAngles.rotateX : 0}
+          selectedStateId={selectedStateId}
+          showNeighbors={showNeighbors}
+          selectedRadioEraId={selectedRadioEraId}
+          mousePos={mousePos}
+          activeCartographyLayer={activeCartographyLayer}
         />
       )}
 

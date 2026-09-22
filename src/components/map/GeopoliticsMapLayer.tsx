@@ -201,6 +201,19 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
     }
   };
 
+  const getMetricCategoryLabel = (metric: GeopoliticaMetricKey): string => {
+    switch (metric) {
+      case 'densidade': return 'hab/km²';
+      case 'miscigenacao': return 'etnia';
+      case 'genero': return 'gênero';
+      case 'natalidade': return 'nascimentos';
+      case 'mortalidade': return 'mortalidade';
+      case 'analfabetismo': return 'educação';
+      case 'partidos': return 'partidos';
+      default: return 'censo';
+    }
+  };
+
   // Quando qualquer estado estiver selecionado/isolado, oculta todos os pins e balões de dicas do mapa,
   // pois o aplicativo lateral já exibe todo o cenário detalhado.
   if (selectedStateId) return null;
@@ -266,40 +279,50 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
               }}
               aria-label={`Geopolítica ${profile.stateName} (${stateId})`}
             >
-              {/* BALÃO DISCRETO E MINIMALISTA DO PIN (UF • DADO RESUMIDO) */}
+              {/* BALÃO EM PROPORÇÃO 4x2 / 4x3 COM 100% DE CONTRASTE SÓLIDO (ZERO TRANSPARÊNCIA) */}
               <div
-                className={`card-pin-geopolitica flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-950/95 border transition-all ${
+                className={`card-pin-geopolitica-4x2 flex flex-col justify-between p-1 rounded-xl transition-all select-none ${
                   isHovered || isSelected
-                    ? 'border-cyan-400 bg-slate-900 ring-1 ring-cyan-400/80 scale-105'
-                    : 'border-slate-700/80 hover:border-cyan-400 hover:bg-slate-900/95'
+                    ? 'border-2 border-cyan-300 ring-2 ring-cyan-400/80 scale-110 z-50 shadow-[0_0_20px_rgba(6,182,212,0.6),0_8px_24px_rgba(0,0,0,0.98)]'
+                    : 'border-2 border-slate-600/90 hover:border-cyan-400 shadow-[0_6px_18px_rgba(0,0,0,0.95)]'
                 }`}
                 style={{
-                  boxShadow: isHovered || isSelected
-                    ? `0 0 10px ${summary.color}60, 0 3px 8px rgba(0,0,0,0.6)`
-                    : `0 2px 4px rgba(0,0,0,0.45)`,
+                  width: '82px',
+                  height: '44px', // 82x44 px ≈ 4:2.15 (proporção 4x2 equilibrada e compacta)
+                  backgroundColor: '#030712', // 100% sólido, sem transparência
                 }}
               >
-                {/* Sigla do Estado */}
-                <span className="text-[10.5px] font-mono font-black text-slate-100 leading-none">{stateId}</span>
-                {/* Separador minimalista */}
-                <span className="text-[9px] font-mono font-semibold text-slate-400 leading-none">:</span>
-                {/* Valor Direto Resumido (ex: 69% P, 70% P) */}
-                <span
-                  className="text-[10.5px] font-mono font-bold tracking-tight whitespace-nowrap leading-none"
-                  style={{ color: summary.color }}
-                >
-                  {summary.text}
-                </span>
+                {/* Linha Superior: Sigla UF + Categoria da Métrica */}
+                <div className="flex items-center justify-between px-1 leading-none">
+                  <span className="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono font-black text-white leading-none">
+                    {stateId}
+                  </span>
+                  <span className="text-[8.5px] font-mono font-bold text-slate-400 uppercase tracking-tight truncate max-w-[42px] text-right">
+                    {getMetricCategoryLabel(activeMetric)}
+                  </span>
+                </div>
+
+                {/* Linha Central / Valor em Destaque Alto Contraste */}
+                <div className="text-center leading-none my-auto">
+                  <span
+                    className="text-[12.5px] font-mono font-black tracking-tight whitespace-nowrap block drop-shadow-sm"
+                    style={{ color: summary.color }}
+                  >
+                    {summary.text}
+                  </span>
+                </div>
               </div>
 
-              {/* HASTE DISCRETA DO PIN COM PONTA CÔNICA */}
-              <div className="flex flex-col items-center pointer-events-none">
+              {/* Ponteiro Triangular para ancoragem exata */}
+              <div
+                className="w-0 h-0 -mt-[1px] border-x-4 border-x-transparent border-t-[5px]"
+                style={{ borderTopColor: isHovered || isSelected ? '#67e8f9' : '#030712' }}
+              />
+
+              {/* Ponto de Ancoragem Sólido */}
+              <div className="flex flex-col items-center pointer-events-none mt-0.5">
                 <div
-                  className="w-[1.5px] h-1.5"
-                  style={{ backgroundColor: summary.color }}
-                />
-                <div
-                  className="w-1 h-1 rounded-full"
+                  className="w-2 h-2 rounded-full border border-slate-950 shadow-md"
                   style={{ backgroundColor: summary.color }}
                 />
               </div>
@@ -350,7 +373,10 @@ export const GeopoliticsMapLayer: React.FC<GeopoliticsMapLayerProps> = ({
                     className="container-balao-hover-geopolitica absolute pointer-events-none select-none animate-in fade-in zoom-in-95 duration-150"
                     style={tooltipPositionStyle}
                   >
-                    <div className="card-balao-geopolitica-conteudo w-[310px] sm:w-[350px] p-4 sm:p-4.5 rounded-2xl bg-slate-950 border-2 border-cyan-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.45)] text-left text-white space-y-3">
+                    <div
+                      className="card-balao-geopolitica-conteudo w-[310px] sm:w-[350px] p-4 sm:p-4.5 rounded-2xl border-2 border-cyan-400 shadow-[0_24px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(6,182,212,0.45)] text-left text-white space-y-3"
+                      style={{ backgroundColor: '#020617' }}
+                    >
                       {/* Cabeçalho do Estado no Tooltip */}
                       <div className="header-balao-geopolitica flex items-center justify-between border-b border-slate-800 pb-2.5">
                         <div className="flex items-center gap-2 min-w-0">

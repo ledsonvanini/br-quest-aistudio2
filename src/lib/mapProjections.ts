@@ -476,12 +476,14 @@ export function getMusicalFocusZoomAndPan(
   let baseZoom = isSmallState ? 2.05 : isLargeState ? 1.35 : 1.68;
   let screenOffsetX = 0;
 
+  // The Musicalities AppLateral sits on the RIGHT side (width ~460px / ~50% on tablets/desktops)
+  // To center Brazil and the focused state in the REMAINING 50% space on the LEFT, screenOffsetX must be negative
   if (containerWidth >= 640) {
     if (isExpanded) {
-      screenOffsetX = Math.round(containerWidth * 0.25);
+      screenOffsetX = -Math.round(containerWidth * 0.25);
       baseZoom *= Math.max(0.75, Math.min(1.0, (containerWidth * 0.5) / 600));
     } else {
-      screenOffsetX = Math.round(Math.min(300, 240));
+      screenOffsetX = -Math.round(Math.min(240, 200));
       baseZoom *= Math.max(0.70, Math.min(1.0, (containerWidth - 480) / 600));
     }
   }

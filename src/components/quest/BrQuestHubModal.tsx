@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy,
   Award,
@@ -25,6 +25,11 @@ import {
   Info,
   ArrowLeft,
   Search,
+  User,
+  Check,
+  Target,
+  MapPin,
+  GraduationCap,
 } from 'lucide-react';
 import {
   BR_QUEST_QUESTIONS,
@@ -39,6 +44,7 @@ import { GUARDIANS_DATA } from '../../data/guardiansData';
 import { GuardianData } from '../../types';
 import { audioEngine } from '../../lib/audioSynth';
 import { triggerConfetti } from '../../lib/storage';
+import { useAuth } from '../../services/auth/AuthContext';
 
 interface BrQuestHubModalProps {
   isOpen: boolean;
@@ -47,11 +53,18 @@ interface BrQuestHubModalProps {
   onGainXp: (xp: number) => void;
   playerLevel?: number;
   playerXp?: number;
+  completedStatesCount?: number;
+  dailyStreak?: number;
+  userLocation?: {
+    stateId: string;
+    stateName: string;
+    regionId: string;
+  } | null;
   initialPillar?: QuestThemePillar | 'nacional' | null;
 }
 
 type TabMode = 'hub' | 'playing' | 'result';
-type HubSubTab = 'pilares' | 'trilhas' | 'guardioes';
+type QuestCategory = 'nacional' | 'pilares' | 'trilhas' | 'guardioes';
 
 export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
   isOpen,
@@ -60,14 +73,23 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
   onGainXp,
   playerLevel = 1,
   playerXp = 0,
+  completedStatesCount = 0,
+  dailyStreak = 1,
+  userLocation = null,
   initialPillar = null,
 }) => {
+  const { user, isGuest } = useAuth();
   const [tabMode, setTabMode] = useState<TabMode>('hub');
-  const [activeSubTab, setActiveSubTab] = useState<HubSubTab>('pilares');
+  const [activeCategory, setActiveCategory] = useState<QuestCategory>('nacional');
+  const [activeSubTab, setActiveSubTab] = useState<string>('all');
   const [selectedDifficultyTier, setSelectedDifficultyTier] = useState<EducationTier | 'todos'>('todos');
-  const [guardianRegionFilter, setGuardianRegionFilter] = useState<string>('todos');
+  const [guardianSearchQuery, setGuardianSearchQuery] = useState<string>('');
+  
+  // Quiz Execution States
   const [activeBatchTitle, setActiveBatchTitle] = useState<string>('Grande Prova do Brasil');
-  const [activeBatchDesc, setActiveBatchDesc] = useState<string>('Desafio multidisciplinar integrando Clima, Biodiversidade, Demografia, Geopolítica e Cultura.');
+  const [activeBatchDesc, setActiveBatchDesc] = useState<string>(
+    'Desafio multidisciplinar integrando Clima, Biodiversidade, Demografia, Geopolítica e Cultura.'
+  );
   const [activeQuestions, setActiveQuestions] = useState<BrQuestQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -79,6 +101,18 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
     question: BrQuestQuestion;
     isCorrect: boolean;
   }[]>([]);
+
+  // Calculate rank title and progression
+  const territorialPercent = Math.min(100, Math.round((completedStatesCount / 27) * 100));
+  const currentLevelProgressPercent = Math.min(100, Math.round(((playerXp % 500) / 500) * 100));
+  const rankTitle =
+    playerLevel >= 10
+      ? 'Guardião Supremo'
+      : playerLevel >= 5
+      ? 'Pesquisador Sênior'
+      : playerLevel >= 3
+      ? 'Cartógrafo Aprendiz'
+      : 'Navegador Estudante';
 
   const handleStartChallenge = (
     title: string,
@@ -110,7 +144,7 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
     setTabMode('playing');
   };
 
-  // Responde à abertura com pilar inicial específico
+  // Open with specific initial pillar if provided
   useEffect(() => {
     if (!isOpen) {
       setTabMode('hub');
@@ -118,44 +152,19 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
     }
 
     if (initialPillar === 'nacional') {
-      handleStartChallenge(
-        'Grande Prova do Brasil',
-        'Desafio multidisciplinar integrando Clima, Biodiversidade, Demografia, Geopolítica e Cultura.',
-        { scope: 'nacional' },
-        6
-      );
-    } else if (initialPillar === 'clima') {
-      handleStartChallenge(
-        'Desafio de Clima & Atmosfera',
-        'Avaliação sobre Rios Voadores, ZCAS, massas de ar e telemetria ECMWF/CPTEC 2025.',
-        { pillar: 'clima' },
-        5
-      );
-    } else if (initialPillar === 'biodiversidade') {
-      handleStartChallenge(
-        'Desafio de Biodiversidade & Biomas',
-        'Avaliação sobre Fauna, Flora, Espécies Ameaçadas e os 6 Biomas do Brasil (MapBiomas Col. 9).',
-        { pillar: 'biodiversidade' },
-        5
-      );
-    } else if (initialPillar === 'geopolitica' || initialPillar === 'demografia') {
-      handleStartChallenge(
-        'Desafio de Demografia & Geopolítica',
-        'Avaliação sobre Censo IBGE & Estimativas 2024/2025, IDHM, PIB, Fronteiras e Saúde SUS.',
-        { pillar: 'demografia' },
-        5
-      );
-    } else if (initialPillar === 'cultura_musica' || initialPillar === 'geografia') {
-      handleStartChallenge(
-        'Desafio de Geografia, Arte & Tradições',
-        'Avaliação sobre Relevo, Bacias Hidrográficas, Patrimônio Histórico IPHAN e Ritmos.',
-        { pillar: 'geografia' },
-        5
-      );
-    } else {
-      setTabMode('hub');
+      setActiveCategory('nacional');
+      setActiveSubTab('all');
+    } else if (initialPillar) {
+      setActiveCategory('pilares');
+      setActiveSubTab(initialPillar);
     }
   }, [isOpen, initialPillar]);
+
+  // Reset subtab on category switch
+  const handleSelectCategory = (cat: QuestCategory) => {
+    setActiveCategory(cat);
+    setActiveSubTab('all');
+  };
 
   if (!isOpen) return null;
 
@@ -163,195 +172,379 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
   const currentMetrics = currentQ ? getTierMetrics(currentQ.difficulty) : null;
 
   const handleSelectOption = (idx: number) => {
-    if (isConfirmed || !currentQ) return;
-    audioEngine.playQuestOptionSelect();
+    if (isConfirmed) return;
     setSelectedOption(idx);
     setIsConfirmed(true);
 
     const isCorrect = idx === currentQ.correctIndex;
-    const qPoints = currentQ.points || currentMetrics?.points || 150;
-    const qXp = currentQ.xp || currentMetrics?.xp || 75;
-
-    setCorrectAnswersList((prev) => [...prev, { question: currentQ, isCorrect }]);
-
     if (isCorrect) {
-      audioEngine.playQuestCorrect();
-      setScore((s) => s + 1);
-      setEarnedPoints((p) => p + qPoints);
-      setEarnedXp((x) => x + qXp);
+      audioEngine.playSfx('badge');
+      setScore((prev) => prev + 1);
+      const points = currentQ.points || currentMetrics?.points || 100;
+      const xp = currentQ.xp || currentMetrics?.xp || 50;
+      setEarnedPoints((prev) => prev + points);
+      setEarnedXp((prev) => prev + xp);
     } else {
-      audioEngine.playQuestWrong();
+      audioEngine.playSfx('click');
     }
+
+    setCorrectAnswersList((prev) => [
+      ...prev,
+      {
+        question: currentQ,
+        isCorrect,
+      },
+    ]);
   };
 
   const handleNextQuestion = () => {
-    audioEngine.playQuestNext();
+    audioEngine.playSfx('click');
     if (currentIdx + 1 < activeQuestions.length) {
       setCurrentIdx((prev) => prev + 1);
       setSelectedOption(null);
       setIsConfirmed(false);
     } else {
-      const finalCorrectCount = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
-      const qPoints = currentQ.points || currentMetrics?.points || 150;
-      const qXp = currentQ.xp || currentMetrics?.xp || 75;
-      const finalPoints = earnedPoints + (selectedOption === currentQ.correctIndex ? qPoints : 0);
-      const finalXp = earnedXp + (selectedOption === currentQ.correctIndex ? qXp : 0);
-
-      setScore(finalCorrectCount);
-      setEarnedPoints(finalPoints);
-      setEarnedXp(finalXp);
-      onGainXp(finalXp);
-
-      if (finalCorrectCount >= Math.ceil(activeQuestions.length * 0.6)) {
+      // Finished quiz
+      setTabMode('result');
+      if (score >= Math.ceil(activeQuestions.length * 0.6)) {
         triggerConfetti();
         audioEngine.playSfx('fanfare');
       }
-
-      setTabMode('result');
+      if (earnedXp > 0) {
+        onGainXp(earnedXp);
+      }
     }
   };
 
   const getPillarBadge = (pillar: QuestThemePillar) => {
     switch (pillar) {
       case 'clima':
-        return { label: 'Clima & Atmosfera', icon: Thermometer, color: 'text-sky-300 bg-sky-950/80 border-sky-500/50' };
+        return { label: 'Clima & Rios Voadores', icon: Thermometer, color: 'text-sky-400 bg-sky-950/80 border-sky-500/50' };
       case 'biodiversidade':
-        return { label: 'Biomas & Biodiversidade', icon: Trees, color: 'text-emerald-300 bg-emerald-950/80 border-emerald-500/50' };
+        return { label: 'Biomas & Espécies', icon: Trees, color: 'text-emerald-400 bg-emerald-950/80 border-emerald-500/50' };
       case 'demografia':
-        return { label: 'Demografia IBGE', icon: Users, color: 'text-purple-300 bg-purple-950/80 border-purple-500/50' };
+        return { label: 'Demografia & Censo IBGE', icon: Users, color: 'text-purple-400 bg-purple-950/80 border-purple-500/50' };
       case 'geopolitica':
-        return { label: 'Geopolítica & Fronteiras', icon: Building2, color: 'text-indigo-300 bg-indigo-950/80 border-indigo-500/50' };
+        return { label: 'Geopolítica & Fronteiras', icon: Building2, color: 'text-indigo-400 bg-indigo-950/80 border-indigo-500/50' };
       case 'geografia':
-        return { label: 'Geografia & Relevo', icon: Map, color: 'text-amber-300 bg-amber-950/80 border-amber-500/50' };
+        return { label: 'Relevo & Bacias ANA', icon: Map, color: 'text-amber-400 bg-amber-950/80 border-amber-500/50' };
       case 'cultura_musica':
-        return { label: 'Cultura, Rádio & Tradições', icon: Radio, color: 'text-rose-300 bg-rose-950/80 border-rose-500/50' };
+        return { label: 'Cultura & Patrimônio', icon: Radio, color: 'text-rose-400 bg-rose-950/80 border-rose-500/50' };
       default:
-        return { label: 'Multidisciplinar', icon: Globe2, color: 'text-teal-300 bg-teal-950/80 border-teal-500/50' };
+        return { label: 'Conhecimento Geral', icon: Sparkles, color: 'text-amber-300 bg-amber-950/80 border-amber-500/50' };
     }
   };
 
-  const getTierColorBadge = (tier: EducationTier) => {
-    switch (tier) {
-      case 'fundamental':
-        return 'text-emerald-300 bg-emerald-950/80 border-emerald-500/50';
-      case 'medio':
-        return 'text-sky-300 bg-sky-950/80 border-sky-500/50';
-      case 'avancado':
-        return 'text-amber-300 bg-amber-950/80 border-amber-500/50';
+  // Sub-tabs based on active category
+  const getSubTabs = () => {
+    switch (activeCategory) {
+      case 'nacional':
+        return [
+          { id: 'all', label: '⚔️ Visão Geral da Prova' },
+          { id: 'simulado', label: '⚡ Simulado Rápido (3 Questões)' },
+          { id: 'completo', label: '🏆 Grande Prova (6 Questões)' },
+        ];
+      case 'pilares':
+        return [
+          { id: 'all', label: 'Todos os 6 Pilares' },
+          { id: 'clima', label: '☀️ Clima' },
+          { id: 'biodiversidade', label: '🌿 Biomas' },
+          { id: 'demografia', label: '👥 Demografia' },
+          { id: 'geopolitica', label: '🏛️ Geopolítica' },
+          { id: 'geografia', label: '🗺️ Relevo & Águas' },
+          { id: 'cultura_musica', label: '📻 Cultura' },
+        ];
+      case 'trilhas':
+        return [
+          { id: 'all', label: 'Todas as 5 Regiões' },
+          { id: 'norte', label: 'Norte (7)' },
+          { id: 'nordeste', label: 'Nordeste (9)' },
+          { id: 'centro_oeste', label: 'Centro-Oeste (4)' },
+          { id: 'sudeste', label: 'Sudeste (4)' },
+          { id: 'sul', label: 'Sul (3)' },
+        ];
+      case 'guardioes':
+        return [
+          { id: 'all', label: 'Todas as 27 UFs' },
+          { id: 'norte', label: 'Norte' },
+          { id: 'nordeste', label: 'Nordeste' },
+          { id: 'centro_oeste', label: 'Centro-Oeste' },
+          { id: 'sudeste', label: 'Sudeste' },
+          { id: 'sul', label: 'Sul' },
+        ];
+      default:
+        return [{ id: 'all', label: 'Geral' }];
     }
   };
 
+  const subTabs = getSubTabs();
+
+  // Filter guardians by region and query
   const filteredGuardians = GUARDIANS_DATA.filter((g) => {
-    if (guardianRegionFilter === 'todos') return true;
-    return g.regionId.toLowerCase() === guardianRegionFilter.toLowerCase();
+    if (activeCategory === 'guardioes' && activeSubTab !== 'all') {
+      if (g.regionId.toLowerCase() !== activeSubTab.toLowerCase()) return false;
+    }
+    if (!guardianSearchQuery.trim()) return true;
+    const q = guardianSearchQuery.toLowerCase();
+    return (
+      g.id.toLowerCase().includes(q) ||
+      g.stateNamePt.toLowerCase().includes(q) ||
+      g.guardianName.toLowerCase().includes(q) ||
+      g.capitalPt.toLowerCase().includes(q)
+    );
   });
 
   return (
     <div
       id="modal-brquest-hub"
-      className="modal-brquest-hub fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200 select-none overflow-hidden"
+      className="modal-brquest-backdrop modal-brquest-hub fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200 select-none overflow-hidden"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="painel-brquest-conteudo relative w-[98vw] sm:w-[95vw] md:w-[92vw] lg:w-[90vw] max-w-6xl h-[95vh] sm:h-[94vh] max-h-[96vh] flex flex-col bg-gradient-to-b from-slate-950 via-[#0a1122] to-slate-950 border-2 border-amber-500/60 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_35px_rgba(245,158,11,0.25)] text-slate-100 my-auto overflow-hidden">
+      <div
+        id="modal-brquest-container"
+        className="modal-brquest-container painel-brquest-unificado relative w-[98vw] sm:w-[95vw] md:w-[92vw] lg:w-[90vw] max-w-6xl h-[95vh] sm:h-[94vh] max-h-[96vh] flex flex-col bg-gradient-to-b from-slate-950 via-[#0a1122] to-slate-950 border-2 border-amber-500/60 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_35px_rgba(245,158,11,0.25)] text-slate-100 my-auto overflow-hidden"
+      >
         {/* Cantos Ornamentais RPG Pergaminho */}
         <div className="ornamento-canto-tl absolute -top-1.5 -left-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
         <div className="ornamento-canto-tr absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
         <div className="ornamento-canto-bl absolute -bottom-1.5 -left-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
         <div className="ornamento-canto-br absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
 
-        {/* 1. Header do Hub BrQuest */}
-        <div className="cabecalho-brquest flex items-center justify-between border-b border-amber-500/30 pb-3 shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="p-2 sm:p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400/60 text-amber-300 shadow-sm shrink-0">
-              <Compass className="w-5 h-5 sm:w-6 sm:h-6 animate-[spin_12s_linear_infinite]" />
+        {/* 1. Header do Modal (Idêntico ao Padrão de Excelência de Perfil e Jornada) */}
+        <div className="cabecalho-modal-brquest flex items-center justify-between pb-3 border-b border-amber-500/30 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-400 shadow-sm">
+              <Compass className="w-5 h-5" />
             </div>
-            <div className="truncate">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-serif font-black text-base sm:text-xl text-amber-300 tracking-wide flex items-center gap-1.5">
-                  <span>BrQuest Edu</span>
-                  <span className="text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/50 font-mono font-bold">
-                    Desafios do Brasil
-                  </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-slate-100 tracking-wide flex items-center gap-1.5">
+                  BrQuest Edu • Desafios do Brasil
                 </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  Nv. {playerLevel}
+                </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-400 font-serif truncate hidden sm:block">
-                Questões estruturadas por nível pedagógico e área com dados oficiais IBGE, INPE, ANA e MapBiomas 2024/2025
+              <p className="text-[11px] text-slate-400 hidden sm:block">
+                Questões estruturadas por nível pedagógico e área com dados oficiais IBGE, INPE, ANA e MapBiomas 2024/2025.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-amber-500/40 text-xs font-mono font-bold text-amber-300 shadow-inner">
-              <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-              <span>Nv. {playerLevel}</span>
-              <span className="text-slate-400">({playerXp.toLocaleString('pt-BR')} XP)</span>
-            </div>
-            <button
-              id="btn-fechar-brquest-hub"
-              onClick={() => {
-                audioEngine.playSfx('click');
-                onClose();
-              }}
-              className="btn-fechar-modal-brquest p-2 rounded-xl bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-amber-500/40 transition cursor-pointer shadow-md"
-              title="Fechar BrQuest"
-            >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          </div>
+          <button
+            id="btn-fechar-brquest-hub"
+            onClick={() => {
+              audioEngine.playSfx('click');
+              onClose();
+            }}
+            className="btn-fechar-modal-brquest text-slate-300 hover:text-slate-950 p-2 rounded-xl bg-slate-900 hover:bg-amber-500 border border-amber-500/40 transition z-30 cursor-pointer shadow-md"
+            title="Fechar BrQuest Edu"
+          >
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
         </div>
 
-        {/* 2. CORPO PRINCIPAL EM 2 COLUNAS */}
-        <div className="corpo-brquest-duas-colunas flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 pt-3 overflow-hidden">
+        {/* 2. CORPO PRINCIPAL EM 2 COLUNAS (Wide-Screen Optimized) */}
+        <div className="corpo-duas-colunas-brquest flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 pt-3 overflow-hidden">
           {tabMode === 'hub' && (
             <>
               {/* ========================================================================= */}
-              {/* COLUNA 1 (Esquerda): Desafio Principal & Filtros de Nível Empilhados     */}
+              {/* COLUNA 1 (Esquerda): Perfil Estudante, Categorias & Níveis BNCC Empilhados */}
               {/* ========================================================================= */}
               <aside className="coluna-lateral-brquest w-full md:w-72 lg:w-80 shrink-0 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar-gold pr-0.5">
-                {/* 1.1 Card Principal: ⚔️ A Grande Prova do Brasil */}
-                <div
-                  onClick={() =>
-                    handleStartChallenge(
-                      'Grande Prova do Brasil',
-                      'Desafio multidisciplinar integrando Clima, Biodiversidade, Demografia, Geopolítica e Cultura.',
-                      { scope: 'nacional' },
-                      6
-                    )
-                  }
-                  className="card-banner-grande-prova relative p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-950/80 via-slate-900 to-amber-950/80 border-2 border-amber-400/80 hover:border-amber-300 transition-all hover:scale-[1.01] cursor-pointer shadow-md group overflow-hidden"
-                >
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-20 group-hover:opacity-35 transition-opacity pointer-events-none">
-                    <Globe2 className="w-24 h-24 text-amber-300" />
-                  </div>
-
-                  <div className="relative z-10 space-y-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2 py-0.2 rounded-md bg-amber-500 text-slate-950 text-[9px] font-mono font-black uppercase tracking-wider shadow">
-                        Nacional
+                {/* 1.1 Card de Perfil Resumido do Estudante & XP */}
+                <div className="card-estudante-resumo p-3 sm:p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      {user?.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.displayName}
+                          referrerPolicy="no-referrer"
+                          className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-slate-950 font-black text-lg shadow-sm">
+                          {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="w-6 h-6" />}
+                        </div>
+                      )}
+                      <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500 text-slate-950 shadow-xs border border-slate-900">
+                        N.{playerLevel}
                       </span>
-                      <span className="text-[10px] text-amber-300 font-serif">6 Questões Integradas</span>
                     </div>
 
-                    <h3 className="font-serif font-black text-sm sm:text-base text-amber-100 group-hover:text-amber-200">
-                      ⚔️ A Grande Prova do Brasil
-                    </h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-bold text-slate-100 truncate">
+                          {user?.displayName || 'Explorador'}
+                        </span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded font-mono shrink-0 ${
+                            isGuest
+                              ? 'bg-slate-800 text-slate-400'
+                              : 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                          }`}
+                        >
+                          {isGuest ? 'Convidado' : 'Google'}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-amber-300/90 font-medium truncate">{rankTitle}</div>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {playerXp.toLocaleString('pt-BR')} XP Total
+                      </div>
+                    </div>
+                  </div>
 
-                    <p className="text-[11px] text-slate-300 font-sans leading-relaxed line-clamp-2">
-                      Desafio nacional com Rios Voadores, ZCAS, biomas endêmicos, Censo IBGE 2024/2025 e matrizes territoriais.
-                    </p>
+                  {/* Barra de Progresso de Nível */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                      <span>Nv. {playerLevel}</span>
+                      <span className="text-amber-400">{currentLevelProgressPercent}% até Nv. {playerLevel + 1}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(5, currentLevelProgressPercent)}%` }}
+                      />
+                    </div>
+                  </div>
 
-                    <div className="pt-1 flex items-center gap-1.5 text-xs font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
-                      <span>Iniciar Agora</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                  {/* Mini Pílulas de Estatísticas */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1 text-center font-mono">
+                    <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <div className="text-[11px] font-bold text-amber-400 capitalize truncate">
+                        {selectedDifficultyTier === 'todos' ? 'Misto' : selectedDifficultyTier.slice(0, 4)}
+                      </div>
+                      <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Nível BNCC</div>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <div className="text-[11px] font-bold text-sky-400">{territorialPercent}%</div>
+                      <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Domínio</div>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <div className="text-[11px] font-bold text-rose-400">{dailyStreak}d</div>
+                      <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Ofensiva</div>
                     </div>
                   </div>
                 </div>
 
-                {/* 1.2 Seletor de Nível Pedagógico (Empilhado) */}
-                <div className="seletor-niveis-pedagogicos p-3 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm space-y-2">
+                {/* 1.2 Categorias Principais Empilhadas (Vertical Nav List) */}
+                <div className="categorias-empilhadas-brquest flex flex-col gap-1.5 p-1.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-0.5">
+                    Modos de Desafio
+                  </span>
+
+                  {/* Categoria 1: Prova Nacional */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCategory('nacional')}
+                    className={`btn-aba-brquest-nacional w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
+                      activeCategory === 'nacional'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Globe2 className="w-4 h-4 shrink-0" />
+                      <span className="text-xs">⚔️ Prova Nacional</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                          activeCategory === 'nacional' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-amber-300'
+                        }`}
+                      >
+                        6 Áreas
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </div>
+                  </button>
+
+                  {/* Categoria 2: Áreas do Conhecimento */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCategory('pilares')}
+                    className={`btn-aba-brquest-pilares w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
+                      activeCategory === 'pilares'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <BookOpen className="w-4 h-4 shrink-0" />
+                      <span className="text-xs">📚 Áreas Científicas</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                          activeCategory === 'pilares' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-amber-300'
+                        }`}
+                      >
+                        6 Pilares
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </div>
+                  </button>
+
+                  {/* Categoria 3: Trilhas Regionais */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCategory('trilhas')}
+                    className={`btn-aba-brquest-trilhas w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
+                      activeCategory === 'trilhas'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Flame className="w-4 h-4 shrink-0" />
+                      <span className="text-xs">🔥 Trilhas Regionais</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                          activeCategory === 'trilhas' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-amber-300'
+                        }`}
+                      >
+                        5 Regiões
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </div>
+                  </button>
+
+                  {/* Categoria 4: 27 Guardiões Estaduais */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectCategory('guardioes')}
+                    className={`btn-aba-brquest-guardioes w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
+                      activeCategory === 'guardioes'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 shrink-0" />
+                      <span className="text-xs">🏆 27 Guardiões UFs</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+                          activeCategory === 'guardioes' ? 'bg-slate-950/20 text-slate-950 font-bold' : 'bg-slate-800 text-amber-300'
+                        }`}
+                      >
+                        27 UFs
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </div>
+                  </button>
+                </div>
+
+                {/* 1.3 Seletor de Nível Pedagógico BNCC & ENEM */}
+                <div className="seletor-niveis-pedagogicos-brquest p-3 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                       <Filter className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Nível Pedagógico</span>
+                      <span>Filtro Pedagógico</span>
                     </span>
                     <span className="text-[9px] font-mono text-amber-400/80">BNCC & ENEM</span>
                   </div>
@@ -431,31 +624,6 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
                     </button>
                   </div>
                 </div>
-
-                {/* 1.3 Mini Card: Desafio dos 27 Guardiões */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    audioEngine.playSfx('click');
-                    setActiveSubTab('guardioes');
-                  }}
-                  className={`p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer group shadow-sm ${
-                    activeSubTab === 'guardioes'
-                      ? 'bg-amber-950/60 border-amber-500/80 text-amber-200 ring-1 ring-amber-500/30'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-amber-500/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                      <Award className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">27 Guardiões Estaduais</div>
-                      <div className="text-[10px] text-slate-400">Desafie cada UF individualmente</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-                </button>
               </aside>
 
               {/* ========================================================================= */}
@@ -463,51 +631,127 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
               {/* ========================================================================= */}
               <main className="coluna-conteudo-brquest flex-1 min-w-0 flex flex-col min-h-0 bg-slate-950/70 rounded-2xl border border-amber-500/30 p-3 sm:p-4 overflow-hidden shadow-inner">
                 {/* Barra de SubTabs no Topo da Coluna 2 */}
-                <div className="subtabs-topo flex items-center gap-1.5 pb-2.5 mb-3 border-b border-slate-800 overflow-x-auto custom-scrollbar-gold shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab('pilares')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeSubTab === 'pilares'
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>Áreas do Conhecimento (6 Pilares)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab('trilhas')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeSubTab === 'trilhas'
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                    }`}
-                  >
-                    <Flame className="w-3.5 h-3.5" />
-                    <span>Trilhas Regionais (5 Regiões)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab('guardioes')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeSubTab === 'guardioes'
-                        ? 'bg-amber-500 text-slate-950 shadow-xs'
-                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                    }`}
-                  >
-                    <Award className="w-3.5 h-3.5" />
-                    <span>27 Guardiões Estaduais</span>
-                  </button>
+                <div className="subtabs-topo-brquest flex items-center gap-1.5 pb-2.5 mb-3 border-b border-slate-800 overflow-x-auto custom-scrollbar-gold shrink-0">
+                  {subTabs.map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => {
+                        audioEngine.playSfx('click');
+                        setActiveSubTab(st.id);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                        activeSubTab === st.id
+                          ? 'bg-amber-500 text-slate-950 shadow-xs'
+                          : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                      }`}
+                    >
+                      <span>{st.label}</span>
+                    </button>
+                  ))}
                 </div>
 
-                {/* Conteúdo com Scroll Suave dependendo da SubTab Ativa */}
+                {/* Conteúdo com Scroll Suave dependendo da Categoria Ativa */}
                 <div className="conteudo-subtab-scroll flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar-gold">
-                  {/* SUBTAB 1: ÁREAS DO CONHECIMENTO (6 PILARES CIENTÍFICOS) */}
-                  {activeSubTab === 'pilares' && (
+                  {/* CATEGORIA 1: PROVA NACIONAL */}
+                  {activeCategory === 'nacional' && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      {/* Banner Principal da Grande Prova */}
+                      <div className="card-desafio-brquest relative p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-950/80 via-slate-900 to-amber-950/80 border-2 border-amber-400/80 shadow-md group overflow-hidden">
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 group-hover:opacity-35 transition-opacity pointer-events-none">
+                          <Globe2 className="w-36 h-36 text-amber-300" />
+                        </div>
+
+                        <div className="relative z-10 space-y-2.5 max-w-xl">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-mono font-black uppercase tracking-wider shadow">
+                              Desafio Oficial Brasil
+                            </span>
+                            <span className="text-xs text-amber-300 font-mono">6 Questões Multidisciplinares</span>
+                          </div>
+
+                          <h3 className="font-serif font-black text-base sm:text-xl text-amber-100">
+                            ⚔️ A Grande Prova do Brasil
+                          </h3>
+
+                          <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+                            Simulado nacional integrando Rios Voadores, ZCAS, biomas endêmicos, demografia Censo IBGE 2024/2025 e matrizes geopolíticas territoriais.
+                          </p>
+
+                          <div className="pt-2 flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleStartChallenge(
+                                  'Grande Prova do Brasil',
+                                  'Desafio multidisciplinar integrando Clima, Biodiversidade, Demografia, Geopolítica e Cultura.',
+                                  { scope: 'nacional' },
+                                  6
+                                )
+                              }
+                              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm transition flex items-center gap-2 cursor-pointer shadow-md"
+                            >
+                              <Trophy className="w-4 h-4" />
+                              <span>Iniciar Grande Prova (6 Qs)</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleStartChallenge(
+                                  'Simulado Rápido do Brasil',
+                                  'Versão ágil de 3 questões com telemetria simplificada.',
+                                  { scope: 'nacional' },
+                                  3
+                                )
+                              }
+                              className="px-3.5 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-500/40 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                              <Zap className="w-4 h-4" />
+                              <span>Simulado Rápido (3 Qs)</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Grade das 6 Especialidades Científicas Cobertas */}
+                      <div className="space-y-2">
+                        <span className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
+                          Eixos Temáticos Incluídos na Avaliação
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Thermometer className="w-4 h-4 text-sky-400 shrink-0" />
+                            <span className="text-slate-200">Clima & Rios Voadores</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Trees className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span className="text-slate-200">Biomas & Biodiversidade</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Users className="w-4 h-4 text-purple-400 shrink-0" />
+                            <span className="text-slate-200">Demografia Censo 2025</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                            <span className="text-slate-200">Geopolítica & Fronteiras</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Map className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span className="text-slate-200">Geografia & Bacias ANA</span>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center gap-2">
+                            <Radio className="w-4 h-4 text-rose-400 shrink-0" />
+                            <span className="text-slate-200">Cultura & Patrimônio</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CATEGORIA 2: ÁREAS DO CONHECIMENTO (6 PILARES) */}
+                  {activeCategory === 'pilares' && (
                     <div className="space-y-3 animate-in fade-in duration-150">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider font-mono">
@@ -567,54 +811,56 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
                             color: 'border-rose-500/40 hover:border-rose-400 bg-gradient-to-br from-rose-950/40 to-slate-900',
                             iconColor: 'text-rose-400',
                           },
-                        ].map(({ pilar, label, desc, icon: Icon, color, iconColor }) => (
-                          <button
-                            key={pilar}
-                            onClick={() =>
-                              handleStartChallenge(
-                                `Módulo: ${label}`,
-                                `Questões estruturadas sobre ${label} com dados oficiais atualizados.`,
-                                { pillar: pilar },
-                                5
-                              )
-                            }
-                            className={`p-3.5 rounded-2xl border ${color} text-left transition hover:scale-[1.01] cursor-pointer flex flex-col justify-between gap-2.5 shadow-sm group`}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
-                                <Icon className={`w-5 h-5 ${iconColor} group-hover:scale-110 transition-transform`} />
+                        ]
+                          .filter((item) => activeSubTab === 'all' || item.pilar === activeSubTab)
+                          .map(({ pilar, label, desc, icon: Icon, color, iconColor }) => (
+                            <button
+                              key={pilar}
+                              onClick={() =>
+                                handleStartChallenge(
+                                  `Módulo: ${label}`,
+                                  `Questões estruturadas sobre ${label} com dados oficiais atualizados.`,
+                                  { pillar: pilar },
+                                  5
+                                )
+                              }
+                              className={`p-3.5 rounded-2xl border ${color} text-left transition hover:scale-[1.01] cursor-pointer flex flex-col justify-between gap-2.5 shadow-sm group`}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                                  <Icon className={`w-5 h-5 ${iconColor} group-hover:scale-110 transition-transform`} />
+                                </div>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-400 group-hover:text-amber-300">
+                                  5 Questões
+                                </span>
                               </div>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-400 group-hover:text-amber-300">
-                                5 Questões
-                              </span>
-                            </div>
 
-                            <div>
-                              <div className="font-serif font-bold text-sm text-slate-100 group-hover:text-amber-200">
-                                {label}
+                              <div>
+                                <div className="font-serif font-bold text-sm text-slate-100 group-hover:text-amber-200">
+                                  {label}
+                                </div>
+                                <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-relaxed font-sans">
+                                  {desc}
+                                </p>
                               </div>
-                              <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5 leading-relaxed font-sans">
-                                {desc}
-                              </p>
-                            </div>
 
-                            <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[11px] font-mono">
-                              <span className="text-amber-400/90 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                                <span>Iniciar Módulo</span>
-                                <ChevronRight className="w-3 h-3" />
-                              </span>
-                              <span className="text-slate-400">
-                                {selectedDifficultyTier === 'todos' ? 'Misto' : selectedDifficultyTier}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[11px] font-mono">
+                                <span className="text-amber-400/90 font-bold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                  <span>Iniciar Módulo</span>
+                                  <ChevronRight className="w-3 h-3" />
+                                </span>
+                                <span className="text-slate-400">
+                                  {selectedDifficultyTier === 'todos' ? 'Misto' : selectedDifficultyTier}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
                       </div>
                     </div>
                   )}
 
-                  {/* SUBTAB 2: TRILHAS REGIONAIS (5 REGIÕES) */}
-                  {activeSubTab === 'trilhas' && (
+                  {/* CATEGORIA 3: TRILHAS REGIONAIS (5 REGIÕES) */}
+                  {activeCategory === 'trilhas' && (
                     <div className="space-y-3 animate-in fade-in duration-150">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 uppercase tracking-wider font-mono">
@@ -666,65 +912,72 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
                             bg: 'from-cyan-950/60 to-slate-900',
                             badge: 'Sul (3 UFs)',
                           },
-                        ].map((trilha) => (
-                          <button
-                            key={trilha.id}
-                            onClick={() =>
-                              handleStartChallenge(
-                                trilha.title,
-                                `Questões específicas sobre a geografia, biomas e cultura da região ${trilha.badge}.`,
-                                { regionId: trilha.id as any },
-                                5
-                              )
-                            }
-                            className={`p-3.5 rounded-2xl bg-gradient-to-br ${trilha.bg} border ${trilha.border} text-left transition hover:scale-[1.01] cursor-pointer flex flex-col justify-between gap-2.5 group shadow-sm`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-mono font-bold text-amber-300 px-2 py-0.5 rounded-md bg-black/40 border border-amber-500/30">
-                                {trilha.badge}
-                              </span>
-                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition" />
-                            </div>
-                            <div>
-                              <h5 className="font-serif font-bold text-sm text-slate-100 mt-1">
-                                {trilha.title}
-                              </h5>
-                              <p className="text-[11px] text-slate-300 font-sans line-clamp-2 mt-0.5 leading-relaxed">
-                                {trilha.sub}
-                              </p>
-                            </div>
-                            <div className="text-[11px] font-mono text-amber-400 font-bold pt-1 border-t border-slate-800/60">
-                              Iniciar Trilha Regional →
-                            </div>
-                          </button>
-                        ))}
+                        ]
+                          .filter((item) => activeSubTab === 'all' || item.id === activeSubTab)
+                          .map((trilha) => {
+                            const isUserRegion = userLocation && userLocation.regionId.toLowerCase() === trilha.id.toLowerCase();
+                            return (
+                              <button
+                                key={trilha.id}
+                                onClick={() =>
+                                  handleStartChallenge(
+                                    trilha.title,
+                                    `Questões específicas sobre a geografia, biomas e cultura da região ${trilha.badge}.`,
+                                    { regionId: trilha.id as any },
+                                    5
+                                  )
+                                }
+                                className={`p-3.5 rounded-2xl bg-gradient-to-br ${trilha.bg} border ${trilha.border} text-left transition hover:scale-[1.01] cursor-pointer flex flex-col justify-between gap-2.5 group shadow-sm`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-mono font-bold text-amber-300 px-2 py-0.5 rounded-md bg-black/40 border border-amber-500/30">
+                                      {trilha.badge}
+                                    </span>
+                                    {isUserRegion && (
+                                      <span className="text-[9px] font-mono font-bold text-emerald-300 px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40">
+                                        📍 Sua Região
+                                      </span>
+                                    )}
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-300 group-hover:translate-x-0.5 transition" />
+                                </div>
+                                <div>
+                                  <h5 className="font-serif font-bold text-sm text-slate-100 mt-1">
+                                    {trilha.title}
+                                  </h5>
+                                  <p className="text-[11px] text-slate-300 font-sans line-clamp-2 mt-0.5 leading-relaxed">
+                                    {trilha.sub}
+                                  </p>
+                                </div>
+                                <div className="text-[11px] font-mono text-amber-400 font-bold pt-1 border-t border-slate-800/60">
+                                  Iniciar Trilha Regional →
+                                </div>
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
 
-                  {/* SUBTAB 3: 27 GUARDIÕES ESTADUAIS (GRID COMPLETO DE UFS) */}
-                  {activeSubTab === 'guardioes' && (
+                  {/* CATEGORIA 4: 27 GUARDIÕES ESTADUAIS */}
+                  {activeCategory === 'guardioes' && (
                     <div className="space-y-3 animate-in fade-in duration-150">
-                      {/* Filtros Rápidos por Região para os Guardiões */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-slate-800">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] text-slate-400 font-mono">Região:</span>
-                          {['todos', 'Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'].map((reg) => (
-                            <button
-                              key={reg}
-                              type="button"
-                              onClick={() => setGuardianRegionFilter(reg)}
-                              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
-                                guardianRegionFilter.toLowerCase() === reg.toLowerCase()
-                                  ? 'bg-amber-500 text-slate-950 font-black'
-                                  : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-                              }`}
-                            >
-                              {reg === 'todos' ? 'Todas as 27 UFs' : reg}
-                            </button>
-                          ))}
+                      {/* Campo de Busca Rápida de Guardião */}
+                      <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                        <div className="relative flex-1 max-w-sm">
+                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={guardianSearchQuery}
+                            onChange={(e) => setGuardianSearchQuery(e.target.value)}
+                            placeholder="Buscar UF, estado, capital ou Guardião..."
+                            className="w-full bg-slate-900 border border-slate-800 focus:border-amber-400 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none transition"
+                          />
                         </div>
-                        <span className="text-[10px] font-mono text-amber-400">{filteredGuardians.length} Estados</span>
+                        <span className="text-[11px] font-mono text-amber-400">
+                          {filteredGuardians.length} de 27 Guardiões
+                        </span>
                       </div>
 
                       {/* Grade dos 27 Guardiões */}
@@ -780,7 +1033,7 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
           {/* MODO JOGANDO QUIZ (PLAYING) - 2 COLUNAS DE TELEMETRIA E PERGUNTA          */}
           {/* ========================================================================= */}
           {tabMode === 'playing' && currentQ && currentMetrics && (
-            <div className="modo-jogando flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="modo-jogando-brquest flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 overflow-hidden animate-in zoom-in-95 duration-150">
               {/* Coluna 1 da Prova: Telemetria Pedagógica */}
               <aside className="w-full md:w-72 shrink-0 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar-gold pr-0.5">
                 <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3 shadow-sm">
@@ -930,7 +1183,7 @@ export const BrQuestHubModal: React.FC<BrQuestHubModalProps> = ({
           {/* MODO RESULTADO FINAL (RESULT) - 2 COLUNAS DE PONTUAÇÃO E REVISÃO          */}
           {/* ========================================================================= */}
           {tabMode === 'result' && (
-            <div className="modo-resultado flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="modo-resultado-brquest flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 overflow-hidden animate-in zoom-in-95 duration-150">
               {/* Coluna 1: Troféu & Recompensas */}
               <aside className="w-full md:w-72 shrink-0 flex flex-col justify-between p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm text-center">
                 <div className="space-y-3">

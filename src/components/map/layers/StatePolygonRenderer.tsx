@@ -67,16 +67,30 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
       effectiveStroke = '#fef08a';
       effectiveStrokeWidth = 3.6;
     } else {
-      effectiveFill = '#070b14';
-      effectiveOpacity = 0.94;
-      effectiveStroke = '#1e293b';
-      effectiveStrokeWidth = 0.75;
+      if (visualStyle === 'tiles') {
+        effectiveFill = '#070b14';
+        effectiveOpacity = 0.20;
+        effectiveStroke = '#334155';
+        effectiveStrokeWidth = 0.85;
+      } else {
+        effectiveFill = '#070b14';
+        effectiveOpacity = 0.60;
+        effectiveStroke = '#1e293b';
+        effectiveStrokeWidth = 0.75;
+      }
     }
   } else if (isRegionActive) {
-    effectiveFill = regionColor;
-    effectiveOpacity = belongsToActiveRegion ? (isHovered ? 0.75 : 0.60) : 0.18;
-    effectiveStroke = belongsToActiveRegion ? regionColor : '#475569';
-    effectiveStrokeWidth = belongsToActiveRegion ? 2.4 : 1.0;
+    if (belongsToActiveRegion) {
+      effectiveFill = regionColor;
+      effectiveOpacity = isHovered ? 0.85 : 0.70;
+      effectiveStroke = isSelected ? '#fef08a' : regionColor;
+      effectiveStrokeWidth = isSelected ? 3.2 : 2.4;
+    } else {
+      effectiveFill = visualStyle === 'tiles' ? '#0b1626' : '#1e293b';
+      effectiveOpacity = visualStyle === 'tiles' ? 0.20 : 0.40;
+      effectiveStroke = '#334155';
+      effectiveStrokeWidth = 1.0;
+    }
   } else if (isClimateActive || isGeopoliticaActive) {
     effectiveFill = visuals.stateFill;
     effectiveOpacity = visuals.stateFillOpacity;
@@ -131,12 +145,14 @@ export const StatePolygonRenderer: React.FC<StatePolygonRendererProps> = ({
       key={stateId}
       className={`grupo-estado-svg grupo-estado-${stateId.toLowerCase()} transition-all duration-200`}
       style={{
-        opacity: activeIsolatedState
+        opacity: isCartographyActive
+          ? 1.0
+          : activeIsolatedState
           ? 1.0
           : isRegionActive
           ? belongsToActiveRegion
             ? 1.0
-            : 0.20
+            : 0.80
           : showNeighbors && isNeighborOfSelected
           ? 1.0
           : showNeighbors

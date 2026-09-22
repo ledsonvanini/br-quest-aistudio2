@@ -215,6 +215,18 @@ export function App() {
     }
   };
 
+  const handleClearUserLocation = () => {
+    setUserLocation(null);
+    try {
+      localStorage.removeItem('brquest_user_geolocation');
+    } catch {}
+    setSelectedStateId(null);
+    setFocusedStateId(null);
+    setSelectedRegionFilter('todos');
+    setCenterMapTrigger((prev) => prev + 1);
+    showNotification('🌐 Modo Livre ativado: visualização de todo o território brasileiro.');
+  };
+
   const handleSelectMainMode = (newMode: AppMainMode) => {
     selectMainMode(newMode);
 
@@ -846,6 +858,8 @@ export function App() {
               onOpenDailyTips={() => setIsDailyTipsOpen(true)}
               dailyTipsUnreadCount={dailyTips.unreadCount}
               onOpenSearchSelector={() => setIsSearchSelectorOpen(true)}
+              isUserLocatedActive={Boolean(userLocation)}
+              onClearUserLocation={handleClearUserLocation}
               onStateLocated={handleStateLocated}
               onNotification={(msg) => setNotification(msg)}
             />
@@ -924,6 +938,9 @@ export function App() {
         onGainXp={(xp) => handleBrQuestComplete(xp, Math.round(xp / 75))}
         playerLevel={progress.level}
         playerXp={progress.xp}
+        completedStatesCount={progress.completedStateIds.length}
+        dailyStreak={progress.dailyStreak || 1}
+        userLocation={userLocation}
       />
 
       {/* 5 Dicas do Dia: Você Sabia? Modal (Retenção DAU & Curiosidades Oficiais) */}

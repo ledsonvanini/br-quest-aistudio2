@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Compass,
-  Crosshair,
   Trophy,
   Trees,
   Sun,
   Flame,
   Building2,
   Mountain,
-  Search,
 } from 'lucide-react';
-import { StateSearchSelectorModal } from '../search/StateSearchSelectorModal';
 import { audioEngine } from '../../lib/audioSynth';
 import { REGION_STATES_MAP } from '../map/stateStyling/stateFillStyler';
 
@@ -66,24 +62,10 @@ export const FooterAdventureTicker: React.FC<FooterAdventureTickerProps> = ({
   selectedCampaign = 'livre',
   onSelectCampaign,
 }) => {
-  const [isLocating, setIsLocating] = useState(false);
   const [detectedState, setDetectedState] = useState<string | null>(null);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const hasAttemptedGps = useRef(false);
 
-  // Keyboard shortcut Ctrl+K / Cmd+K to open stylish search modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Solicitação implícita de GPS na montagem
+  // Solicitação implícita de GPS na montagem se não definido
   useEffect(() => {
     if (hasAttemptedGps.current) return;
     hasAttemptedGps.current = true;
@@ -99,7 +81,6 @@ export const FooterAdventureTicker: React.FC<FooterAdventureTickerProps> = ({
           }
         },
         () => {
-          // Se o usuário recusar ou falhar, ativa modo livre suavemente
           if (onSelectCampaign && (!selectedCampaign || selectedCampaign === 'todos')) {
             onSelectCampaign('livre');
           }
@@ -113,34 +94,6 @@ export const FooterAdventureTicker: React.FC<FooterAdventureTickerProps> = ({
     }
   }, [onSelectCampaign, selectedCampaign]);
 
-  // Handler para acionamento manual do GPS
-  const handleManualGeolocation = () => {
-    if (!navigator.geolocation) {
-      if (onSelectCampaign) onSelectCampaign('livre');
-      return;
-    }
-
-    setIsLocating(true);
-    audioEngine.playSfx('click');
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsLocating(false);
-        const closestSt = findClosestState(pos.coords.latitude, pos.coords.longitude);
-        const userRegion = STATE_TO_REGION[closestSt] || 'livre';
-        setDetectedState(closestSt);
-        if (onSelectCampaign) onSelectCampaign(userRegion);
-        onStateClick(closestSt);
-      },
-      (err) => {
-        setIsLocating(false);
-        console.warn('Geolocation denied or unavailable:', err.message);
-        if (onSelectCampaign) onSelectCampaign('livre');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
   // Cálculo do progresso da campanha ativa
   const campaignStates =
     selectedCampaign && selectedCampaign !== 'todos' && selectedCampaign !== 'livre'
@@ -152,136 +105,60 @@ export const FooterAdventureTicker: React.FC<FooterAdventureTickerProps> = ({
   const isAllConquered = completedCount === totalCount && totalCount > 0;
 
   return (
-    <>
-      <div
-        id="painel-aventura-ticker-rodape"
-        className="painel-aventura-ticker-rodape flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-xl bg-slate-950/95 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-150 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0 select-none text-slate-200"
-        role="toolbar"
-        aria-label="Controles da Aventura dos Guardiões"
-      >
-        {/* 1. Botão de Pesquisa Estilosa com Atalho Ctrl+K */}
-        <button
-          id="btn-abrir-seletor-estados"
-          type="button"
-          onClick={() => {
-            audioEngine.playSfx('click');
-            setIsSearchOpen(true);
-          }}
-          className={`btn-abrir-seletor-estados flex items-center justify-center p-1.5 rounded-lg border transition-all cursor-pointer ${
-            isSearchOpen
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.5)] font-bold'
-              : 'bg-slate-900/90 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border-amber-500/30 hover:border-amber-400/60'
-          }`}
-          title="Abrir Seletor de Estados e Guardiões (Ctrl+K)"
-          aria-label="Buscar Estado no Mapa (Ctrl+K)"
-        >
-          <Search className="w-3.5 h-3.5" />
-        </button>
+    <div
+      id="painel-aventura-ticker-rodape"
+      className="painel-aventura-ticker-rodape flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-xl bg-slate-950/95 border border-amber-500/40 text-xs shadow-md animate-in fade-in duration-150 max-w-[96vw] sm:max-w-max overflow-x-auto no-scrollbar shrink-0 select-none text-slate-200"
+      role="toolbar"
+      aria-label="Controles de Regiões Brasileiras"
+    >
+      {/* 1. Seletores de Região Brasileiras */}
+      <div className="seletor-regioes-rodape flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800 shrink-0">
+        {REGION_BUTTONS.map((reg) => {
+          const isRegActive = selectedCampaign === reg.id;
+          const Icon = reg.icon;
 
-        <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
-
-        {/* 2. Modo Livre (Ícone Bússola) */}
-        <button
-          id="btn-modo-campanha-livre"
-          type="button"
-          onClick={() => {
-            audioEngine.playSfx('click');
-            if (onSelectCampaign) onSelectCampaign('livre');
-          }}
-          className={`btn-modo-campanha-livre p-1.5 rounded-lg text-xs font-serif font-bold transition-all flex items-center gap-1 cursor-pointer border ${
-            selectedCampaign === 'livre' || selectedCampaign === 'todos'
-              ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.5)] font-bold'
-              : 'bg-slate-900/90 text-amber-200/80 hover:bg-slate-800 border-amber-500/30 hover:border-amber-400/50'
-          }`}
-          title="Modo Livre: Explorar todo o Brasil sem restrição de fronteiras"
-          aria-label="Modo Livre"
-        >
-          <Compass className="w-3.5 h-3.5" />
-          <span className="hidden xs:inline text-[11px]">Livre</span>
-        </button>
-
-        {/* 3. Botão GPS Cartográfico (Geolocalização / Detecção de Região) */}
-        <button
-          id="btn-geolocalizacao-gps"
-          type="button"
-          onClick={handleManualGeolocation}
-          disabled={isLocating}
-          className={`btn-geolocalizacao-gps p-1.5 rounded-lg border transition-all flex items-center justify-center cursor-pointer disabled:opacity-50 ${
-            isLocating
-              ? 'bg-amber-500/30 border-amber-400 text-amber-300 animate-pulse'
-              : detectedState
-              ? 'bg-slate-900/90 hover:bg-slate-800 text-amber-300 border-amber-500/30 hover:border-amber-400/60'
-              : 'bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-amber-300 border-slate-800 hover:border-amber-500/40'
-          }`}
-          title={
-            detectedState
-              ? `Localização detectada: ${detectedState} (${STATE_TO_REGION[detectedState] || 'BR'}). Clique para re-detectar.`
-              : 'Detectar minha região via GPS do navegador'
-          }
-          aria-label="Geolocalização GPS"
-        >
-          <Crosshair className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin text-amber-400' : 'text-amber-400'}`} />
-        </button>
-
-        <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
-
-        {/* 4. Seletores Compactos de Região (Foco em Ícones e Siglas) */}
-        <div className="seletor-regioes-rodape flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800 shrink-0">
-          {REGION_BUTTONS.map((reg) => {
-            const isRegActive = selectedCampaign === reg.id;
-            const Icon = reg.icon;
-
-            return (
-              <button
-                key={reg.id}
-                id={`btn-campanha-regiao-${reg.id}`}
-                type="button"
-                onClick={() => {
-                  audioEngine.playSfx('click');
-                  if (onSelectCampaign) onSelectCampaign(reg.id);
-                }}
-                className={`btn-campanha-regiao flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-bold transition-all cursor-pointer border ${
-                  isRegActive
-                    ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.5)] font-extrabold scale-105'
-                    : 'bg-slate-900/90 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700'
-                }`}
-                title={reg.label}
-                aria-label={reg.label}
-              >
-                <Icon className={`w-3 h-3 ${isRegActive ? 'text-slate-950' : reg.color}`} />
-                <span>{reg.short}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
-
-        {/* 5. Indicador de Progresso Compacto */}
-        <div
-          id="indicador-progresso-conquista"
-          className="indicador-progresso-conquista flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-amber-500/30 text-[11px] font-mono shrink-0"
-          title={
-            isAllConquered
-              ? 'Região Concluída com Sucesso!'
-              : `Progresso: ${completedCount} de ${totalCount} estados concluídos`
-          }
-        >
-          <Trophy className={`w-3.5 h-3.5 ${isAllConquered ? 'text-emerald-400 animate-bounce' : 'text-amber-400'}`} />
-          <span className={isAllConquered ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'}>
-            {completedCount}/{totalCount}
-          </span>
-        </div>
+          return (
+            <button
+              key={reg.id}
+              id={`btn-campanha-regiao-${reg.id}`}
+              type="button"
+              onClick={() => {
+                audioEngine.playSfx('click');
+                if (onSelectCampaign) onSelectCampaign(reg.id);
+              }}
+              className={`btn-campanha-regiao flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-bold transition-all cursor-pointer border ${
+                isRegActive
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.5)] font-extrabold scale-105'
+                  : 'bg-slate-900/90 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-700'
+              }`}
+              title={reg.label}
+              aria-label={reg.label}
+            >
+              <Icon className={`w-3 h-3 ${isRegActive ? 'text-slate-950' : reg.color}`} />
+              <span>{reg.short}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Menu Seletor Estiloso de Estados (Ctrl+K) */}
-      <StateSearchSelectorModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        completedStateIds={Array.from(completedSet)}
-        onSelectState={onStateClick}
-      />
-    </>
+      <div className="h-3.5 w-px bg-amber-500/30 shrink-0" />
+
+      {/* 2. Indicador de Progresso Compacto */}
+      <div
+        id="indicador-progresso-conquista"
+        className="indicador-progresso-conquista flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-900/90 border border-amber-500/30 text-[11px] font-mono shrink-0"
+        title={
+          isAllConquered
+            ? 'Região Concluída com Sucesso!'
+            : `Progresso: ${completedCount} de ${totalCount} estados concluídos`
+        }
+      >
+        <Trophy className={`w-3.5 h-3.5 ${isAllConquered ? 'text-emerald-400 animate-bounce' : 'text-amber-400'}`} />
+        <span className={isAllConquered ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'}>
+          {completedCount}/{totalCount}
+        </span>
+      </div>
+    </div>
   );
 };
 

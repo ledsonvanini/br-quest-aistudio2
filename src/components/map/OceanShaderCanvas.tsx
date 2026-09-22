@@ -72,7 +72,7 @@ export const OceanShaderCanvas: React.FC<OceanShaderCanvasProps> = ({
   return (
     <div
       id="container-shader-oceano-atlantico"
-      className="container-shader-oceano-atlantico absolute pointer-events-none z-15 select-none overflow-visible"
+      className="container-shader-oceano-atlantico absolute pointer-events-none z-0 select-none overflow-visible"
       style={{
         width: MAP_CANVAS_WIDTH,
         height: MAP_CANVAS_HEIGHT,

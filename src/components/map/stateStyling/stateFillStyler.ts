@@ -149,9 +149,19 @@ export function computeStateVisuals(opts: GetStateVisualsOptions): StateVisualPr
     (isSelected ? stateId : null);
 
   if (!isCartographyActive && activeIsolatedId && stateId !== activeIsolatedId) {
+    if (visualStyle === 'tiles') {
+      return {
+        stateFill: '#0b1626',
+        stateFillOpacity: 0.20,
+        strokeColor: '#334155',
+        strokeWidth: 0.85,
+        underglowColor: 'transparent',
+        wallGradId: 'url(#extrusionWallGradDefault)',
+      };
+    }
     return {
       stateFill: '#0b1626',
-      stateFillOpacity: 0.82,
+      stateFillOpacity: 0.65,
       strokeColor: '#1d2c42',
       strokeWidth: 0.85,
       underglowColor: 'transparent',

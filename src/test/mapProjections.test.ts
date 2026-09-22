@@ -9,6 +9,7 @@ import {
   DEFAULT_BRAZIL_ZOOM,
   NEIGHBORS_CONTINENT_ZOOM,
   getParameterizedMapCentering,
+  getMusicalFocusZoomAndPan,
 } from '../lib/mapProjections';
 import { geoPath } from 'd3-geo';
 
@@ -117,5 +118,17 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
     expect(centerNeighbors.targetZoom).toBe(0.57);
     expect(isNaN(centerNeighbors.targetPan.x)).toBe(false);
     expect(isNaN(centerNeighbors.targetPan.y)).toBe(false);
+  });
+
+  it('deve calcular pan e zoom para Musicalidades com offset de 50% de tela restante', () => {
+    // Para tela desktop (1920px de largura)
+    const resultDesktop = getMusicalFocusZoomAndPan([1280, 720], 1920, true, true, 'SP');
+    expect(resultDesktop.targetZoom).toBeGreaterThan(1.0);
+    // Como o AppLateral fica à direita, o pan.x deve ser deslocado para a esquerda (negativo)
+    expect(resultDesktop.targetPan.x).toBeLessThan(0);
+
+    // Para tela mobile (<640px de largura), modal ocupa tela cheia, offset = 0
+    const resultMobile = getMusicalFocusZoomAndPan([1280, 720], 480, true, true, 'SP');
+    expect(resultMobile.targetPan.x).toBe(0);
   });
 });

@@ -17,11 +17,13 @@ import { getStateHighlightsForEra, VINTAGE_RADIO_ERAS } from '../../data/vintage
 import { GUARDIANS_DATA } from '../../data/guardiansData';
 import { audioEngine } from '../../lib/audioSynth';
 import { vintageRadioEngine } from '../../lib/vintageRadioEngine';
+import { MusicStateQuickSwitcher } from './MusicStateQuickSwitcher';
 
 interface StateMusicDialogProps {
   stateId: string;
   selectedRadioEraId?: string;
   onClose: () => void;
+  onSelectState?: (stateId: string) => void;
   onTuneState?: (stateId: string) => void;
   onToggleExpand?: (expanded: boolean) => void;
 }
@@ -30,6 +32,7 @@ export const StateMusicDialog: React.FC<StateMusicDialogProps> = ({
   stateId,
   selectedRadioEraId = 'catedral_1930_1940',
   onClose,
+  onSelectState,
   onTuneState,
   onToggleExpand,
 }) => {
@@ -132,6 +135,18 @@ export const StateMusicDialog: React.FC<StateMusicDialogProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Seletor Rápido de Estados Brasileiros */}
+      <MusicStateQuickSwitcher
+        currentStateId={stateId}
+        onSelectState={(newId) => {
+          if (onSelectState) {
+            onSelectState(newId);
+          } else if (onTuneState) {
+            onTuneState(newId);
+          }
+        }}
+      />
 
       {/* Conteúdo com Rolagem */}
       <div className="p-3 sm:p-4 overflow-y-auto space-y-3 flex-1 text-xs text-slate-300">

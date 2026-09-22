@@ -299,6 +299,96 @@ async function startServer() {
     });
   });
 
+  // 1.B Reverse Geocoding Proxy (Nominatim IBGE boundary com User-Agent e headers oficiais)
+  app.get('/api/geolocation/reverse', async (req, res) => {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ error: 'Parâmetros lat e lng inválidos' });
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`;
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'SimbolosBR-EduApp/2.0 (contato@simbolosbr.edu.br; ledsonvanini@gmail.com)',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const address = data.address || {};
+        const isoCode = address['ISO3166-2-lvl4'] || '';
+        let uf = isoCode.replace(/^BR[-_]?/i, '').toUpperCase();
+        if (!uf && address.state) {
+          const stateLower = address.state.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+          const stateMap: Record<string, string> = {
+            'rio grande do norte': 'RN',
+            'rio grande do sul': 'RS',
+            'mato grosso do sul': 'MS',
+            'distrito federal': 'DF',
+            'espirito santo': 'ES',
+            'santa catarina': 'SC',
+            'rio de janeiro': 'RJ',
+            'minas gerais': 'MG',
+            'mato grosso': 'MT',
+            'pernambuco': 'PE',
+            'paraiba': 'PB',
+            'maranhao': 'MA',
+            'rondonia': 'RO',
+            'amazonas': 'AM',
+            'tocantins': 'TO',
+            'parana': 'PR',
+            'alagoas': 'AL',
+            'sergipe': 'SE',
+            'roraima': 'RR',
+            'brasilia': 'DF',
+            'sao paulo': 'SP',
+            'ceara': 'CE',
+            'bahia': 'BA',
+            'goias': 'GO',
+            'amapa': 'AP',
+            'piaui': 'PI',
+            'acre': 'AC',
+            'para': 'PA',
+          };
+
+          // 1. Match exato
+          if (stateMap[stateLower]) {
+            uf = stateMap[stateLower];
+          } else {
+            // 2. Match por ordem de comprimento decrescente e limites de palavra
+            for (const [name, code] of Object.entries(stateMap)) {
+              const regex = new RegExp(`\\b${name}\\b`, 'i');
+              if (regex.test(stateLower) || stateLower.includes(name)) {
+                uf = code;
+                break;
+              }
+            }
+          }
+        }
+        if (uf && uf.length === 2) {
+          return res.json({
+            stateId: uf,
+            stateName: address.state || uf,
+            city: address.city || address.town || address.municipality || '',
+            source: 'nominatim_server',
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('Erro no proxy de geolocalização do servidor:', err.message);
+    }
+
+    res.status(404).json({ error: 'Estado não identificado via geocodificação reversa' });
+  });
+
   // 2. Telemetria Climatológica Global (/api/climate)
   // Aceita ?force=true com controle inteligente de buffer (cooldown de 15s para evitar spam upstream)
   app.get('/api/climate', async (req, res) => {

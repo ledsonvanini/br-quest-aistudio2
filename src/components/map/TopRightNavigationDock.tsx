@@ -14,6 +14,8 @@ interface TopRightNavigationDockProps {
   onOpenEducatorPortal?: () => void;
   onOpenSearchSelector?: () => void;
   onStateLocated?: (stateId: string, stateName: string, regionId?: string) => void;
+  isUserLocatedActive?: boolean;
+  onClearUserLocation?: () => void;
   onNotification?: (msg: string) => void;
 }
 
@@ -27,17 +29,32 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
   onOpenEducatorPortal,
   onOpenSearchSelector,
   onStateLocated,
+  isUserLocatedActive,
+  onClearUserLocation,
   onNotification,
 }) => {
   const [isLocating, setIsLocating] = useState(false);
 
-  const handleLocateUser = async () => {
+  const handleLocateToggle = async () => {
+    // Se já estiver ativo, o clique DESELECCIONA e volta para o Modo Livre
+    if (isUserLocatedActive) {
+      audioEngine.playSfx('click');
+      onNotification?.('🗺️ Modo livre ativado (nenhuma região filtrada).');
+      if (onClearUserLocation) {
+        onClearUserLocation();
+      } else {
+        onResetView();
+      }
+      return;
+    }
+
+    // Caso contrário, localiza a região do usuário
     audioEngine.playSfx('click');
     setIsLocating(true);
     try {
       const result = await requestUserGeolocation();
       audioEngine.playSfx('travel');
-      onNotification?.(`📍 Localizado: ${result.stateName} (${result.detectedStateId})`);
+      onNotification?.(`📍 Região do Usuário: ${result.stateName} (${result.detectedStateId})`);
       if (onStateLocated) {
         onStateLocated(result.detectedStateId, result.stateName, result.regionId);
       } else {
@@ -158,28 +175,43 @@ export const TopRightNavigationDock: React.FC<TopRightNavigationDockProps> = ({
         />
       </div>
 
-      {/* Minha Geolocalização (GPS) */}
+      {/* Minha Geolocalização (GPS / Toggle Modo Livre) */}
       <div className="relative group">
         <button
           id="btn-geolocalizacao-usuario"
           type="button"
-          onClick={handleLocateUser}
+          onClick={handleLocateToggle}
           disabled={isLocating}
-          className="btn-geolocalizacao-usuario w-8 h-8 rounded-xl bg-slate-900/90 border border-slate-800 text-emerald-400 hover:text-emerald-200 hover:bg-slate-800 hover:border-emerald-400/50 flex items-center justify-center transition cursor-pointer group/btn relative"
-          aria-label="Minha Geolocalização"
+          className={`btn-geolocalizacao-usuario w-8 h-8 rounded-xl flex items-center justify-center transition cursor-pointer group/btn relative ${
+            isUserLocatedActive
+              ? 'bg-emerald-500 text-slate-950 border border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_12px_rgba(16,185,129,0.6)] font-bold'
+              : 'bg-slate-900/90 border border-slate-800 text-emerald-400 hover:text-emerald-200 hover:bg-slate-800 hover:border-emerald-400/50'
+          }`}
+          aria-label={isUserLocatedActive ? 'Desativar Região (Voltar ao Modo Livre)' : 'Localizar Minha Região'}
+          aria-pressed={isUserLocatedActive}
         >
           {isLocating ? (
             <Loader2 className="w-4 h-4 text-emerald-300 animate-spin" />
           ) : (
-            <Navigation className="w-4 h-4 text-emerald-400 group-hover/btn:scale-110 group-hover/btn:-rotate-45 transition-transform" />
+            <Navigation
+              className={`w-4 h-4 transition-transform ${
+                isUserLocatedActive
+                  ? 'text-slate-950 scale-110 -rotate-45'
+                  : 'text-emerald-400 group-hover/btn:scale-110 group-hover/btn:-rotate-45'
+              }`}
+            />
           )}
         </button>
 
         <SpeechBubbleTooltip
-          title="Minha Geolocalização"
-          badge="GPS / Navegador"
-          badgeColor="bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
-          description="Solicita permissão ao navegador para aproximar e focar diretamente no seu estado de origem."
+          title={isUserLocatedActive ? 'Voltar ao Modo Livre' : 'Localizar Minha Região'}
+          badge={isUserLocatedActive ? 'Ativo / Clique p/ Limpar' : 'GPS / Navegador'}
+          badgeColor={isUserLocatedActive ? 'bg-emerald-400 text-slate-950 font-black' : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'}
+          description={
+            isUserLocatedActive
+              ? 'Região do usuário ativa. Clique para desmarcar e retornar ao Modo Livre panorâmico.'
+              : 'Detecta sua região e foca no seu estado. Clique novamente depois para voltar ao Modo Livre.'
+          }
           align="right"
         />
       </div>

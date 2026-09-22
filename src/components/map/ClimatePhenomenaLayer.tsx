@@ -14,6 +14,7 @@ import {
   BRAZIL_STATES_COORDINATES,
 } from '../../services/climateService';
 import { geoPath } from 'd3-geo';
+import { CartographicClimateCard4x2 } from './climate/ClimatePhenomenaCards';
 import {
   Wind,
   Thermometer,
@@ -616,23 +617,25 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
       className="camada-fenomenos-climaticos absolute inset-0 pointer-events-none overflow-visible"
       style={{ width: MAP_CANVAS_WIDTH, height: MAP_CANVAS_HEIGHT }}
     >
-      {/* 1.A Background Continuous Heat Map Canvas (Muted / Grayscale when a state is focused, full opacity otherwise) */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          clipPath: 'url(#brazil-boundary-clip)',
-          WebkitClipPath: 'url(#brazil-boundary-clip)',
-        }}
-      >
-        <canvas
-          ref={heatMapCanvasRef}
-          width={MAP_CANVAS_WIDTH}
-          height={MAP_CANVAS_HEIGHT}
-          className={`mapa-calor-canvas absolute inset-0 pointer-events-none transition-all duration-300 ${
-            focusedStateId ? 'opacity-20 grayscale brightness-75' : 'opacity-85'
-          }`}
-        />
-      </div>
+      {/* 1.A Background Continuous Heat Map Canvas (Active only during temperaturas_frentes mode to prevent duplicate outlines) */}
+      {mode === 'temperaturas_frentes' && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            clipPath: 'url(#brazil-boundary-clip)',
+            WebkitClipPath: 'url(#brazil-boundary-clip)',
+          }}
+        >
+          <canvas
+            ref={heatMapCanvasRef}
+            width={MAP_CANVAS_WIDTH}
+            height={MAP_CANVAS_HEIGHT}
+            className={`mapa-calor-canvas absolute inset-0 pointer-events-none transition-all duration-300 ${
+              focusedStateId ? 'opacity-20 grayscale brightness-75' : 'opacity-85'
+            }`}
+          />
+        </div>
+      )}
 
       {/* 1.B Focused State Continuous Heat Map Canvas (Vibrant, full-color IDW shader strictly inside the focused state) */}
       {focusedStateId && (
@@ -883,11 +886,11 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                     >
                       {/* Glow Shadow Backdrop */}
                       <rect
-                        x="-56"
-                        y="-20"
-                        width="112"
-                        height="40"
-                        rx="20"
+                        x="-64"
+                        y="-22"
+                        width="128"
+                        height="44"
+                        rx="22"
                         fill="none"
                         stroke={isFocused ? '#38bdf8' : '#facc15'}
                         strokeWidth={isFocused ? '6' : isHovered ? '4' : '2.5'}
@@ -896,23 +899,23 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
                       {/* Main High-Contrast Solid Badge Container */}
                       <rect
-                        x="-54"
-                        y="-18"
-                        width="108"
-                        height="36"
-                        rx="18"
-                        fill="rgba(15, 23, 42, 0.96)"
+                        x="-62"
+                        y="-20"
+                        width="124"
+                        height="40"
+                        rx="20"
+                        fill="rgba(15, 23, 42, 0.98)"
                         stroke={isFocused ? '#38bdf8' : isHovered ? '#fbbf24' : '#eab308'}
                         strokeWidth={isFocused ? '3.5' : isHovered ? '3.0' : '2.2'}
                       />
 
                       {/* UF Tag (Gold / Yellow) */}
                       <text
-                        x="-36"
-                        y="5"
+                        x="-42"
+                        y="6"
                         textAnchor="middle"
                         fill="#fef08a"
-                        fontSize="12.5"
+                        fontSize="14"
                         fontWeight="900"
                         fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                       >
@@ -921,29 +924,29 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
                       {/* Divider Dot */}
                       <circle
-                        cx="-22"
+                        cx="-26"
                         cy="0"
-                        r="1.5"
+                        r="2"
                         fill="#eab308"
                       />
 
                       {/* Weather Icon Emoji */}
                       <text
-                        x="-10"
-                        y="5"
+                        x="-13"
+                        y="6"
                         textAnchor="middle"
-                        fontSize="13"
+                        fontSize="15"
                       >
                         {weatherEmoji}
                       </text>
 
                       {/* Forecast Máxima Temp */}
                       <text
-                        x="13"
-                        y="5"
+                        x="14"
+                        y="6"
                         textAnchor="middle"
                         fill="#fb923c"
-                        fontSize="13.5"
+                        fontSize="15"
                         fontWeight="900"
                         fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                       >
@@ -952,12 +955,12 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
                       {/* Forecast Mínima Temp */}
                       <text
-                        x="37"
-                        y="5"
+                        x="42"
+                        y="6"
                         textAnchor="middle"
                         fill="#38bdf8"
-                        fontSize="11.5"
-                        fontWeight="800"
+                        fontSize="13"
+                        fontWeight="900"
                         fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                       >
                         ↓{minT}°
@@ -965,23 +968,23 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
                       {/* Rain probability tag if significant */}
                       {rainProb >= 40 && (
-                        <g transform="translate(0, -25)">
+                        <g transform="translate(0, -28)">
                           <rect
-                            x="-22"
-                            y="-9"
-                            width="44"
-                            height="18"
-                            rx="9"
-                            fill="rgba(2, 132, 199, 0.95)"
+                            x="-24"
+                            y="-10"
+                            width="48"
+                            height="20"
+                            rx="10"
+                            fill="rgba(2, 132, 199, 0.98)"
                             stroke="#38bdf8"
-                            strokeWidth="1.2"
+                            strokeWidth="1.5"
                           />
                           <text
                             x="0"
                             y="4"
                             textAnchor="middle"
                             fill="#ffffff"
-                            fontSize="9.5"
+                            fontSize="10.5"
                             fontWeight="bold"
                             fontFamily="system-ui, sans-serif"
                           >
@@ -1006,11 +1009,11 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                   >
                     {/* Glow Shadow Backdrop */}
                     <rect
-                      x="-40"
-                      y="-19"
-                      width="80"
-                      height="38"
-                      rx="19"
+                      x="-48"
+                      y="-22"
+                      width="96"
+                      height="44"
+                      rx="22"
                       fill="none"
                       stroke={
                         isFocused
@@ -1021,17 +1024,17 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                           ? '#38bdf8'
                           : item.colorHex
                       }
-                      strokeWidth={isFocused ? '6' : isHovered ? '4' : '2'}
+                      strokeWidth={isFocused ? '6' : isHovered ? '4' : '2.5'}
                       strokeOpacity={isFocused ? '0.6' : isHovered ? '0.4' : '0.25'}
                     />
 
                     {/* Main High-Contrast Solid Badge Container */}
                     <rect
-                      x="-38"
-                      y="-17"
-                      width="76"
-                      height="34"
-                      rx="17"
+                      x="-45"
+                      y="-20"
+                      width="90"
+                      height="40"
+                      rx="20"
                       fill={
                         isFocused
                           ? 'rgba(3, 7, 18, 0.98)'
@@ -1039,7 +1042,7 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                           ? 'rgba(69, 10, 10, 0.98)'
                           : isMin
                           ? 'rgba(8, 47, 73, 0.98)'
-                          : 'rgba(3, 7, 18, 0.95)'
+                          : 'rgba(3, 7, 18, 0.96)'
                       }
                       stroke={
                         isFocused
@@ -1054,16 +1057,16 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
                           ? '#38bdf8'
                           : item.colorHex
                       }
-                      strokeWidth={isFocused ? '3.5' : isMuted ? '1.5' : isHovered ? '3.0' : isMax || isMin ? '2.5' : '2.0'}
+                      strokeWidth={isFocused ? '3.5' : isMuted ? '1.5' : isHovered ? '3.0' : isMax || isMin ? '2.5' : '2.2'}
                     />
 
                     {/* UF Tag (Bold, Crisp, Large) */}
                     <text
-                      x="-17"
-                      y="5"
+                      x="-20"
+                      y="6"
                       textAnchor="middle"
                       fill={isFocused ? '#38bdf8' : isMuted ? '#a1a1aa' : '#ffffff'}
-                      fontSize={isFocused ? '13.5' : '13'}
+                      fontSize={isFocused ? '15.5' : '15'}
                       fontWeight="900"
                       fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                     >
@@ -1072,19 +1075,19 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
 
                     {/* Divider Dot */}
                     <circle
-                      cx="-1"
+                      cx="-2"
                       cy="0"
-                      r="1.5"
+                      r="2"
                       fill={isFocused ? '#38bdf8' : isMuted ? '#71717a' : '#94a3b8'}
                     />
 
                     {/* Temperature Value (Large, High Contrast) */}
                     <text
-                      x="17"
-                      y="5"
+                      x="21"
+                      y="6"
                       textAnchor="middle"
                       fill={isFocused ? '#ffffff' : isMuted ? '#e4e4e7' : item.colorHex}
-                      fontSize={isFocused ? '16.5' : '16'}
+                      fontSize={isFocused ? '19' : '18'}
                       fontWeight="900"
                       fontFamily="system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
                     >
@@ -1097,82 +1100,194 @@ export const ClimatePhenomenaLayer: React.FC<ClimatePhenomenaLayerProps> = ({
           </g>
         )}
 
-        {/* 3.2 Atmospheric Wind Guides with Prominent Directional Labels */}
+        {/* 3.2 Atmospheric Wind Guides with 4x2 Educational Cartographic Cards */}
         {mode === 'ventos_aliseos' && (
           <g className="labels-ventos pointer-events-none animate-in fade-in duration-300">
-            {/* NE Trade Winds Label */}
-            <g transform="translate(1320, 240)">
-              <rect x="-130" y="-16" width="260" height="32" rx="10" fill="rgba(15, 23, 42, 0.94)" stroke="#38bdf8" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold" fontFamily="serif">
-                ↙ Ventos Alísios de Nordeste (NE)
-              </text>
-            </g>
+            {/* NE Trade Winds Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={1320}
+              y={240}
+              width={360}
+              height={180}
+              tag="Hadley Circulation • Hemisfério Norte"
+              tagColor="#38bdf8"
+              tagBg="rgba(14, 165, 233, 0.20)"
+              title="↙ Ventos Alísios de Nordeste (NE)"
+              titleColor="#38bdf8"
+              borderColor="#0284c7"
+              lines={[
+                "Sopram dos trópicos em direção ao Equador térmico (ZCIT).",
+                "Transportam calor e umidade oceânica do Atlântico Norte,",
+                "alimentando as chuvas do litoral e da bacia Amazônica."
+              ]}
+              telemetry="Velocidade: 18–28 km/h • Rumo: 225° SW • Alt.: < 2.000m"
+              telemetryColor="#7dd3fc"
+            />
 
-            {/* SE Trade Winds Label */}
-            <g transform="translate(1420, 680)">
-              <rect x="-130" y="-16" width="260" height="32" rx="10" fill="rgba(15, 23, 42, 0.94)" stroke="#60a5fa" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#60a5fa" fontSize="12" fontWeight="bold" fontFamily="serif">
-                ↖ Ventos Alísios de Sudeste (SE)
-              </text>
-            </g>
+            {/* SE Trade Winds Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={1420}
+              y={690}
+              width={360}
+              height={180}
+              tag="Anticiclone Subtropical (ASAS)"
+              tagColor="#60a5fa"
+              tagBg="rgba(59, 130, 246, 0.20)"
+              title="↖ Ventos Alísios de Sudeste (SE)"
+              titleColor="#93c5fd"
+              borderColor="#3b82f6"
+              lines={[
+                "Originam-se na borda ocidental da Alta Subtropical.",
+                "Confluem com os alísios de NE na ZCIT e impulsionam",
+                "a circulação costeira e frentes na costa leste brasileira."
+              ]}
+              telemetry="Velocidade: 22–32 km/h • Rumo: 315° NW • Fluxo Constante"
+              telemetryColor="#bfdbfe"
+            />
 
-            {/* Amazon Flying Rivers Conduit */}
-            <g transform="translate(560, 580)">
-              <rect x="-145" y="-16" width="290" height="32" rx="10" fill="rgba(6, 78, 59, 0.94)" stroke="#34d399" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#6ee7b7" fontSize="12" fontWeight="bold" fontFamily="serif">
-                ↘ Rios Voadores da Amazônia (Umidade)
-              </text>
-            </g>
+            {/* Amazon Flying Rivers Card (380x190 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={570}
+              y={580}
+              width={380}
+              height={190}
+              tag="Bomba Biótica • Jatos de Baixos Níveis"
+              tagColor="#34d399"
+              tagBg="rgba(16, 185, 129, 0.20)"
+              title="↘ Rios Voadores da Amazônia"
+              titleColor="#6ee7b7"
+              borderColor="#059669"
+              lines={[
+                "Fluxo aéreo massivo de vapor d'água bombeado pela",
+                "evapotranspiração da Floresta Amazônica. A barreira",
+                "dos Andes desvia a umidade para o Centro-Oeste, Sudeste e Sul."
+              ]}
+              telemetry="Vazão: ~200.000 m³/s • Umidade: 95% • Extensão: 3.500 km"
+              telemetryColor="#a7f3d0"
+            />
           </g>
         )}
 
-        {/* 3.3 ZCAS Precipitation Guides */}
+        {/* 3.3 ZCAS Precipitation Guides with 4x2 Educational Cards */}
         {mode === 'precipitacao_zcas' && (
           <g className="labels-zcas pointer-events-none animate-in fade-in duration-300">
-            <g transform="translate(860, 560)">
-              <rect x="-150" y="-18" width="300" height="36" rx="10" fill="rgba(8, 47, 73, 0.94)" stroke="#0284c7" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#38bdf8" fontSize="12" fontWeight="bold" fontFamily="serif">
-                🌧️ Eixo da ZCAS (Convergência de Umidade)
-              </text>
-            </g>
+            {/* ZCAS Axis Card (380x190 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={870}
+              y={560}
+              width={380}
+              height={190}
+              tag="Sistema Convectivo Transcontinental"
+              tagColor="#38bdf8"
+              tagBg="rgba(2, 132, 199, 0.20)"
+              title="🌧️ Eixo da ZCAS (Convergência de Umidade)"
+              titleColor="#38bdf8"
+              borderColor="#0284c7"
+              lines={[
+                "Banda persistente de nebulosidade e chuvas volumosas",
+                "que conecta o sul da Amazônia ao Sudeste e Atlântico Sul.",
+                "Retém umidade por 4 a 10 dias seguidos, deflagrando enchentes."
+              ]}
+              telemetry="Comprimento: ~3.800 km • Regime: Chuvas Contínuas • Risco Alto"
+              telemetryColor="#7dd3fc"
+            />
 
+            {/* Cold Front Path */}
             <g transform="translate(980, 1020)">
               <path d="M -160,20 L 160,-20" stroke="#3b82f6" strokeWidth="3" strokeDasharray="6 4" />
-              <rect x="-110" y="-16" width="220" height="32" rx="10" fill="rgba(15, 23, 42, 0.92)" stroke="#3b82f6" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#93c5fd" fontSize="12" fontWeight="bold" fontFamily="serif">
-                ❄️ Frente Fria Sinótica Polar
-              </text>
             </g>
+
+            {/* Cold Front Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={980}
+              y={1060}
+              width={360}
+              height={180}
+              tag="Massa Polar Atlântica (mPa)"
+              tagColor="#93c5fd"
+              tagBg="rgba(59, 130, 246, 0.20)"
+              title="❄️ Frente Fria Sinótica Polar"
+              titleColor="#bfdbfe"
+              borderColor="#2563eb"
+              lines={[
+                "Avanço de massa de ar polar denso vindo da Patagônia e Antártica.",
+                "O choque com o ar quente tropical deflagra temporais,",
+                "quedas bruscas de temperatura e ventos fortes no Centro-Sul."
+              ]}
+              telemetry="Queda Térmica: 8°C a 16°C • Pressão: Em Alta • Rajadas: 65 km/h"
+              telemetryColor="#dbeafe"
+            />
           </g>
         )}
 
-        {/* 3.4 ENSO Pacific Anomaly */}
+        {/* 3.4 ENSO Pacific Anomaly with 4x2 Educational Cards */}
         {mode === 'el_nino_la_nina' && (
           <g className="labels-enso pointer-events-none animate-in fade-in duration-300">
-            <g transform="translate(240, 480)">
-              <circle cx="0" cy="0" r="140" fill="url(#ensoDroughtGrad)" className="animate-pulse" />
-              <rect x="-140" y="-24" width="280" height="48" rx="12" fill="rgba(15, 23, 42, 0.95)" stroke="#f59e0b" strokeWidth="2" />
-              <text x="0" y="-5" textAnchor="middle" fill="#fef08a" fontSize="12" fontWeight="bold" fontFamily="serif">
-                Oceano Pacífico Equatorial
-              </text>
-              <text x="0" y="14" textAnchor="middle" fill="#f59e0b" fontSize="11" fontWeight="mono" fontFamily="sans-serif">
-                Aquecimento TSM: +2.3°C (Super El Niño)
-              </text>
-            </g>
+            {/* Pacific Anomaly Glow */}
+            <circle cx="240" cy="480" r="140" fill="url(#ensoDroughtGrad)" className="animate-pulse" />
 
-            <g transform="translate(1220, 430)">
-              <rect x="-140" y="-18" width="280" height="36" rx="10" fill="rgba(69, 10, 10, 0.94)" stroke="#ef4444" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#fca5a5" fontSize="12" fontWeight="bold" fontFamily="serif">
-                🔥 Seca Severa & Bloqueio Atmosférico
-              </text>
-            </g>
+            {/* Pacific Anomaly Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={240}
+              y={480}
+              width={360}
+              height={180}
+              tag="ENSO • Oscilação do Pacífico Equatorial"
+              tagColor="#f59e0b"
+              tagBg="rgba(245, 158, 11, 0.20)"
+              title="🌊 Aquecimento Anômalo TSM (Nino 3.4)"
+              titleColor="#fde047"
+              borderColor="#d97706"
+              lines={[
+                "Enfraquecimento dos ventos alísios no Pacífico aquece as águas",
+                "superficiais (+2.3°C), desarticulando a Célula de Walker",
+                "e alterando profundamente o padrão pluviométrico global."
+              ]}
+              telemetry="Anomalia TSM: +2.3°C • Fase Atual: Super El Niño Ativo"
+              telemetryColor="#fef08a"
+            />
 
-            <g transform="translate(860, 980)">
-              <rect x="-135" y="-18" width="270" height="36" rx="10" fill="rgba(8, 47, 73, 0.94)" stroke="#06b6d4" strokeWidth="1.8" />
-              <text x="0" y="5" textAnchor="middle" fill="#67e8f9" fontSize="12" fontWeight="bold" fontFamily="serif">
-                🌊 Enchentes & Intensificação do Jato
-              </text>
-            </g>
+            {/* Drought in North/Northeast Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={1220}
+              y={430}
+              width={360}
+              height={180}
+              tag="Bloqueio & Subsidência Atmosférica"
+              tagColor="#ef4444"
+              tagBg="rgba(239, 68, 68, 0.20)"
+              title="🔥 Seca Severa & Bloqueio Atmosférico"
+              titleColor="#fca5a5"
+              borderColor="#dc2626"
+              lines={[
+                "Ar descendente seco inibe nuvens convectivas de chuva",
+                "sobre o semiárido nordestino e leste da Amazônia. Provoca",
+                "estiagens prolongadas, quebra de safras e alto risco de fogo."
+              ]}
+              telemetry="Déficit Pluviométrico: -45% • Risco de Incêndio: Crítico"
+              telemetryColor="#fecaca"
+            />
+
+            {/* Floods in the South Card (360x180 - Proporção 4x2) */}
+            <CartographicClimateCard4x2
+              x={860}
+              y={990}
+              width={360}
+              height={180}
+              tag="Aceleração do Jato Subtropical"
+              tagColor="#06b6d4"
+              tagBg="rgba(6, 182, 212, 0.20)"
+              title="🌊 Enchentes & Intensificação do Jato"
+              titleColor="#67e8f9"
+              borderColor="#0891b2"
+              lines={[
+                "O El Niño retém sistemas frontais sobre a Região Sul,",
+                "represando frentes frias contra massas de ar quente e gerando",
+                "sucessivas semanas de temporais e inundações históricas."
+              ]}
+              telemetry="Excedente de Chuva: +90% a +150% • Risco Cheias: Alto"
+              telemetryColor="#a5f3fc"
+            />
           </g>
         )}
       </svg>

@@ -265,23 +265,23 @@ export const MapStatesLayer: React.FC<MapStatesLayerProps> = ({
       />
 
       {/* 2. D3 Clipped Map Tiles (Natural Earth, Shaded Relief, Satellite) */}
-      {visualStyle === 'tiles' &&
-        !activeIsolatedState &&
-        (!activeCartographyLayer || activeCartographyLayer === 'none') &&
-        !focusedClimateStateId &&
-        !focusedBiodiversityStateId &&
-        !focusedGeopoliticsStateId &&
-        !focusedMusicalStateId && (
-          <ClippedMapTilesLayer
-            geoData={geoData}
-            projection={projection}
-            provider={terrainProvider}
-            opacity={isClimateActive ? 0.5 : 1.0}
-          />
-        )}
+      {visualStyle === 'tiles' && (
+        <ClippedMapTilesLayer
+          geoData={geoData}
+          projection={projection}
+          provider={terrainProvider}
+          opacity={
+            isClimateActive
+              ? 0.60
+              : activeCartographyLayer && activeCartographyLayer !== 'none'
+              ? 0.45
+              : 1.0
+          }
+        />
+      )}
 
-      {/* Cartographic Graticule Grid (Discreto e apenas quando nenhuma camada temática de território ou foco estiver ativa) */}
-      {(!activeCartographyLayer || activeCartographyLayer === 'none') && !activeIsolatedState && (
+      {/* Cartographic Graticule Grid (Discreto e apenas quando nenhuma camada temática de território estiver ativa) */}
+      {(!activeCartographyLayer || activeCartographyLayer === 'none') && (
         <CartographicGraticuleLayer
           projection={projection}
           isParchmentMode={terrainProvider === 'voyager_parchment'}

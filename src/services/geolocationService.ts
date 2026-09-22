@@ -126,9 +126,20 @@ export function normalizeStateId(rawInput: string): string | null {
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
+  // 1. Match exato prioritário
   for (const [key, uf] of Object.entries(STATE_NAME_TO_UF)) {
     const normKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (normalizedName === normKey || normalizedName.includes(normKey) || normKey.includes(normalizedName)) {
+    if (normalizedName === normKey) {
+      return uf;
+    }
+  }
+
+  // 2. Match ordenado pelos nomes mais longos primeiro (ex: "rio grande do sul", "mato grosso do sul", "parana" antes de "para")
+  const sortedEntries = Object.entries(STATE_NAME_TO_UF).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, uf] of sortedEntries) {
+    const normKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const regex = new RegExp(`\\b${normKey}\\b`, 'i');
+    if (regex.test(normalizedName) || normalizedName.includes(normKey)) {
       return uf;
     }
   }
@@ -186,6 +197,66 @@ function isPointInGeometry(lng: number, lat: number, geometry: any): boolean {
 }
 
 /**
+ * Distância euclidiana ao quadrado de um ponto a um segmento de reta
+ */
+function pointToSegmentDistanceSquared(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) {
+    const ddx = px - x1;
+    const ddy = py - y1;
+    return ddx * ddx + ddy * ddy;
+  }
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  const projX = x1 + t * dx;
+  const projY = y1 + t * dy;
+  const dpx = px - projX;
+  const dpy = py - projY;
+  return dpx * dpx + dpy * dpy;
+}
+
+function minDistanceToRing(lng: number, lat: number, ring: number[][]): number {
+  let minD2 = Infinity;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const d2 = pointToSegmentDistanceSquared(lng, lat, ring[j][0], ring[j][1], ring[i][0], ring[i][1]);
+    if (d2 < minD2) minD2 = d2;
+  }
+  return minD2;
+}
+
+/**
+ * Calcula a distância mínima em graus de um ponto até a fronteira/costa de um estado
+ */
+function minDistanceToGeometry(lng: number, lat: number, geometry: any): number {
+  let minD2 = Infinity;
+  if (!geometry || !geometry.coordinates) return minD2;
+  const { type, coordinates } = geometry;
+  if (type === 'Polygon') {
+    for (const ring of coordinates) {
+      const d2 = minDistanceToRing(lng, lat, ring);
+      if (d2 < minD2) minD2 = d2;
+    }
+  } else if (type === 'MultiPolygon') {
+    for (const poly of coordinates) {
+      for (const ring of poly) {
+        const d2 = minDistanceToRing(lng, lat, ring);
+        if (d2 < minD2) minD2 = d2;
+      }
+    }
+  }
+  return Math.sqrt(minD2);
+}
+
+/**
  * Calcula a distância euclidiana/haversine simplificada em km entre dois pontos lat/lng
  */
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -203,34 +274,34 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 /**
- * Tenta reverse geocoding via OpenStreetMap Nominatim ou BigDataCloud com timeout estrito de 2.5s
+ * Tenta reverse geocoding via proxy local do servidor (/api/geolocation/reverse)
+ * com fallback direto para Nominatim OpenStreetMap
  */
 async function reverseGeocodeCoords(lat: number, lng: number): Promise<string | null> {
-  // 1. Tentar BigDataCloud Client API (gratuita, sem API key, rápida)
+  // 1. Tentar Proxy do Servidor Local (alta confiabilidade, headers oficiais e sem restrições de CORS)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2200);
-    const res = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
-      { signal: controller.signal }
-    );
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`/api/geolocation/reverse?lat=${lat}&lng=${lng}`, {
+      signal: controller.signal,
+    });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      const stateName = data.principalSubdivision || data.localityInfo?.administrative?.[1]?.name || '';
-      const uf = normalizeStateId(stateName);
-      if (uf) return uf;
+      if (data.stateId && BRAZIL_STATE_LAT_LNG[data.stateId]) {
+        return data.stateId;
+      }
     }
   } catch {
-    // Continua para o próximo serviço
+    // Prossegue para tentativa direta no cliente se o servidor estiver ocupado
   }
 
-  // 2. Tentar OpenStreetMap Nominatim
+  // 2. Tentar OpenStreetMap Nominatim direto no cliente
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2200);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=8`,
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`,
       {
         signal: controller.signal,
         headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' },
@@ -240,6 +311,10 @@ async function reverseGeocodeCoords(lat: number, lng: number): Promise<string | 
     if (res.ok) {
       const data = await res.json();
       const address = data.address || {};
+      const iso = (address['ISO3166-2-lvl4'] || '').replace(/^BR[-_]?/i, '').toUpperCase();
+      if (iso && BRAZIL_STATE_LAT_LNG[iso]) {
+        return iso;
+      }
       const stateName = address.state || address.province || address.region || '';
       const uf = normalizeStateId(stateName);
       if (uf) return uf;
@@ -252,13 +327,13 @@ async function reverseGeocodeCoords(lat: number, lng: number): Promise<string | 
 }
 
 /**
- * Identifica o estado brasileiro exato via Reverse Geocoding + Ray-Casting GeoJSON IBGE + Centróides
+ * Identifica o estado brasileiro exato via Reverse Geocoding + Ray-Casting GeoJSON IBGE + Distância de Fronteira
  */
 export async function identifyBrazilianState(
   lat: number,
   lng: number
 ): Promise<{ stateId: string; stateName: string; regionId: string; source: 'reverse_geocoding' | 'polygon' | 'gps' }> {
-  // 1. Tenta Reverse Geocoding com as coordenadas exatas
+  // 1. Tenta Reverse Geocoding com as coordenadas exatas (Proxy Servidor + Nominatim IBGE)
   const revUf = await reverseGeocodeCoords(lat, lng);
   if (revUf && BRAZIL_STATE_LAT_LNG[revUf]) {
     const info = BRAZIL_STATE_LAT_LNG[revUf];
@@ -270,7 +345,7 @@ export async function identifyBrazilianState(
     };
   }
 
-  // 2. Tenta Ray-Casting nos Polígonos GeoJSON oficiais do IBGE (/br/br.json)
+  // 2. Tenta Ray-Casting e Distância de Fronteira nos Polígonos GeoJSON oficiais do IBGE (/br/br.json)
   try {
     let geoData = getCachedGeoData();
     if (!geoData) {
@@ -278,9 +353,9 @@ export async function identifyBrazilianState(
     }
 
     if (geoData && Array.isArray(geoData.features)) {
+      // 2.A: Teste de inclusão direta de polígono (Ray-Casting)
       for (const feature of geoData.features) {
         if (isPointInGeometry(lng, lat, feature.geometry)) {
-          // Extrai e normaliza o ID da feature (ex: "BRSP" -> "SP", "BRRS" -> "RS")
           const rawPropId = feature.properties?.id || feature.properties?.sigla || '';
           const uf = normalizeStateId(rawPropId) || normalizeStateId(feature.properties?.name || '');
           if (uf && BRAZIL_STATE_LAT_LNG[uf]) {
@@ -293,6 +368,34 @@ export async function identifyBrazilianState(
             };
           }
         }
+      }
+
+      // 2.B: Se o ponto estiver em cidades litorâneas, ilhas (ex: Vitória, Florianópolis, Santos)
+      // ou regiões de fronteira, encontra a geometria estadual mais próxima pela linha de divisa
+      let closestStateId: string | null = null;
+      let minBorderDist = Infinity;
+
+      for (const feature of geoData.features) {
+        const rawPropId = feature.properties?.id || feature.properties?.sigla || '';
+        const uf = normalizeStateId(rawPropId) || normalizeStateId(feature.properties?.name || '');
+        if (uf && BRAZIL_STATE_LAT_LNG[uf]) {
+          const distDeg = minDistanceToGeometry(lng, lat, feature.geometry);
+          if (distDeg < minBorderDist) {
+            minBorderDist = distDeg;
+            closestStateId = uf;
+          }
+        }
+      }
+
+      // Se a distância até a fronteira for menor que ~1.0 grau (~110 km), confirma o estado costeiro
+      if (closestStateId && minBorderDist < 1.0) {
+        const info = BRAZIL_STATE_LAT_LNG[closestStateId];
+        return {
+          stateId: closestStateId,
+          stateName: info.name,
+          regionId: info.regionId,
+          source: 'polygon',
+        };
       }
     }
   } catch (err) {
@@ -321,54 +424,65 @@ export async function identifyBrazilianState(
 }
 
 /**
- * Fallback via serviço de IP quando o navegador está em iframe ou tem permissão bloqueada
+ * Fallback via serviço de IP exclusivo para conexões em território brasileiro
+ * NUNCA retorna estados arbitrários se o IP estiver fora do Brasil (ex: US, proxies em nuvem)
  */
 async function getFallbackIpLocation(): Promise<GeoLocationResult | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const res = await fetch('https://get.geojs.io/v1/ip/geo.json', { signal: controller.signal });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      const lat = parseFloat(data.latitude);
-      const lng = parseFloat(data.longitude);
+      // Valida estritamente se o IP detectado é do Brasil
+      const countryCode = (data.country_code || data.country_code3 || '').toUpperCase();
+      if (countryCode !== 'BR' && countryCode !== 'BRA') {
+        return null; // IP fora do Brasil, não gera falso positivo
+      }
+
       const rawRegion = data.region || data.city || '';
-      const uf = normalizeStateId(rawRegion) || (await identifyBrazilianState(lat, lng)).stateId;
-      const info = BRAZIL_STATE_LAT_LNG[uf] || BRAZIL_STATE_LAT_LNG.DF;
-      return {
-        latitude: lat || info.lat,
-        longitude: lng || info.lng,
-        accuracy: 10000,
-        detectedStateId: uf,
-        stateName: info.name,
-        regionId: info.regionId,
-        source: 'ip',
-      };
-    }
-  } catch {
-    // tenta ipwho.is
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
-      const res = await fetch('https://ipwho.is/', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const data = await res.json();
-        const lat = data.latitude;
-        const lng = data.longitude;
-        const rawRegion = data.region || data.region_code || '';
-        const uf = normalizeStateId(rawRegion) || (await identifyBrazilianState(lat, lng)).stateId;
-        const info = BRAZIL_STATE_LAT_LNG[uf] || BRAZIL_STATE_LAT_LNG.DF;
+      const uf = normalizeStateId(rawRegion);
+      if (uf && BRAZIL_STATE_LAT_LNG[uf]) {
+        const info = BRAZIL_STATE_LAT_LNG[uf];
         return {
-          latitude: lat || info.lat,
-          longitude: lng || info.lng,
-          accuracy: 10000,
+          latitude: info.lat,
+          longitude: info.lng,
+          accuracy: 15000,
           detectedStateId: uf,
           stateName: info.name,
           regionId: info.regionId,
           source: 'ip',
         };
+      }
+    }
+  } catch {
+    // tenta ipwho.is como contingência
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch('https://ipwho.is/', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const countryCode = (data.country_code || '').toUpperCase();
+        if (countryCode !== 'BR') {
+          return null; // IP fora do Brasil
+        }
+        const rawRegion = data.region || data.region_code || '';
+        const uf = normalizeStateId(rawRegion);
+        if (uf && BRAZIL_STATE_LAT_LNG[uf]) {
+          const info = BRAZIL_STATE_LAT_LNG[uf];
+          return {
+            latitude: info.lat,
+            longitude: info.lng,
+            accuracy: 15000,
+            detectedStateId: uf,
+            stateName: info.name,
+            regionId: info.regionId,
+            source: 'ip',
+          };
+        }
       }
     } catch {
       // Falha total de IP
@@ -381,7 +495,7 @@ async function getFallbackIpLocation(): Promise<GeoLocationResult | null> {
  * Solicita autorização de geolocalização ao navegador e retorna o estado detectado com máxima precisão
  */
 export async function requestUserGeolocation(): Promise<GeoLocationResult> {
-  // Se navigator.geolocation estiver disponível, tenta primeiro
+  // Se navigator.geolocation estiver disponível, tenta primeiro via GPS nativo do dispositivo
   if (typeof navigator !== 'undefined' && navigator.geolocation) {
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -390,8 +504,8 @@ export async function requestUserGeolocation(): Promise<GeoLocationResult> {
           (err) => reject(err),
           {
             enableHighAccuracy: true,
-            timeout: 6000,
-            maximumAge: 60000,
+            timeout: 7000,
+            maximumAge: 30000,
           }
         );
       });
@@ -410,26 +524,18 @@ export async function requestUserGeolocation(): Promise<GeoLocationResult> {
         source: stateInfo.source,
       };
     } catch (gpsError: any) {
-      console.warn('GPS do navegador falhou ou foi bloqueado, tentando fallback por IP:', gpsError?.message);
+      console.warn('GPS do dispositivo não autorizou ou expirou timeout:', gpsError?.message);
     }
   }
 
-  // Fallback por IP
+  // Fallback por IP (apenas se for IP comprovadamente brasileiro)
   const ipResult = await getFallbackIpLocation();
   if (ipResult) {
     return ipResult;
   }
 
-  // Fallback final: Distrito Federal / Centro do Brasil
-  return {
-    latitude: BRAZIL_STATE_LAT_LNG.DF.lat,
-    longitude: BRAZIL_STATE_LAT_LNG.DF.lng,
-    accuracy: 50000,
-    detectedStateId: 'DF',
-    stateName: BRAZIL_STATE_LAT_LNG.DF.name,
-    regionId: BRAZIL_STATE_LAT_LNG.DF.regionId,
-    source: 'gps',
-  };
+  // Quando não for possível detectar com exatidão, lança erro informativo em vez de forçar estado aleatório
+  throw new Error('Não foi possível identificar sua localização automaticamente. Selecione seu estado no menu ou mapa.');
 }
 
 

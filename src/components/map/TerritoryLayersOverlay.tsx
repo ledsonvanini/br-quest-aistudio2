@@ -207,10 +207,10 @@ export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
                         className="transition-transform"
                       >
                         <rect
-                          x="-75"
-                          y="-12"
-                          width="150"
-                          height="24"
+                          x="-85"
+                          y="-14"
+                          width="170"
+                          height="26"
                           rx="6"
                           fill="#0f172a"
                           fillOpacity="0.96"
@@ -218,7 +218,7 @@ export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
                           strokeWidth={1.8}
                           filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))"
                         />
-                        <text textAnchor="middle" y="3.5" fill="#f8fafc" fontSize="9.5" fontWeight="bold">
+                        <text textAnchor="middle" y="3.5" fill="#f8fafc" fontSize="11" fontWeight="bold">
                           {route.name}
                         </text>
                       </g>
@@ -255,18 +255,18 @@ export const TerritoryLayersOverlay: React.FC<TerritoryLayersOverlayProps> = ({
                     />
                   <g transform="translate(14, 4)" className="transition-all opacity-0 group-hover:opacity-100 group-hover:scale-105 pointer-events-none">
                     <rect
-                      x="-4"
-                      y="-11"
-                      width={porto.name.length * 6.4 + 14}
-                      height="20"
-                      rx="5"
+                      x="-6"
+                      y="-13"
+                      width={porto.name.length * 7.5 + 28}
+                      height="24"
+                      rx="6"
                       fill="#030712"
                       fillOpacity="0.95"
-                      stroke="#0284c7"
-                      strokeWidth="1.2"
-                      filter="drop-shadow(0 2px 6px rgba(0,0,0,0.8))"
+                      stroke="#38bdf8"
+                      strokeWidth="1.5"
+                      filter="drop-shadow(0 2px 8px rgba(0,0,0,0.85))"
                     />
-                    <text x="3" y="3" fill="#e0f2fe" fontSize="9.5" fontWeight="bold">
+                    <text x="4" y="3.5" fill="#f0f9ff" fontSize="11" fontWeight="bold">
                       ⚓ {porto.name.replace(/Porto (de|do|Fluvial de) /g, '')} ({porto.state})
                     </text>
                   </g>
