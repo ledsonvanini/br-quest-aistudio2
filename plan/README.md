@@ -8,40 +8,41 @@ Este diretório centraliza a documentação técnica, planos formais de arquitet
 
 ## 1. Documentos Principais e Estratégicos
 
-- **[Plano de Negócio Executivo](./plano_de_negocio.md)**
-  - *Conteúdo:* Estratégia de monetização Freemium (Free vs. Passe do Guardião Pro), canais de aquisição viral e parcerias, modelo B2B escolar ("BR Quest Edu"), B2G governamental, atração via Clima e 5 Dicas do Dia ("Você Sabia?"), expansão internacional com dados oficiais, unit economics e projeções a 3 anos.
-- **[Próximos Passos Estratégicos e Evolução do Produto](./proximos_passos_estrategicos.md)**
-  - *Conteúdo:* Matriz de priorização e horizontes de evolução (H1 Imediato: Dicas do Dia, Nuvem/Auth e modularização D3; H2 Médio: Portal do Educador e PWA; H3 Expansão: Internacionalização e América do Sul).
-- **[O Dossiê "Me Convença"](./me_convenca.md)**
-  - *Conteúdo:* A tese de valor ("Aprender é chato quando parece estudo; descobrir é viciante quando parece exploração"), o Cavalo de Troia da Curiosidade, vitrine do Brasil para o mundo com APIs oficiais, tutores de IA com alma regional e matriz comparativa irrefutável.
-- **[Registro Vivo de Dívidas Técnicas](./dividas_tecnicas.md)**
-  - *Conteúdo:* Mapeamento e priorização de dívidas técnicas acumuladas: arquivos excedendo limites de linhas, necessidade de nuvem/autenticação (Firebase Auth + Firestore), endpoints de IA Gemini server-side, lazy loading de texturas planetárias e acessibilidade.
-- **[Fluxo do Usuário e Arquitetura do Sistema](./fluxo_e_arquitetura.md)**
-  - *Conteúdo:* Arquitetura em camadas (UI, Shaders WebGL2, Microengines Three.js/D3, IA Server-Side, Cache L1/L2/L3 e Nuvem), ciclo de vida dos modos e diagrama detalhado da jornada do usuário do Super App.
-- **[Ficha Técnica da Aplicação](./ficha_tecnica.md)**
-  - *Conteúdo:* Stack tecnológico completo, especificações das microengines (`CelestialSystem`, `CameraOrbitController`, `CosmicLaserBeam`, `GeodesicEngine`, `OceanEngine`), APIs integradas (Open-Meteo, IBGE, GBIF, NASA), requisitos de hardware e compatibilidade de navegadores.
-- **[Visão de Negócio e Estratégia de Mercado](./visao_de_negocio.md)**
-  - *Conteúdo:* Tese de valor original, análise de mercado (TAM, SAM, SOM), modelos de monetização institucional e vantagens competitivas sustentáveis (*moats*).
-- **[Requisitos Funcionais e Não-Funcionais](./requisitos_funcionais_e_nao_funcionais.md)**
-  - *Conteúdo:* Especificação formal dos Requisitos Funcionais (RF01 a RF11: cartografia multidimensional, astrometria 3D, rotas geodésicas, simulador solar 24h, exclusividade mútua de painéis, recálculo dinâmico de câmera) e Requisitos Não-Funcionais (RNF01 a RNF08: 60 FPS, < 140MB heap, WCAG AA, regra `classe-para-humanos`, limites de 250 a 270 linhas por arquivo).
+## 1. Documentos de Negócio e PRDs (`/plan/business_and_prds/`)
+
+- **[Plano de Negócio Executivo](./business_and_prds/plano_de_negocio.md)**: Monetização Freemium, parcerias escolares e unit economics.
+- **[PRD Símbolos Nacionais e Estaduais](./business_and_prds/PRD_SIMBOLOS_BR.md)**: Brasões, hinos e heráldica oficial das 27 UFs.
+- **[Próximos Passos Estratégicos](./business_and_prds/proximos_passos_estrategicos.md)**: Horizontes H1, H2 e H3 do produto.
+- **[O Dossiê "Me Convença"](./business_and_prds/me_convenca.md)**: A tese do Cavalo de Troia da Curiosidade.
+- **[Visão de Negócio](./business_and_prds/visao_de_negocio.md)**: TAM, SAM, SOM e moats do BR Quest.
+- **[Requisitos Funcionais e Não-Funcionais](./business_and_prds/requisitos_funcionais_e_nao_funcionais.md)**: RF01 a RF11 e RNF01 a RNF08.
 
 ---
 
-## 2. Engenharia Gráfica, Shaders e Arquitetura de Modos
+## 2. Engenharia e Arquitetura de Sistemas (`/plan/architecture/`)
 
-- **[Refatoração do Globo 3D, Astronomia e Rotas](./2026-09-05_refatoracao_globo_3d_astronomia_rotas_shaders.md)**
-  - *Conteúdo:* Arquitetura do motor esférico Three.js, coordenadas equatoriais/eclípticas, dispersão atmosférica, feixe cósmico volumétrico e arcos geodésicos inter-estaduais.
-- **[Especificação do Shader Oceânico Cartográfico](./especificacao_shader_oceano_cartografico.md)**
-  - *Conteúdo:* Shader procedural contínuo em WebGL2 com swell bidirecional, domain warping de 2 etapas, cáusticas fractais e batimetria suave sem descontinuidades (*Zero Bounding Box*).
-- **[Diretrizes de Governança de Modos](./MODES_ARCHITECTURE_AND_CODE_GUIDELINES.md)**
-  - *Conteúdo:* Princípio da independência estrita de cada modo ('clima', 'biodiversidade', 'geopolitica', 'globo3d', 'aventura'), desacoplamento em hooks e eliminação de efeitos colaterais.
-- **[Plano Mestre de Refatoração](./REFACTORING_PLAN_2026_09_02.md)**
-  - *Conteúdo:* Decomposição de arquivos volumosos, arquitetura em camadas e estratégia de cache multi-nível (L1/L2/L3).
-- **[Arquitetura do Mapa Vetorial D3](./d3_geo_map_architecture.md)**
-  - *Conteúdo:* Projeções geográficas personalizadas para o território brasileiro e renderização vetorial otimizada.
-- **[Arquitetura do HUD da Bússola e Controles](./gizmo_compass_hud_architecture.md)**
-  - *Conteúdo:* Gizmo 3D de orientação azimutal e sincronização com o ponto de vista da câmera.
-- **[Especificação do Modo Geopolítico](./geopolitica-mode.md)**
-  - *Conteúdo:* Divisões regionais do IBGE, filtros territoriais e fronteiras geopolíticas.
-- **[Rotina de Testes e Garantia de Qualidade](./testing_and_qa_routine.md)**
-  - *Conteúdo:* Diretrizes para testes unitários com Vitest e testes E2E com Playwright.
+- **[Especificação do Shader Oceânico Cartográfico](./architecture/especificacao_shader_oceano_cartografico.md)**: Swell, cáusticas, domain warping e zero bounding box.
+- **[Diretrizes de Governança de Modos](./architecture/MODES_ARCHITECTURE_AND_CODE_GUIDELINES.md)**: Independência hermética dos modos.
+- **[Arquitetura do Mapa D3 Mercator](./architecture/d3_geo_map_architecture.md)**: Projeções personalizadas para o Brasil.
+- **[Arquitetura do HUD e Bússola 3D](./architecture/gizmo_compass_hud_architecture.md)**: Gizmo azimutal e sincronização de câmera.
+- **[Especificação do Modo Geopolítico](./architecture/geopolitica-mode.md)**: Censo IBGE 2022 e recortes regionais.
+- **[Ficha Técnica da Aplicação](./architecture/ficha_tecnica.md)**: Stack tecnológico, microengines e APIs.
+- **[Fluxo do Usuário e Arquitetura do Sistema](./architecture/fluxo_e_arquitetura.md)**: Arquitetura em camadas e ciclo de vida dos modos.
+- **[Registro Vivo de Dívidas Técnicas](./architecture/dividas_tecnicas.md)**: Mapeamento e quitação de dívidas técnicas.
+- **[Rotina de Testes e Garantia de Qualidade](./architecture/testing_and_qa_routine.md)**: Diretrizes Vitest e Playwright.
+
+---
+
+## 3. Histórico de Refatorações Arquivadas (`/plan/refactoring_history/`)
+
+- `2026-09-02_refactoring_plan.md`
+- `2026-09-05_refatoracao_globo_3d_astronomia_rotas_shaders.md`
+- `2026-09-15_arquitetura_modos_sidebar_contextual_e_camadas_cartograficas.md`
+- `2026-09-22_arquitetura_texturas_shaders_apps_laterais_e_modos.md`
+- `plano_implementacao_texturas_shaders_e_modos.md`
+
+---
+
+## 4. Plano Vigente Ativo
+
+- **[Plano Consolidado Rumo à Versão Beta](./2026-09-30_plano_consolidado_refatoracao_caminho_beta.md)**: O documento ativo e aprovado para execução.
