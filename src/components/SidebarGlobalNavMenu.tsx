@@ -167,9 +167,10 @@ interface Props {
   onOpenApiStatus?: () => void;
   onOpenDailyTips?: () => void;
   dailyTipsUnreadCount?: number;
+  isAnyModalOpen?: boolean;
 }
 
-export const TopGlobalNavMenu: React.FC<Props> = ({
+export const SidebarGlobalNavMenu: React.FC<Props> = ({
   activeCartographyLayer,
   onSelectCartographyLayer,
   mainMode,
@@ -243,6 +244,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   onOpenApiStatus,
   onOpenDailyTips,
   dailyTipsUnreadCount,
+  isAnyModalOpen = false,
   selectedTerritorySubitemId,
   onSelectTerritorySubitem,
   isTerritorySubmenuOpen,
@@ -267,9 +269,10 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   const [openFlyoutMode, setOpenFlyoutMode] = useState<AppMainMode | null>('clima');
 
   // Garante exclusividade mútua estrita: se um estado estiver selecionado no AppLateral,
+  // ou se qualquer modal estiver aberto (BrQuest, Perfil, Dicas, etc.),
   // fecha qualquer flyout, submenu de território, gavetas ou tooltips imediatamente
   useEffect(() => {
-    if (selectedStateId) {
+    if (selectedStateId || isAnyModalOpen) {
       setOpenFlyoutMode(null);
       setLocalTerritorySubmenuOpen(false);
       setIsTerritorySectionExpanded(false);
@@ -278,7 +281,7 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
       setHoveredMenuTooltip(null);
       setFlyoutPos(null);
     }
-  }, [selectedStateId]);
+  }, [selectedStateId, isAnyModalOpen]);
 
   // Posição calculada do flyout vertical com seta direcionada ao botão pai
   const [flyoutPos, setFlyoutPos] = useState<{ top: number; arrowTop: number } | null>(null);
@@ -1192,6 +1195,8 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
         onOpenUserProfile={onOpenUserProfile}
         onOpenSettings={onOpenSettings}
         onOpenAboutInfo={onOpenAboutInfo}
+        onOpenDailyTips={onOpenDailyTips}
+        dailyTipsUnreadCount={dailyTipsUnreadCount}
         onToggleFps={onToggleFps}
         showFps={showFps}
         onOpenApiStatus={onOpenApiStatus}
@@ -1352,3 +1357,5 @@ export const TopGlobalNavMenu: React.FC<Props> = ({
   );
 };
 
+// Export para retrocompatibilidade
+export const TopGlobalNavMenu = SidebarGlobalNavMenu;

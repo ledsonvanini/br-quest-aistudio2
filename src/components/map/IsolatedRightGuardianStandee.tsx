@@ -60,7 +60,7 @@ export const IsolatedRightGuardianStandee: React.FC<IsolatedRightGuardianStandee
           animate={{ opacity: 1, x: 0, scale: 1 }}
           exit={{ opacity: 0, x: 50, scale: 0.95 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="painel-guardiao-isolado-direita fixed right-3 sm:right-6 md:right-8 top-1/2 -translate-y-1/2 w-[280px] sm:w-[320px] md:w-[350px] z-30 pointer-events-none flex flex-col items-center select-none"
+          className="painel-guardiao-isolado-direita fixed right-3 sm:right-6 md:right-8 top-16 sm:top-20 bottom-14 w-[280px] sm:w-[310px] md:w-[330px] z-30 pointer-events-none flex flex-col justify-center items-center select-none"
         >
           {/* ========================================================================= */}
           {/* 1. BALÃO DE DIÁLOGO DO GUARDIÃO (PROPORÇÃO 4x2 / 4x3 COM ALTO CONTRASTE) */}
@@ -70,12 +70,12 @@ export const IsolatedRightGuardianStandee: React.FC<IsolatedRightGuardianStandee
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.05, duration: 0.2 }}
             onClick={handleClick}
-            className="balao-dialogo-guardiao-topo balao-dialogo-guardiao-direita relative w-full pointer-events-auto cursor-pointer group mb-2"
+            className="balao-dialogo-guardiao-topo balao-dialogo-guardiao-direita relative w-full pointer-events-auto cursor-pointer group mb-1.5"
             title={`Clique para iniciar jornada com ${guardian.guardianName} (${guardian.stateNamePt})`}
           >
-            <div className="card-balao-dialogo-conteudo relative bg-[#020d24]/95 backdrop-blur-xl border-2 border-amber-400/90 rounded-2xl p-3.5 sm:p-4 shadow-[0_16px_50px_rgba(0,0,0,0.95),0_0_25px_rgba(245,158,11,0.3)] text-slate-100 transition-all duration-200 group-hover:border-amber-300 group-hover:shadow-[0_20px_55px_rgba(0,0,0,0.98),0_0_32px_rgba(245,158,11,0.5)]">
+            <div className="card-balao-dialogo-conteudo relative bg-[#020d24]/95 backdrop-blur-xl border-2 border-amber-400/90 rounded-2xl p-3 sm:p-3.5 shadow-[0_16px_50px_rgba(0,0,0,0.95),0_0_25px_rgba(245,158,11,0.3)] text-slate-100 transition-all duration-200 group-hover:border-amber-300 group-hover:shadow-[0_20px_55px_rgba(0,0,0,0.98),0_0_32px_rgba(245,158,11,0.5)]">
               {/* Header do Balão: Bandeira + UF + Nome + Recompensa */}
-              <div className="flex items-center justify-between gap-1.5 border-b border-amber-500/30 pb-2 mb-2">
+              <div className="flex items-center justify-between gap-1.5 border-b border-amber-500/30 pb-1.5 mb-1.5">
                 <div className="flex items-center gap-2 min-w-0">
                   {flagUrl && (
                     <img
@@ -100,23 +100,23 @@ export const IsolatedRightGuardianStandee: React.FC<IsolatedRightGuardianStandee
               </div>
 
               {/* Texto de Saudação e Lore com Tipografia Legível (>=13px) */}
-              <div className="space-y-2 text-left">
-                <p className="text-[13px] sm:text-[14px] text-amber-300 font-serif font-bold leading-snug">
+              <div className="space-y-1.5 text-left">
+                <p className="text-[13px] sm:text-[13.5px] text-amber-300 font-serif font-bold leading-snug">
                   {speech.greeting}
                 </p>
 
-                <p className="text-[12.5px] sm:text-[13px] text-slate-200 leading-relaxed font-sans line-clamp-3">
+                <p className="text-[12px] sm:text-[12.5px] text-slate-200 leading-relaxed font-sans line-clamp-2 sm:line-clamp-3">
                   {speech.loreSnippet}
                 </p>
 
-                <div className="text-[11.5px] text-amber-200/90 font-serif italic flex items-center gap-1.5 pt-1.5 border-t border-slate-800/80">
+                <div className="text-[11px] text-amber-200/90 font-serif italic flex items-center gap-1.5 pt-1 border-t border-slate-800/80">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="truncate">{speech.challengeQuote}</span>
                 </div>
 
                 {/* Call To Action Destacado */}
-                <div className="btn-desafio-balao-cta mt-2 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 group-hover:from-amber-400 group-hover:to-yellow-400 text-slate-950 font-serif font-black text-xs shadow-md transition-all">
-                  <Swords className="w-4 h-4 text-slate-950 shrink-0 animate-pulse" />
+                <div className="btn-desafio-balao-cta mt-1.5 flex items-center justify-center gap-2 py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600 group-hover:from-amber-400 group-hover:to-yellow-400 text-slate-950 font-serif font-black text-xs shadow-md transition-all">
+                  <Swords className="w-3.5 h-3.5 text-slate-950 shrink-0 animate-pulse" />
                   <span>Desafiar Guardião em {guardian.stateNamePt}</span>
                 </div>
               </div>
@@ -137,10 +137,10 @@ export const IsolatedRightGuardianStandee: React.FC<IsolatedRightGuardianStandee
           {/* ========================================================================= */}
           <div className="standee-guardiao-corpo-inteiro relative w-full flex flex-col justify-end items-center overflow-visible group">
             {/* Mana Aura Glow suave atrás do Guardião */}
-            <div className="absolute bottom-4 w-48 sm:w-56 h-48 sm:h-56 bg-amber-500/20 rounded-full blur-3xl pointer-events-none -z-20 animate-pulse" />
+            <div className="absolute bottom-4 w-40 sm:w-48 h-40 sm:h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none -z-20 animate-pulse" />
 
             {/* Sombra de Contato com o Chão */}
-            <div className="absolute bottom-2 w-44 sm:w-52 h-4 bg-black/95 rounded-[100%] blur-md pointer-events-none -z-10" />
+            <div className="absolute bottom-2 w-36 sm:w-44 h-3.5 bg-black/95 rounded-[100%] blur-md pointer-events-none -z-10" />
 
             {/* Ilustração do Personagem */}
             <div
@@ -151,7 +151,7 @@ export const IsolatedRightGuardianStandee: React.FC<IsolatedRightGuardianStandee
               <img
                 src={characterImgSrc}
                 alt={guardian.guardianName}
-                className="sprite-guardiao-isolado h-[220px] sm:h-[260px] md:h-[290px] w-auto max-w-[220px] sm:max-w-[250px] object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
+                className="sprite-guardiao-isolado h-[150px] sm:h-[180px] md:h-[200px] w-auto max-w-[180px] sm:max-w-[210px] object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)]"
               />
 
               {/* Brasão Oficial do Estado Flutuante */}

@@ -92,4 +92,41 @@ As texturas cartográficas não são meros fundos cosméticos: são **Shaders e 
 3. **Camada Base - Fundo Infinito (`ProceduralOceanCanvas`)**:
    - Dimensão de 14.000 x 10.000px com gradiente radial abissal e grão fino de papel neutro (`FINE_PAPER_NOISE_SVG`), garantindo cobertura total e suave em qualquer nível de zoom out.
 
+---
+
+## Regra de Definição Rigorosa de "Done" (DoD - Definition of Done)
+Nenhuma tarefa ou modificação é considerada concluída ("Done") sem satisfazer cumulativamente o checklist de 5 portas:
+1. **Porta 1 - Testes Automatizados 100% Verdes**: `npm test` (`vitest run`) deve rodar com todas as suítes e testes aprovados.
+2. **Porta 2 - Tipagem e Lint Estritos com Zero Erros**: `npm run lint` (`tsc --noEmit`) deve passar limpo sem nenhum erro ou cast arbitrário `any`.
+3. **Porta 3 - Validação de Não-Regressão**: Garantir que as funcionalidades pré-existentes não foram quebradas ou degradadas.
+4. **Porta 4 - Não-Interferência Hermética dos 7 Modos**: Confirmar que estilos, handlers, shaders e estados de um modo não vazaram para nenhum outro modo.
+5. **Porta 5 - Baixo Acoplamento e Alta Coesão**: Verificar se arquivos criados/editados respeitam a regra de $\le 270$ linhas e se dependências foram adequadamente desacopladas em subcomponentes ou hooks dedicados.
+
+---
+
+## Regra Anti-Hardcode & Limpeza de Legados
+1. **Zero Hardcoded Improvisado**: É terminantemente proibido inserir dados fictícios, constantes soltas no meio de componentes ou estruturas inventadas. Todos os dados devem emanar dos catálogos estruturados (`/src/data/`) ou dos serviços de API oficiais.
+2. **Zero Nomenclaturas e Imports Legados**: Todo componente e arquivo deve refletir sua real função na arquitetura atual (ex: `SidebarGlobalNavMenu` em vez do legado `TopGlobalNavMenu`). Ao renomear, todas as referências no código devem ser atualizadas imediatamente.
+3. **Zero Lógica Redundante**: Se uma função ou cálculo já existe em um utilitário ou serviço (ex: `centralizarZoomMapa`, `calculateResponsiveDefaultZoom`, `formatBrasiliaTimeDynamic`), é obrigatório reutilizá-la em vez de reimplementar lógica similar.
+
+---
+
+## Regra de Governança de Fontes de Dados e APIs (Vigência Temporal)
+1. **Consolidação de Provedores**: Não utilizar múltiplas APIs externas para o mesmo propósito. Priorizar batching centralizado (ex: Open-Meteo consultando os 27 estados em 1 requisição única em vez de 27 requisições individuais).
+2. **Atualização e Vigência Científica**:
+   - **IBGE**: Trabalhar com a base do Censo Demográfico 2022 integrada às Projeções Oficiais e Estimativas Populacionais vigentes (2024/2025 - Portaria IBGE nº 1.041).
+   - **Clima**: Padrão ECMWF / NOAA via Open-Meteo v1 com cache local de 15 minutos e fallback local calibrado em caso de offline.
+   - **Biodiversidade**: Catálogo local de alta fidelidade como fonte primária; GBIF / Wikipedia consultados exclusivamente via lazy-loading sob demanda com cache de 24h a 14 dias.
+
+---
+
+## Catálogo de "Classes CSS para Humanos" (Referência Rápida)
+Todo elemento essencial deve conter uma classe semântica humanamente legível para inspeção e testes:
+- **Containers Globais**: `container-app-brquest`, `container-canva-mapa-br`, `container-globo-3d`, `container-dock-direita`
+- **Sidebar & Menus**: `sidebar-global-container`, `menu-lateral-modos`, `btn-toggle-modo-clima`, `btn-toggle-modo-biomas`, `btn-toggle-modo-geopolitica`, `btn-toggle-modo-territorio`, `btn-toggle-modo-musica`, `btn-toggle-modo-aventura`, `btn-toggle-modo-globo`
+- **Apps Laterais**: `painel-dialog-clima`, `painel-dialog-biodiversidade`, `painel-dialog-geopolitica`, `painel-app-lateral-estado`, `painel-applateral-musical`, `painel-applateral-aventura`
+- **Ferramentas & HUD**: `toolbar-ferramentas-territoriais-geopolitica`, `painel-gizmo-compass-hud`, `painel-observatorio-clima`, `painel-telemetria-estacao`
+- **SVG & Canvas**: `poligono-estado-interativo`, `understroke-contraste`, `textura-shader-procedural`, `hit-target-estado-expandido`, `beacon-circulo-pulso`
+
+
 

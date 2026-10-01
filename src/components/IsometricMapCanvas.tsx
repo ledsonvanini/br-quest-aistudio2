@@ -72,8 +72,10 @@ import { CompassLoadingScreen } from './map/CompassLoadingScreen';
 import { loadBrazilGeoData, getCachedGeoData } from '../lib/geoDataLoader';
 import { GizmoCompassHUD, MapAnglePreset } from './map/GizmoCompassHUD';
 import { VintageRadioPlayer } from './music/VintageRadioPlayer';
+import { StateMusicDialog } from './music/StateMusicDialog';
 import { TerritoryLayersOverlay } from './map/TerritoryLayersOverlay';
 import { StateTerritoryDialog } from './map/territory/StateTerritoryDialog';
+import { StateAdventureDialog } from './guardian/StateAdventureDialog';
 import { CartographyLayerMode } from '../types/cartography';
 import { vintageRadioEngine } from '../lib/vintageRadioEngine';
 import { CustomCanvasCursor } from './map/CustomCanvasCursor';
@@ -85,7 +87,6 @@ import { GeopoliticsMapLayer } from './map/GeopoliticsMapLayer';
 import { GeopoliticsControlPanel } from './map/GeopoliticsControlPanel';
 import { StateGeopoliticsDialog } from './map/StateGeopoliticsDialog';
 import { EducatorPortalModal } from './educator/EducatorPortalModal';
-import { StateAdventureDialog } from './guardian/StateAdventureDialog';
 import { UnifiedStateHoverTooltip } from './map/UnifiedStateHoverTooltip';
 import { UnifiedBeaconHoverTooltip } from './map/tooltip/UnifiedBeaconHoverTooltip';
 import { BeaconHoverProvider } from '../context/BeaconHoverContext';
@@ -175,6 +176,7 @@ interface Props {
 
 export const IsometricMapCanvas: React.FC<Props> = ({
   completedStateIds,
+  unlockedInsigniaIds = [],
   onSelectGuardian,
   onClimateActiveChange,
   mainMode = 'aventura',
@@ -1269,10 +1271,11 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       setSelectedBiodiversityStateId(null);
       setSelectedGeopoliticaStateId(null);
 
-      const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+      const { targetZoom, targetPan } = centralizarZoomMapa('territorio', {
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
         isExpanded: true,
@@ -1304,6 +1307,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
       });
@@ -1333,6 +1337,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
       });
@@ -1362,6 +1367,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
       });
@@ -1379,19 +1385,17 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 2. MODO MUSICALIDADES: Abre o AppLateral Oficial de Rádio Vintage, sintonizando no estado selecionado e centralizando o mapa nos 50% livres da direita
+    // 2. MODO MUSICALIDADES: Abre o AppLateral Oficial de Musicalidades do estado selecionado e centraliza o mapa nos 50% livres da direita
     if (mainMode === 'musicalidades') {
       setSelectedStateId(stateId);
       onSelectStateId?.(stateId);
       setInternalIsBiodiversityPanelOpen(false);
       setInternalIsGeopoliticaPanelOpen(false);
-      if (!isRadioOpen && onToggleRadio) {
-        onToggleRadio();
-      }
       const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
       });
@@ -1405,25 +1409,10 @@ export const IsometricMapCanvas: React.FC<Props> = ({
       return;
     }
 
-    // 3. MODO AVENTURA / BRQUEST: Abre o StateAdventureDialog à direita para exibir o Guardião e jornada
+    // 3. MODO AVENTURA / BRQUEST: Abre o diálogo do Guardião na doca à Direita, preservando a visão livre do mapa
     if (mainMode === 'aventura') {
       setSelectedStateId(stateId);
       onSelectStateId?.(stateId);
-
-      const { targetZoom, targetPan } = centralizarZoomMapa('aventura', {
-        stateId,
-        centroid,
-        containerWidth: getContainerWidth(),
-        is3D,
-        isPanelOpen: true,
-      });
-
-      setTransitionMode('button');
-      setPan(targetPan);
-      setZoom(targetZoom);
-      baseUserPanRef.current = targetPan;
-      baseUserZoomRef.current = targetZoom;
-
       audioEngine.playSfx('travel');
       return;
     }
@@ -1431,11 +1420,13 @@ export const IsometricMapCanvas: React.FC<Props> = ({
     // 4. MODO TERRITÓRIO: Abre o AppLateral de Território e centraliza o mapa nos 50% livres da direita (screenOffsetX > 0)
     if (mainMode === 'territorio') {
       setSelectedStateId(stateId);
+      setSelectedTerritoryStateId(stateId);
       onSelectStateId?.(stateId);
       const { targetZoom, targetPan } = centralizarZoomMapa('territorio', {
         stateId,
         centroid,
         containerWidth: getContainerWidth(),
+        containerHeight: getContainerHeight(),
         is3D,
         isPanelOpen: true,
       });
@@ -2823,7 +2814,7 @@ export const IsometricMapCanvas: React.FC<Props> = ({
             if (!currentId) return;
             const centroid = centroids[currentId];
             if (centroid) {
-              const { targetZoom, targetPan } = centralizarZoomMapa('geopolitica', {
+              const { targetZoom, targetPan } = centralizarZoomMapa('territorio', {
                 stateId: currentId,
                 centroid,
                 containerWidth: getContainerWidth(),
@@ -2842,20 +2833,18 @@ export const IsometricMapCanvas: React.FC<Props> = ({
         />
       )}
 
-      {/* 13.7. AppLateral de Aventura & Guardiões (Perfil do Guardião, Biografia, Relíquias e Desafio RPG) */}
-      {mainMode === 'aventura' && selectedStateId && (!activeCartographyLayer || activeCartographyLayer === 'none') && (
-        <StateAdventureDialog
+      {/* 13.7. AppLateral de Musicalidades e Rádio Vintage do Estado */}
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && mainMode === 'musicalidades' && selectedStateId && (
+        <StateMusicDialog
           stateId={selectedStateId}
-          isCompleted={completedStateIds.includes(selectedStateId)}
-          hasInsignia={completedStateIds.includes(selectedStateId)}
+          selectedRadioEraId={selectedRadioEraId}
           onClose={handleCloseInspection}
-          onEnterGuardianScene={(guardian) => {
-            handleEnterGuardianScene(guardian.id);
-          }}
+          onSelectState={(id) => handleStateClick(id)}
+          onTuneState={(id) => handleStateClick(id)}
           onToggleExpand={(expanded) => {
             const centroid = centroids[selectedStateId];
             if (centroid) {
-              const { targetZoom, targetPan } = centralizarZoomMapa('aventura', {
+              const { targetZoom, targetPan } = centralizarZoomMapa('musicalidades', {
                 stateId: selectedStateId,
                 centroid,
                 containerWidth: getContainerWidth(),
@@ -2870,6 +2859,19 @@ export const IsometricMapCanvas: React.FC<Props> = ({
               baseUserPanRef.current = targetPan;
               baseUserZoomRef.current = targetZoom;
             }
+          }}
+        />
+      )}
+
+      {/* 13.8. AppLateral de Aventura e Ficha do Guardião (Exceção Estrutural: Doca à DIREITA, sem split 50%) */}
+      {!showNeighbors && (!activeCartographyLayer || activeCartographyLayer === 'none') && mainMode === 'aventura' && selectedStateId && (
+        <StateAdventureDialog
+          stateId={selectedStateId}
+          isCompleted={completedSet.has(selectedStateId)}
+          hasInsignia={unlockedInsigniaIds.includes(selectedStateId)}
+          onClose={handleCloseInspection}
+          onEnterGuardianScene={(guardian) => {
+            onSelectGuardian(guardian);
           }}
         />
       )}

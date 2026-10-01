@@ -1,6 +1,10 @@
 {
-  "name": "Símbolos BR - RPG Isométrico",
-  "description": "Sistema gamificado pós-guerra em visão isométrica com câmera ortográfica para explorar os símbolos, hinos, culinária e literatura dos Guardiões do Brasil.",
-  "requestFramePermissions": ["geolocation"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "br-quest-aistudio3",
+  "description": "Imported from GitHub: ledsonvanini/br-quest-aistudio2",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

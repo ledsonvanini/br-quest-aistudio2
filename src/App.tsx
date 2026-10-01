@@ -1,273 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { TopGlobalNavMenu } from './components/TopGlobalNavMenu';
+import React, { useState, useEffect, useCallback } from 'react';
+import { SidebarGlobalNavMenu } from './components/SidebarGlobalNavMenu';
 import { IsometricMapCanvas } from './components/IsometricMapCanvas';
 import { GuardianRPGScene } from './components/GuardianRPGScene';
 import { CodexInsignias } from './components/CodexInsignias';
-import { SettingsModal } from './components/SettingsModal';
-import { ApiStatusModal } from './components/ApiStatusModal';
-import { AboutInfoModal } from './components/AboutInfoModal';
-import { UserProfileModal } from './components/auth/UserProfileModal';
-import { BrQuestHubModal } from './components/quest/BrQuestHubModal';
 import { DynamicAppFooter } from './components/DynamicAppFooter';
-import { GuardianData, UserProgress, Language, TerrainTileProvider, MapVisualStyle, ChoroplethSubTheme, BiodiversityKingdom, BrazilBiome, AppMainMode } from './types';
+import { AppModalsContainer } from './components/modals/AppModalsContainer';
+import { BiodiversityKingdom, BrazilBiome } from './types';
 import { GeopoliticaMetricKey } from './types/geopolitica';
-import { loadUserProgress, saveUserProgress, calculateLevel } from './lib/storage';
-import { audioEngine } from './lib/audioSynth';
-import { GUARDIANS_DATA } from './data/guardiansData';
-import { Sparkles, Activity, Gauge, X } from 'lucide-react';
-import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { ClimateMode } from './components/map/ClimatePhenomenaLayer';
-import { fetchLiveClimateTelemetry, onClimateTelemetryUpdate, getLatestClimateFetchTimestamp } from './services/climateService';
+import { GUARDIANS_DATA } from './data/guardiansData';
+import { loadBrazilGeoData } from './lib/geoDataLoader';
 import { apiTracker } from './services/apiTracker';
-import { QuestThemePillar } from './data/brQuestQuestionsData';
-import { DailyTipsModal } from './components/quest/DailyTipsModal';
-import { useDailyTips } from './hooks/useDailyTips';
-import { StateSearchSelectorModal } from './components/search/StateSearchSelectorModal';
-import { CartographyLayerMode } from './types/cartography';
 
+// Custom Hooks Modulares
 import { useAppModes } from './hooks/useAppModes';
-import { centralizarZoomMapa } from './services/mapModeService';
-import { getStateDefaultBiome } from './services/geolocationService';
+import { useAppModals } from './hooks/useAppModals';
+import { useAppTelemetrySync } from './hooks/useAppTelemetrySync';
+import { useAppProgression } from './hooks/useAppProgression';
+import { useAppKeyboardShortcuts } from './hooks/useAppKeyboardShortcuts';
+import { useDailyTips } from './hooks/useDailyTips';
+import { useAppTerritoryAndLocation } from './hooks/useAppTerritoryAndLocation';
 
 export function App() {
-  const [progress, setProgress] = useState<UserProgress>(loadUserProgress);
-  const [activeTab, setActiveTab] = useState<'map' | 'insignias'>('map');
-  const [activeGuardian, setActiveGuardian] = useState<GuardianData | null>(null);
-  const [lang, setLang] = useState<Language>('pt');
-  const [notification, setNotification] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [isApiStatusOpen, setIsApiStatusOpen] = useState<boolean>(false);
-  const [isAboutInfoOpen, setIsAboutInfoOpen] = useState<boolean>(false);
-  const [isUserProfileOpen, setIsUserProfileOpen] = useState<boolean>(false);
-  const [isBrQuestHubOpen, setIsBrQuestHubOpen] = useState<boolean>(false);
-  const [isSearchSelectorOpen, setIsSearchSelectorOpen] = useState<boolean>(false);
-  const [brQuestInitialPillar, setBrQuestInitialPillar] = useState<QuestThemePillar | 'nacional' | null>(null);
-  const [isDailyTipsOpen, setIsDailyTipsOpen] = useState<boolean>(false);
-  const [showFps, setShowFps] = useState<boolean>(false);
-  const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
-  const [selectedStateId, setSelectedStateId] = useState<string | null>(null);
-  const [userLocation, setUserLocation] = useState<{
-    stateId: string;
-    stateName: string;
-    regionId: string;
-  } | null>(() => {
-    try {
-      const cached = localStorage.getItem('brquest_user_geolocation');
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
+  const modals = useAppModals();
+  const telemetry = useAppTelemetrySync();
+  const dailyTips = useDailyTips();
 
-  // App Modes Orchestration with custom hook
+  const notify = useCallback((msg: string) => {
+    modals.setNotification(msg);
+  }, [modals]);
+
   const {
-    mainMode,
-    selectMainMode,
-    terrainProvider,
-    setTerrainProvider,
-    visualStyle,
-    setVisualStyle,
-    choroplethSubTheme,
-    setChoroplethSubTheme,
-    isCloudsActive,
-    setIsCloudsActive,
-    isWavesActive,
-    setIsWavesActive,
-    isAtmosphereActive,
-    setIsAtmosphereActive,
-    isRainSimActive,
-    setIsRainSimActive,
-    celestialTimeOverride,
-    setCelestialTimeOverride,
-    handleCycleCelestial,
-    isObservatorioOpen,
-    setIsObservatorioOpen,
-    isBiodiversityPanelOpen,
-    setIsBiodiversityPanelOpen,
-    isGeopoliticaPanelOpen,
-    setIsGeopoliticaPanelOpen,
-    isRadioOpen,
-    setIsRadioOpen,
-    isGlobeTelemetryOpen,
-    setIsGlobeTelemetryOpen,
-    selectedRegionFilter,
-    setSelectedRegionFilter,
-    hoveredRegionFilter,
-    setHoveredRegionFilter,
-    showNeighbors,
-    setShowNeighbors,
-    toggleNeighbors,
-    focusedStateId,
-    setFocusedStateId,
-    centerMapTrigger,
-    setCenterMapTrigger,
-  } = useAppModes('clima');
+    progress,
+    activeTab,
+    setActiveTab,
+    activeGuardian,
+    setActiveGuardian,
+    lang,
+    handleGainXp,
+    handleBrQuestComplete,
+    handleReadRelic,
+    handleSelectGuardian,
+    handleBackToMap,
+  } = useAppProgression(notify);
 
+  const modes = useAppModes('clima');
   const [climateMode, setClimateMode] = useState<ClimateMode>('temperaturas_frentes');
-
-  // Biodiversity Mode State
   const [biodiversityKingdom, setBiodiversityKingdom] = useState<BiodiversityKingdom | 'all'>('all');
   const [biodiversityBiome, setBiodiversityBiome] = useState<BrazilBiome | 'all'>('all');
-  const [isBiodiversityThreatenedOnly, setIsBiodiversityThreatenedOnly] = useState<boolean>(false);
-  const [isBiodiversityEndemicOnly, setIsBiodiversityEndemicOnly] = useState<boolean>(false);
-
-  // Geopolítica Mode State
+  const [isBiodiversityThreatenedOnly, setIsBiodiversityThreatenedOnly] = useState(false);
+  const [isBiodiversityEndemicOnly, setIsBiodiversityEndemicOnly] = useState(false);
   const [geopoliticaMetric, setGeopoliticaMetric] = useState<GeopoliticaMetricKey>('miscigenacao');
 
-  const [climateTelemetry, setClimateTelemetry] = useState<{
-    avgTempBrazil: number;
-    maxTempState: { stateId: string; temp: number };
-    minTempState: { stateId: string; temp: number };
-    lastUpdated: string | number;
-  }>({
-    avgTempBrazil: 27.4,
-    maxTempState: { stateId: 'MT', temp: 35.1 },
-    minTempState: { stateId: 'RS', temp: 17.5 },
-    lastUpdated: getLatestClimateFetchTimestamp(),
-  });
-
-  // Preload and live subscribe to climate telemetry updates
-  useEffect(() => {
-    const unsubscribe = onClimateTelemetryUpdate((res) => {
-      if (res) {
-        setClimateTelemetry({
-          avgTempBrazil: res.avgTempBrazil,
-          maxTempState: res.maxTempState,
-          minTempState: res.minTempState,
-          lastUpdated: res.fetchedAt || res.updatedAtH || res.updatedAt,
-        });
-      }
-    });
-
-    fetchLiveClimateTelemetry().catch(() => {});
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
   const [activeMusicCategory, setActiveMusicCategory] = useState<'state_anthems' | 'top5' | 'national'>('state_anthems');
-  const [selectedRadioEraId, setSelectedRadioEraId] = useState<string>('catedral_1930_1940');
+  const [selectedRadioEraId, setSelectedRadioEraId] = useState('catedral_1930_1940');
 
-  // Globe 3D States
   const [globeTextureMode, setGlobeTextureMode] = useState<'nasa_satellite' | 'night_lights' | 'natural_earth'>('nasa_satellite');
-  const [isGlobeCloudsActive, setIsGlobeCloudsActive] = useState<boolean>(true);
-  const [isGlobeAutoRotateActive, setIsGlobeAutoRotateActive] = useState<boolean>(false);
-  const [isGlobeBordersActive, setIsGlobeBordersActive] = useState<boolean>(true);
+  const [isGlobeCloudsActive, setIsGlobeCloudsActive] = useState(true);
+  const [isGlobeAutoRotateActive, setIsGlobeAutoRotateActive] = useState(false);
+  const [isGlobeBordersActive, setIsGlobeBordersActive] = useState(true);
   const [globePinMode, setGlobePinMode] = useState<'all' | 'compact' | 'none'>('all');
 
-  // Camadas Cartográficas Ricas do Território (Exclusivo 2D)
-  const [activeCartographyLayer, setActiveCartographyLayer] = useState<CartographyLayerMode>('none');
-  const [selectedTerritorySubitemId, setSelectedTerritorySubitemId] = useState<string | null>(null);
-  const [isTerritorySubmenuOpen, setIsTerritorySubmenuOpen] = useState<boolean>(true);
+  const territory = useAppTerritoryAndLocation({
+    modes,
+    activeTab,
+    setActiveTab,
+    setBiodiversityBiome,
+    notify,
+    closeDailyTips: modals.closeDailyTips,
+  });
 
-  const handleSelectCartographyLayer = (layer: CartographyLayerMode, targetState?: string | null) => {
-    if (layer === activeCartographyLayer) {
-      setActiveCartographyLayer('none');
-      setSelectedTerritorySubitemId(null);
-      setSelectedStateId(null);
-      setIsTerritorySubmenuOpen(false);
-      return;
-    }
+  useAppKeyboardShortcuts({
+    modals,
+    onResetView: () => modes.setCenterMapTrigger((p) => p + 1),
+    selectedStateId: territory.selectedStateId,
+    onClearSelectedState: () => territory.setSelectedStateId(null),
+  });
 
-    setActiveCartographyLayer(layer);
-    setSelectedTerritorySubitemId(null);
-    if (layer !== 'none') {
-      if (targetState) {
-        // Se um estado foi explicitamente requisitado (ex: balão fixo), abre o AppLateral e fecha submenu
-        setSelectedStateId(targetState);
-        setIsTerritorySubmenuOpen(false);
-      } else {
-        // Padrão solicitado: abrir apenas o menu lateral e fechar appLateral (se estiver aberto) + Centralizar Mapa Brasil
-        setSelectedStateId(null);
-        setIsTerritorySubmenuOpen(true);
-        if (showNeighbors) setShowNeighbors(false);
-        setCenterMapTrigger((prev) => prev + 1);
-      }
-    } else {
-      setSelectedStateId(null);
-      setIsTerritorySubmenuOpen(false);
-    }
-  };
-
-  const handleSelectStateId = (stateId: string | null) => {
-    setSelectedStateId(stateId);
-    if (stateId) {
-      // Ao abrir o AppLateral para um estado ou balão, fecha os submenus
-      setIsTerritorySubmenuOpen(false);
-    }
-  };
-
-  const handleStateLocated = (stateId: string, stateName: string, regionId?: string) => {
-    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
-    const resolvedRegion = regionId || guardian?.regionId || 'sudeste';
-    const loc = { stateId, stateName, regionId: resolvedRegion };
-    setUserLocation(loc);
-    try {
-      localStorage.setItem('brquest_user_geolocation', JSON.stringify(loc));
-    } catch {}
-
-    setSelectedStateId(stateId);
-    setFocusedStateId(stateId);
-    setSelectedRegionFilter(resolvedRegion);
-    if (mainMode === 'biodiversidade') {
-      setBiodiversityBiome(getStateDefaultBiome(stateId));
-    }
-  };
-
-  const handleClearUserLocation = () => {
-    setUserLocation(null);
-    try {
-      localStorage.removeItem('brquest_user_geolocation');
-    } catch {}
-    setSelectedStateId(null);
-    setFocusedStateId(null);
-    setSelectedRegionFilter('todos');
-    setCenterMapTrigger((prev) => prev + 1);
-    showNotification('🌐 Modo Livre ativado: visualização de todo o território brasileiro.');
-  };
-
-  const handleSelectMainMode = (newMode: AppMainMode) => {
-    selectMainMode(newMode);
-
-    // Desacoplamento inegociável entre modos: desativa completamente camadas temáticas de território ao alternar modos
-    setActiveCartographyLayer('none');
-    setSelectedTerritorySubitemId(null);
-    setIsTerritorySubmenuOpen(false);
-
-    // Se o usuário foi geolocalizado, aplica por padrão sua região e estado de origem
-    if (userLocation) {
-      setSelectedRegionFilter(userLocation.regionId);
-      setSelectedStateId(userLocation.stateId);
-      setFocusedStateId(userLocation.stateId);
-      if (newMode === 'biodiversidade') {
-        setBiodiversityBiome(getStateDefaultBiome(userLocation.stateId));
-      }
-    }
-
-    if (activeTab !== 'map') {
-      setActiveTab('map');
-      window.location.hash = '#/mapa';
-    }
-  };
-
-  // Synchronize hash URL with state route (e.g., #/estado/rs, #/mapa, #/insignias)
   useEffect(() => {
-    // Preload GeoJSON cartographic data in background & verify integrated APIs
     loadBrazilGeoData().catch(() => {});
     apiTracker.pingAllProviders().catch(() => {});
 
     const handleHashChange = () => {
-      const rawHash = window.location.hash || '';
-      const hash = rawHash.toLowerCase();
+      const raw = window.location.hash || '';
+      const hash = raw.toLowerCase();
 
-      // Padronização em minúsculo e pt-br: #/estado/rs (suporta legado #/state/rs)
       if (hash.startsWith('#/estado/') || hash.startsWith('#/state/')) {
-        const stateId = hash
-          .replace('#/estado/', '')
-          .replace('#/state/', '')
-          .toUpperCase();
-        const found = GUARDIANS_DATA.find((g) => g.id === stateId);
+        const id = hash.replace('#/estado/', '').replace('#/state/', '').toUpperCase();
+        const found = GUARDIANS_DATA.find((g) => g.id === id);
         if (found) {
           setActiveGuardian(found);
           setActiveTab('map');
@@ -282,551 +102,153 @@ export function App() {
         setActiveTab('map');
         return;
       }
-      // Default to map view
       setActiveGuardian(null);
     };
 
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  // Atalho global de teclado Ctrl+K ou Cmd+K para busca rápida de estados
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsSearchSelectorOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
-
-  // Save progress on change
-  useEffect(() => {
-    saveUserProgress(progress);
-  }, [progress]);
-
-  // Auto-exibição do modal "5 Dicas do Dia" a cada 6 horas
-  useEffect(() => {
-    try {
-      const STORAGE_KEY = 'brquest_daily_tips_last_auto_open';
-      const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-      const lastOpenStr = localStorage.getItem(STORAGE_KEY);
-      const now = Date.now();
-
-      if (!lastOpenStr || now - Number(lastOpenStr) >= SIX_HOURS_MS) {
-        const timer = setTimeout(() => {
-          setIsDailyTipsOpen(true);
-          localStorage.setItem(STORAGE_KEY, String(now));
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    } catch {
-      // Ignora erro se localStorage indisponível
-    }
-  }, []);
-
-  const showNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => {
-      setNotification(null);
-    }, 4500);
-  };
-
-  const handleSelectGuardian = (guardian: GuardianData) => {
-    audioEngine.playSfx('click');
-    setActiveGuardian(guardian);
-    window.location.hash = `#/estado/${guardian.id.toLowerCase()}`;
-  };
-
-  const handleBackToMap = () => {
-    audioEngine.playSfx('click');
-    setActiveGuardian(null);
-    window.location.hash = '#/mapa';
-  };
-
-  const handleCompleteQuiz = (xpEarned: number, correctCount: number, mode?: 'quick' | 'campaign') => {
-    if (!activeGuardian) return;
-
-    setProgress((prev) => {
-      const isNewState = !prev.completedStateIds.includes(activeGuardian.id);
-      const updatedStates = isNewState
-        ? [...prev.completedStateIds, activeGuardian.id]
-        : prev.completedStateIds;
-
-      const newXp = prev.xp + xpEarned;
-      const oldLevel = calculateLevel(prev.xp).level;
-      const newLevel = calculateLevel(newXp).level;
-
-      const updatedScores = { ...(prev.stateScores || {}) };
-      updatedScores[activeGuardian.id] = (updatedScores[activeGuardian.id] || 0) + xpEarned;
-
-      const updatedCampaigns = { ...(prev.campaignsCompleted || {}) };
-      if (mode === 'campaign') {
-        updatedCampaigns[activeGuardian.id] = true;
-      }
-
-      const updatedQuickDuels = { ...(prev.quickDuelsWon || {}) };
-      if (mode === 'quick' && correctCount > 0) {
-        updatedQuickDuels[activeGuardian.id] = (updatedQuickDuels[activeGuardian.id] || 0) + 1;
-      }
-
-      if (newLevel > oldLevel) {
-        audioEngine.playSfx('levelUp');
-        showNotification(`🎉 Nível Superior! Você alcançou o Nível ${newLevel}!`);
-      } else if (xpEarned > 0) {
-        showNotification(`✨ Desafio de ${activeGuardian.stateNamePt} concluído! +${xpEarned} XP`);
-      }
-
-      const updated: UserProgress = {
-        ...prev,
-        xp: newXp,
-        level: newLevel,
-        completedStateIds: updatedStates,
-        totalCorrectAnswers: prev.totalCorrectAnswers + correctCount,
-        totalQuestsPlayed: prev.totalQuestsPlayed + 1,
-        stateScores: updatedScores,
-        campaignsCompleted: updatedCampaigns,
-        quickDuelsWon: updatedQuickDuels,
-      };
-
-      saveUserProgress(updated);
-      return updated;
-    });
-  };
-
-  const handleBrQuestComplete = (xpEarned: number, correctCount: number) => {
-    setProgress((prev) => {
-      const newXp = prev.xp + xpEarned;
-      const oldLevel = calculateLevel(prev.xp).level;
-      const newLevel = calculateLevel(newXp).level;
-
-      if (newLevel > oldLevel) {
-        audioEngine.playSfx('levelUp');
-        showNotification(`🎉 Nível Superior! Você alcançou o Nível ${newLevel}!`);
-      } else if (xpEarned > 0) {
-        showNotification(`⚔️ Desafio BrQuest Concluído! +${xpEarned} XP (${correctCount} acertos)`);
-      }
-
-      return {
-        ...prev,
-        xp: newXp,
-        level: newLevel,
-        totalCorrectAnswers: prev.totalCorrectAnswers + correctCount,
-        totalQuestsPlayed: prev.totalQuestsPlayed + 1,
-      };
-    });
-  };
-
-  const handleReadRelic = (relicId: string, xpEarned: number) => {
-    setProgress((prev) => {
-      const alreadyRead = prev.readPergamentIds.includes(relicId);
-      const updatedRead = alreadyRead ? prev.readPergamentIds : [...prev.readPergamentIds, relicId];
-      const newXp = alreadyRead ? prev.xp : prev.xp + xpEarned;
-      const oldLevelData = calculateLevel(prev.xp);
-      const newLevelData = calculateLevel(newXp);
-
-      if (!alreadyRead) {
-        if (newLevelData.level > oldLevelData.level) {
-          audioEngine.playSfx('levelUp');
-          showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
-        } else {
-          showNotification(`📜 Sabedoria Absorvida! +${xpEarned} XP`);
-        }
-      }
-
-      const updated: UserProgress = {
-        ...prev,
-        xp: newXp,
-        level: newLevelData.level,
-        readPergamentIds: updatedRead,
-      };
-
-      saveUserProgress(updated);
-      return updated;
-    });
-  };
-
-  const handleExploreDialogueTopic = (stateId: string, topicId: string, xpEarned: number) => {
-    setProgress((prev) => {
-      const explored = prev.exploredDialogueIds || [];
-      if (explored.includes(topicId)) return prev;
-
-      const updatedExplored = [...explored, topicId];
-      const newXp = prev.xp + xpEarned;
-      const oldLevelData = calculateLevel(prev.xp);
-      const newLevelData = calculateLevel(newXp);
-
-      const updatedScores = { ...(prev.stateScores || {}) };
-      updatedScores[stateId] = (updatedScores[stateId] || 0) + xpEarned;
-
-      if (newLevelData.level > oldLevelData.level) {
-        audioEngine.playSfx('levelUp');
-        showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
-      } else {
-        audioEngine.playSfx('badge');
-        showNotification(`✨ Curiosidade Descoberta! +${xpEarned} XP`);
-      }
-
-      const updated: UserProgress = {
-        ...prev,
-        xp: newXp,
-        level: newLevelData.level,
-        exploredDialogueIds: updatedExplored,
-        stateScores: updatedScores,
-      };
-
-      saveUserProgress(updated);
-      return updated;
-    });
-  };
-
-  const handleUnlockInsignia = (insigniaId: string) => {
-    setProgress((prev) => {
-      if (prev.unlockedInsigniaIds.includes(insigniaId)) return prev;
-
-      showNotification(`🏆 Insígnia Sagrada de ${insigniaId} Desbloqueada!`);
-      return {
-        ...prev,
-        unlockedInsigniaIds: [...prev.unlockedInsigniaIds, insigniaId],
-      };
-    });
-  };
-
-  const handleToggleNeighbors = () => {
-    toggleNeighbors();
-    setHoveredStateId(null);
-  };
-
-  const handleGainXp = (xpEarned: number, label: string) => {
-    setProgress((prev) => {
-      const newXp = prev.xp + xpEarned;
-      const oldLevelData = calculateLevel(prev.xp);
-      const newLevelData = calculateLevel(newXp);
-
-      if (newLevelData.level > oldLevelData.level) {
-        audioEngine.playSfx('levelUp');
-        showNotification(`🎉 Você alcançou o Nível ${newLevelData.level} • Título: ${newLevelData.titlePt}!`);
-      } else {
-        showNotification(`💡 ${label}: +${xpEarned} XP!`);
-      }
-
-      const updated: UserProgress = {
-        ...prev,
-        xp: newXp,
-        level: newLevelData.level,
-      };
-
-      saveUserProgress(updated);
-      return updated;
-    });
-  };
-
-  const dailyTips = useDailyTips(handleGainXp);
-
-  const handleTeleportFromDailyTip = (stateId: string, suggestedMode: '2d' | 'globo3d') => {
-    if (suggestedMode === 'globo3d') {
-      selectMainMode('globo3d');
-    } else {
-      if (mainMode === 'globo3d') {
-        selectMainMode('clima');
-      }
-    }
-    setSelectedStateId(stateId);
-    setFocusedStateId(stateId);
-    const guardian = GUARDIANS_DATA.find((g) => g.id === stateId);
-    if (guardian) {
-      showNotification(`✨ Teletransportado para ${guardian.stateNamePt}!`);
-    }
-    audioEngine.playSfx('click');
-  };
-
-  // Auto-dismiss notification toast
-  useEffect(() => {
-    if (!notification) return;
-    const timer = setTimeout(() => {
-      setNotification(null);
-    }, 4500);
-    return () => clearTimeout(timer);
-  }, [notification]);
+  }, [setActiveGuardian, setActiveTab]);
 
   return (
-    <div
-      className="container-app-principal h-screen h-dvh max-h-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 select-none"
-    >
-      
-      {/* Toast Notification Banner (Auto-dismiss + Non-blocking top-center with close button) */}
-      {notification && (
-        <div
-          id="banner-notificacao-toast"
-          className="banner-notificacao-toast fixed top-16 left-1/2 -translate-x-1/2 z-[100] max-w-lg w-auto mx-auto bg-slate-950/95 backdrop-blur-xl text-amber-200 font-medium px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-500/60 text-xs sm:text-sm animate-in fade-in slide-in-from-top-2 duration-200 flex items-center gap-3 pointer-events-auto"
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
-            <span className="font-semibold text-slate-100">{notification}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setNotification(null)}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-300 transition cursor-pointer"
-            aria-label="Fechar notificação"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+    <div className="container-app-brquest relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none">
+      {/* 1. Visão do Guardião RPG */}
+      {activeGuardian && (
+        <div className="painel-guardiao-detalhes absolute inset-0 z-50 overflow-hidden bg-slate-950/95 backdrop-blur-md">
+          <GuardianRPGScene
+            guardian={activeGuardian}
+            isCompleted={progress.completedStateIds.includes(activeGuardian.id)}
+            hasInsignia={progress.unlockedInsigniaIds.includes(activeGuardian.insigniaNamePt)}
+            onBackToMap={handleBackToMap}
+            onCompleteQuiz={(xp) => handleGainXp(xp, `Quiz ${activeGuardian.stateNamePt}`)}
+            onUnlockInsignia={handleReadRelic}
+            lang={lang}
+            userProgress={progress}
+            onOpenSettings={modals.openSettings}
+            onNavigateToSanctuary={() => {
+              setActiveTab('insignias');
+              setActiveGuardian(null);
+            }}
+          />
         </div>
       )}
 
-      {/* Unified Global Top Menu for All 3 Modes (Adventure, Climate, Music) */}
+      {/* 2. Sidebar Global Lateral de Modos */}
       {!activeGuardian && activeTab === 'map' && (
-        <TopGlobalNavMenu
-          mainMode={mainMode}
-          onSelectMainMode={handleSelectMainMode}
-          terrainProvider={terrainProvider}
-          onTerrainProviderChange={(p) => {
-            setTerrainProvider(p);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          visualStyle={visualStyle}
-          onVisualStyleChange={(v) => {
-            setVisualStyle(v);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          choroplethSubTheme={choroplethSubTheme}
-          onChoroplethSubThemeChange={(c) => {
-            setChoroplethSubTheme(c);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          selectedRegionFilter={selectedRegionFilter}
-          onSelectRegionFilter={(region) => {
-            setSelectedRegionFilter(region);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          onHoverRegionFilter={setHoveredRegionFilter}
-          showNeighbors={showNeighbors}
-          onToggleNeighbors={handleToggleNeighbors}
-          isObservatorioOpen={isObservatorioOpen}
-          onToggleObservatorio={() => {
-            const next = !isObservatorioOpen;
-            setIsObservatorioOpen(next);
-            if (next) {
-              setIsBiodiversityPanelOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsRadioOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          onNavigateToSanctuary={() => {
-            if (showNeighbors) setShowNeighbors(false);
-            setActiveGuardian(null);
-            setActiveTab('insignias');
-            window.location.hash = '#/insignias';
-          }}
+        <SidebarGlobalNavMenu
+          mainMode={modes.mainMode}
+          onSelectMainMode={territory.handleSelectMainMode}
+          terrainProvider={modes.terrainProvider}
+          onTerrainProviderChange={modes.setTerrainProvider}
+          visualStyle={modes.visualStyle}
+          onVisualStyleChange={modes.setVisualStyle}
+          choroplethSubTheme={modes.choroplethSubTheme}
+          onChoroplethSubThemeChange={modes.setChoroplethSubTheme}
+          selectedRegionFilter={modes.selectedRegionFilter}
+          onSelectRegionFilter={modes.setSelectedRegionFilter}
+          onHoverRegionFilter={modes.setHoveredRegionFilter}
+          showNeighbors={modes.showNeighbors}
+          onToggleNeighbors={modes.toggleNeighbors}
           playerLevel={progress.level}
-          playerXp={progress.xp}
-          completedStateCount={progress.completedStateIds.length}
-          unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
+          onOpenUserProfile={modals.openUserProfile}
+          onOpenSettings={modals.openSettings}
+          onOpenAboutInfo={modals.openAboutInfo}
+          onOpenDailyTips={modals.openDailyTips}
+          dailyTipsUnreadCount={dailyTips.unreadCount}
+          onToggleFps={modals.toggleFps}
+          showFps={modals.showFps}
+          onOpenApiStatus={modals.openApiStatus}
           climateMode={climateMode}
-          onClimateModeChange={(mode) => {
-            setClimateMode(mode);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          isRainSimActive={isRainSimActive}
-          onToggleRainSim={() => setIsRainSimActive((prev) => !prev)}
-          isCloudsActive={isCloudsActive}
-          onToggleClouds={() => setIsCloudsActive((prev) => !prev)}
-          isWavesActive={isWavesActive}
-          onToggleWaves={() => setIsWavesActive((prev) => !prev)}
-          isAtmosphereActive={isAtmosphereActive}
-          onToggleAtmosphere={handleCycleCelestial}
-          celestialTimeOverride={celestialTimeOverride}
-          onFocusState={(stateId) => {
-            setFocusedStateId(stateId);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
-          isRadioOpen={isRadioOpen}
-          onToggleRadio={() => {
-            const next = !isRadioOpen;
-            setIsRadioOpen(next);
-            if (next) {
-              setIsObservatorioOpen(false);
-              setIsBiodiversityPanelOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-          }}
-          activeMusicCategory={activeMusicCategory}
-          onSelectMusicCategory={setActiveMusicCategory}
-          selectedRadioEraId={selectedRadioEraId}
-          onSelectRadioEra={setSelectedRadioEraId}
-          globeTextureMode={globeTextureMode}
-          onGlobeTextureModeChange={setGlobeTextureMode}
-          isGlobeCloudsActive={isGlobeCloudsActive}
-          onToggleGlobeClouds={() => setIsGlobeCloudsActive((prev) => !prev)}
-          isGlobeAutoRotateActive={isGlobeAutoRotateActive}
-          onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((prev) => !prev)}
-          isGlobeBordersActive={isGlobeBordersActive}
-          onToggleGlobeBorders={() => setIsGlobeBordersActive((prev) => !prev)}
-          globePinMode={globePinMode}
-          onGlobePinModeChange={setGlobePinMode}
-          onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
-          isGlobeTelemetryOpen={isGlobeTelemetryOpen}
-          onToggleGlobeTelemetry={() => {
-            const next = !isGlobeTelemetryOpen;
-            setIsGlobeTelemetryOpen(next);
-            if (next) {
-              setIsObservatorioOpen(false);
-              setIsBiodiversityPanelOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsRadioOpen(false);
-            }
-          }}
+          onClimateModeChange={setClimateMode}
+          isObservatorioOpen={modes.isObservatorioOpen}
+          onToggleObservatorio={() => modes.setIsObservatorioOpen((p) => !p)}
+          isWavesActive={modes.isWavesActive}
+          onToggleWaves={() => modes.setIsWavesActive((p) => !p)}
+          isCloudsActive={modes.isCloudsActive}
+          onToggleClouds={() => modes.setIsCloudsActive((p) => !p)}
+          isRainSimActive={modes.isRainSimActive}
+          onToggleRainSim={() => modes.setIsRainSimActive((p) => !p)}
+          isAtmosphereActive={modes.isAtmosphereActive}
+          onToggleAtmosphere={() => modes.setIsAtmosphereActive((p) => !p)}
+          celestialTimeOverride={modes.celestialTimeOverride}
           biodiversityKingdom={biodiversityKingdom}
-          onBiodiversityKingdomChange={(k) => {
-            setBiodiversityKingdom(k);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
+          onBiodiversityKingdomChange={setBiodiversityKingdom}
           biodiversityBiome={biodiversityBiome}
-          onBiodiversityBiomeChange={(b) => {
-            setBiodiversityBiome(b);
-            if (showNeighbors) setShowNeighbors(false);
-          }}
+          onBiodiversityBiomeChange={setBiodiversityBiome}
           isBiodiversityThreatenedOnly={isBiodiversityThreatenedOnly}
           onToggleBiodiversityThreatenedOnly={() => setIsBiodiversityThreatenedOnly((p) => !p)}
           isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
           onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
-          isBiodiversityPanelOpen={isBiodiversityPanelOpen}
-          onToggleBiodiversityPanel={() => {
-            const next = !isBiodiversityPanelOpen;
-            setIsBiodiversityPanelOpen(next);
-            if (next) {
-              setIsObservatorioOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsRadioOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-          }}
+          isBiodiversityPanelOpen={modes.isBiodiversityPanelOpen}
+          onToggleBiodiversityPanel={() => modes.setIsBiodiversityPanelOpen((p) => !p)}
           geopoliticaMetric={geopoliticaMetric}
-          onGeopoliticaMetricChange={(metric) => {
-            setGeopoliticaMetric(metric);
-            if (showNeighbors) setShowNeighbors(false);
+          onGeopoliticaMetricChange={setGeopoliticaMetric}
+          isGeopoliticaPanelOpen={modes.isGeopoliticaPanelOpen}
+          onToggleGeopoliticaPanel={() => modes.setIsGeopoliticaPanelOpen((p) => !p)}
+          activeMusicCategory={activeMusicCategory}
+          onSelectMusicCategory={setActiveMusicCategory}
+          isRadioOpen={modes.isRadioOpen}
+          onToggleRadio={() => modes.setIsRadioOpen((p) => !p)}
+          selectedStateId={territory.selectedStateId}
+          onFocusState={(id) => {
+            territory.setSelectedStateId(id);
+            modes.setFocusedStateId(id);
           }}
-          isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
-          onToggleGeopoliticaPanel={() => {
-            const next = !isGeopoliticaPanelOpen;
-            setIsGeopoliticaPanelOpen(next);
-            if (next) {
-              setIsObservatorioOpen(false);
-              setIsBiodiversityPanelOpen(false);
-              setIsRadioOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-            if (showNeighbors) setShowNeighbors(false);
+          activeCartographyLayer={territory.activeCartographyLayer}
+          onSelectCartographyLayer={territory.handleSelectCartographyLayer}
+          selectedTerritorySubitemId={territory.selectedTerritorySubitemId}
+          onSelectTerritorySubitem={territory.setSelectedTerritorySubitemId}
+          isTerritorySubmenuOpen={territory.isTerritorySubmenuOpen}
+          onToggleTerritorySubmenu={() => territory.setIsTerritorySubmenuOpen((p) => !p)}
+          onSelectState={(id) => {
+            territory.setSelectedStateId(id);
+            if (id) territory.setIsTerritorySubmenuOpen(false);
           }}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenUserProfile={() => setIsUserProfileOpen(true)}
-          onOpenAboutInfo={() => setIsAboutInfoOpen(true)}
-          showFps={showFps}
-          onToggleFps={() => setShowFps((prev) => !prev)}
-          onOpenApiStatus={() => setIsApiStatusOpen(true)}
-          onResetView={() => {
-            if (showNeighbors) setShowNeighbors(false);
-            setCenterMapTrigger((prev) => prev + 1);
-          }}
-          onResetViewIfNotCentered={() => {
-            if (showNeighbors) setShowNeighbors(false);
-            setCenterMapTrigger((prev) => prev + 1);
-          }}
-          hoveredStateId={hoveredStateId}
-          activeCartographyLayer={activeCartographyLayer}
-          onSelectCartographyLayer={handleSelectCartographyLayer}
-          onSelectState={handleSelectStateId}
-          selectedTerritorySubitemId={selectedTerritorySubitemId}
-          onSelectTerritorySubitem={setSelectedTerritorySubitemId}
-          isTerritorySubmenuOpen={isTerritorySubmenuOpen}
-          onToggleTerritorySubmenu={() => setIsTerritorySubmenuOpen((prev) => !prev)}
-          onOpenDailyTips={() => setIsDailyTipsOpen(true)}
-          dailyTipsUnreadCount={dailyTips.unreadCount}
-          onOpenSearchSelector={() => setIsSearchSelectorOpen(true)}
-          onOpenBrQuestHub={(pillar) => {
-            setBrQuestInitialPillar(pillar || null);
-            setIsBrQuestHubOpen(true);
-          }}
+          onResetView={() => modes.setCenterMapTrigger((p) => p + 1)}
+          globeTextureMode={globeTextureMode}
+          onGlobeTextureModeChange={setGlobeTextureMode}
+          isGlobeCloudsActive={isGlobeCloudsActive}
+          onToggleGlobeClouds={() => setIsGlobeCloudsActive((p) => !p)}
+          isGlobeAutoRotateActive={isGlobeAutoRotateActive}
+          onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((p) => !p)}
+          isGlobeBordersActive={isGlobeBordersActive}
+          onToggleGlobeBorders={() => setIsGlobeBordersActive((p) => !p)}
+          globePinMode={globePinMode}
+          isGlobeTelemetryOpen={modes.isGlobeTelemetryOpen}
+          onToggleGlobeTelemetry={() => modes.setIsGlobeTelemetryOpen((p) => !p)}
+          onResetGlobeCamera={() => modes.setCenterMapTrigger((p) => p + 1)}
+          isAnyModalOpen={modals.isAnyModalOpen}
         />
       )}
 
-      {/* Main View Container */}
-      <main
-        className={`container-conteudo-principal flex-1 min-h-0 w-full flex flex-col overflow-hidden relative ${
-          activeGuardian || (activeTab === 'map' && !activeGuardian)
-            ? 'p-0 m-0 max-w-none'
-            : 'max-w-7xl mx-auto px-1 sm:px-3 py-1'
-        }`}
-      >
-        
-        {/* State Detail RPG Scene View (Dedicated Route for Selected State) */}
-        {activeGuardian ? (
-          <GuardianRPGScene
-            guardian={activeGuardian}
-            isCompleted={progress.completedStateIds.includes(activeGuardian.id)}
-            hasInsignia={progress.unlockedInsigniaIds.includes(activeGuardian.id)}
-            onBackToMap={handleBackToMap}
-            onCompleteQuiz={handleCompleteQuiz}
-            onUnlockInsignia={handleUnlockInsignia}
-            onReadRelic={handleReadRelic}
-            onExploreDialogueTopic={handleExploreDialogueTopic}
-            lang={lang}
-            userProgress={progress}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onNavigateToSanctuary={() => {
-              setActiveGuardian(null);
-              setActiveTab('insignias');
-              window.location.hash = '#/insignias';
-            }}
-          />
-        ) : activeTab === 'map' ? (
-          /* Interactive RPG Map View (Homepage Route - Full Game Canvas) */
-          <div className="container-secao-mapa flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden relative">
+      {/* 3. Palco Central: Mapa 2D D3 ou Santuário de Insígnias */}
+      <main className="w-full h-full relative">
+        {activeTab === 'map' ? (
+          <div className="container-mapa-br relative w-full h-full">
             <IsometricMapCanvas
-              completedStateIds={progress.completedStateIds}
-              unlockedInsigniaIds={progress.unlockedInsigniaIds}
+              mainMode={modes.mainMode}
+              terrainProvider={modes.terrainProvider}
+              visualStyle={modes.visualStyle}
+              choroplethSubTheme={modes.choroplethSubTheme}
+              selectedRegionFilter={modes.selectedRegionFilter}
+              hoveredRegionFilter={modes.hoveredRegionFilter}
+              showNeighbors={modes.showNeighbors}
               onSelectGuardian={handleSelectGuardian}
               lang={lang}
-              onOpenSettings={() => setIsSettingsOpen(true)}
-              mainMode={mainMode}
-              onSelectMainMode={handleSelectMainMode}
-              activeCartographyLayer={activeCartographyLayer}
-              selectedTerritorySubitemId={selectedTerritorySubitemId}
-              onSelectTerritorySubitem={setSelectedTerritorySubitemId}
-              isTerritorySubmenuOpen={isTerritorySubmenuOpen}
-              onCloseTerritorySubmenu={() => setIsTerritorySubmenuOpen(false)}
-              onOpenTerritorySubmenu={() => setIsTerritorySubmenuOpen(true)}
-              selectedStateId={selectedStateId}
-              onSelectStateId={handleSelectStateId}
+              completedStateIds={progress.completedStateIds}
+              unlockedInsigniaIds={progress.unlockedInsigniaIds}
               climateMode={climateMode}
               onClimateModeChange={setClimateMode}
-              terrainProvider={terrainProvider}
-              onTerrainProviderChange={setTerrainProvider}
-              visualStyle={visualStyle}
-              onVisualStyleChange={setVisualStyle}
-              choroplethSubTheme={choroplethSubTheme}
-              onChoroplethSubThemeChange={setChoroplethSubTheme}
-              selectedRegionFilter={selectedRegionFilter}
-              hoveredRegionFilter={hoveredRegionFilter}
-              showNeighbors={showNeighbors}
-              onToggleNeighbors={handleToggleNeighbors}
-              isObservatorioOpen={isObservatorioOpen}
-              onToggleObservatorio={() => setIsObservatorioOpen((prev) => !prev)}
-              atmosphereEnabled={isAtmosphereActive}
-              timeOverride={celestialTimeOverride}
-              wavesEnabled={isWavesActive}
-              cloudsEnabled={isCloudsActive}
-              rainSimEnabled={isRainSimActive}
-              centerTrigger={centerMapTrigger}
-              isRadioOpen={isRadioOpen}
-              onToggleRadio={() => setIsRadioOpen((prev) => !prev)}
+              isObservatorioOpen={modes.isObservatorioOpen}
+              onToggleObservatorio={() => modes.setIsObservatorioOpen((p) => !p)}
+              atmosphereEnabled={modes.isAtmosphereActive}
+              timeOverride={modes.celestialTimeOverride}
+              wavesEnabled={modes.isWavesActive}
+              cloudsEnabled={modes.isCloudsActive}
+              rainSimEnabled={modes.isRainSimActive}
+              centerTrigger={modes.centerMapTrigger}
+              isRadioOpen={modes.isRadioOpen}
+              onToggleRadio={() => modes.setIsRadioOpen((p) => !p)}
               activeMusicCategory={activeMusicCategory}
               onSelectMusicCategory={setActiveMusicCategory}
               selectedRadioEraId={selectedRadioEraId}
@@ -836,11 +258,11 @@ export function App() {
               globeAutoRotate={isGlobeAutoRotateActive}
               globeBorders={isGlobeBordersActive}
               globePinMode={globePinMode}
-              isGlobeTelemetryOpen={isGlobeTelemetryOpen}
-              onToggleGlobeTelemetry={() => setIsGlobeTelemetryOpen((prev) => !prev)}
-              focusedStateId={focusedStateId}
-              onFocusStateHandled={() => setFocusedStateId(null)}
-              onHoverStateChange={setHoveredStateId}
+              isGlobeTelemetryOpen={modes.isGlobeTelemetryOpen}
+              onToggleGlobeTelemetry={() => modes.setIsGlobeTelemetryOpen((p) => !p)}
+              focusedStateId={modes.focusedStateId}
+              onFocusStateHandled={() => modes.setFocusedStateId(null)}
+              onHoverStateChange={territory.setHoveredStateId}
               biodiversityKingdom={biodiversityKingdom}
               onBiodiversityKingdomChange={setBiodiversityKingdom}
               biodiversityBiome={biodiversityBiome}
@@ -849,32 +271,28 @@ export function App() {
               onToggleBiodiversityThreatenedOnly={() => setIsBiodiversityThreatenedOnly((p) => !p)}
               isBiodiversityEndemicOnly={isBiodiversityEndemicOnly}
               onToggleBiodiversityEndemicOnly={() => setIsBiodiversityEndemicOnly((p) => !p)}
-              isBiodiversityPanelOpen={isBiodiversityPanelOpen}
-              onToggleBiodiversityPanel={() => setIsBiodiversityPanelOpen((p) => !p)}
+              isBiodiversityPanelOpen={modes.isBiodiversityPanelOpen}
+              onToggleBiodiversityPanel={() => modes.setIsBiodiversityPanelOpen((p) => !p)}
               geopoliticaMetric={geopoliticaMetric}
               onGeopoliticaMetricChange={setGeopoliticaMetric}
-              isGeopoliticaPanelOpen={isGeopoliticaPanelOpen}
-              onToggleGeopoliticaPanel={() => setIsGeopoliticaPanelOpen((p) => !p)}
-              onOpenDailyTips={() => setIsDailyTipsOpen(true)}
+              isGeopoliticaPanelOpen={modes.isGeopoliticaPanelOpen}
+              onToggleGeopoliticaPanel={() => modes.setIsGeopoliticaPanelOpen((p) => !p)}
+              onOpenDailyTips={modals.openDailyTips}
               dailyTipsUnreadCount={dailyTips.unreadCount}
-              onOpenSearchSelector={() => setIsSearchSelectorOpen(true)}
-              isUserLocatedActive={Boolean(userLocation)}
-              onClearUserLocation={handleClearUserLocation}
-              onStateLocated={handleStateLocated}
-              onNotification={(msg) => setNotification(msg)}
+              onOpenSearchSelector={modals.openSearchSelector}
+              isUserLocatedActive={Boolean(territory.userLocation)}
+              onClearUserLocation={territory.handleClearUserLocation}
+              onStateLocated={territory.handleStateLocated}
+              onNotification={notify}
             />
           </div>
-
         ) : (
-          /* Insignias Sanctuary View (Codex Route) */
           <CodexInsignias
             progress={progress}
             lang={lang}
             onNavigateToState={(stateId) => {
               const found = GUARDIANS_DATA.find((g) => g.id === stateId);
-              if (found) {
-                handleSelectGuardian(found);
-              }
+              if (found) handleSelectGuardian(found);
             }}
             onReadRelic={handleReadRelic}
             onBackToMap={handleBackToMap}
@@ -882,158 +300,61 @@ export function App() {
         )}
       </main>
 
-      {/* Settings & Audio Control Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onOpenApiStatus={() => setIsApiStatusOpen(true)}
-        showFps={showFps}
-        onToggleFps={() => setShowFps((prev) => !prev)}
-        onOpenDailyTips={() => {
-          setIsSettingsOpen(false);
-          setIsDailyTipsOpen(true);
-        }}
-      />
-
-      {/* User Profile & Auth Modal (SQLite & Desacoplado) */}
-      <UserProfileModal
-        isOpen={isUserProfileOpen}
-        onClose={() => setIsUserProfileOpen(false)}
-        playerLevel={calculateLevel(progress.xp).level}
-        playerXp={progress.xp}
-        unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
-        completedStatesCount={progress.completedStateIds.length}
-        dailyStreak={progress.dailyStreak || 1}
-        onNavigateToState={(stateId) => {
-          const g = GUARDIANS_DATA.find((item) => item.id === stateId);
-          if (g) handleSelectGuardian(g);
-        }}
-      />
-
-      {/* API Telemetry & Status Modal */}
-      <ApiStatusModal
-        isOpen={isApiStatusOpen}
-        onClose={() => setIsApiStatusOpen(false)}
-      />
-
-      {/* Saiba Mais: Filosofia, Fontes de Dados, Capacidades e Direitos Autorais Modal */}
-      <AboutInfoModal
-        isOpen={isAboutInfoOpen}
-        onClose={() => setIsAboutInfoOpen(false)}
-      />
-
-      {/* BrQuest Hub Modal: Grande Prova do Brasil & Desafios Multidisciplinares */}
-      <BrQuestHubModal
-        isOpen={isBrQuestHubOpen}
-        initialPillar={brQuestInitialPillar}
-        onClose={() => {
-          setIsBrQuestHubOpen(false);
-          setBrQuestInitialPillar(null);
-        }}
-        onSelectGuardian={(g) => {
-          setIsBrQuestHubOpen(false);
-          setBrQuestInitialPillar(null);
-          handleSelectGuardian(g);
-        }}
-        onGainXp={(xp) => handleBrQuestComplete(xp, Math.round(xp / 75))}
-        playerLevel={progress.level}
-        playerXp={progress.xp}
-        completedStatesCount={progress.completedStateIds.length}
-        dailyStreak={progress.dailyStreak || 1}
-        userLocation={userLocation}
-      />
-
-      {/* 5 Dicas do Dia: Você Sabia? Modal (Retenção DAU & Curiosidades Oficiais) */}
-      <DailyTipsModal
-        isOpen={isDailyTipsOpen}
-        onClose={() => setIsDailyTipsOpen(false)}
-        onTeleportToState={handleTeleportFromDailyTip}
-        onGainXp={handleGainXp}
-        dailyTipsController={dailyTips}
-      />
-
-      {/* Seletor & Busca Rápida de Estados (Ctrl+K) */}
-      <StateSearchSelectorModal
-        isOpen={isSearchSelectorOpen}
-        onClose={() => setIsSearchSelectorOpen(false)}
-        completedStateIds={progress.completedStateIds}
-        onSelectState={(stateId) => {
-          setIsSearchSelectorOpen(false);
-          const found = GUARDIANS_DATA.find((g) => g.id === stateId);
-          if (found) {
-            handleSelectGuardian(found);
-          }
-        }}
-      />
-
-      {/* Dynamic Application Footer: [ Logo BR Quest | Conteúdo Dinâmico Auxiliar | Ícone Saiba+ | FPS Swap | APIs ] */}
+      {/* 4. Rodapé Dinâmico com Telemetria e Acessos */}
       <DynamicAppFooter
-        mainMode={mainMode}
+        mainMode={modes.mainMode}
         activeTab={activeTab}
         activeGuardian={activeGuardian}
         completedStateIds={progress.completedStateIds}
         unlockedInsigniaCount={progress.unlockedInsigniaIds.length}
-        hoveredStateId={hoveredStateId}
-        selectedStateId={selectedStateId}
-        onStateHover={(id) => setHoveredStateId(id)}
+        hoveredStateId={territory.hoveredStateId}
+        selectedStateId={territory.selectedStateId}
+        onStateHover={territory.setHoveredStateId}
         onStateClick={(id) => {
           const found = GUARDIANS_DATA.find((g) => g.id === id);
-          if (found) {
-            handleSelectGuardian(found);
-          }
+          if (found) handleSelectGuardian(found);
         }}
-        onOpenAboutInfo={() => setIsAboutInfoOpen(true)}
-        onNavigateHome={() => {
-          setActiveGuardian(null);
-          setActiveTab('map');
-        }}
-        showFps={showFps}
-        onToggleFps={() => setShowFps((prev) => !prev)}
-        onOpenApiStatus={() => setIsApiStatusOpen(true)}
+        onOpenAboutInfo={modals.openAboutInfo}
+        onNavigateHome={handleBackToMap}
+        showFps={modals.showFps}
+        onToggleFps={modals.toggleFps}
+        onOpenApiStatus={modals.openApiStatus}
         climateMode={climateMode}
-        onOpenObservatorio={() => {
-          setIsObservatorioOpen((prev) => {
-            const next = !prev;
-            if (next) {
-              setIsBiodiversityPanelOpen(false);
-              setIsGeopoliticaPanelOpen(false);
-              setIsRadioOpen(false);
-              setIsGlobeTelemetryOpen(false);
-            }
-            return next;
-          });
-        }}
-        isObservatorioOpen={isObservatorioOpen}
-        avgTempBrazil={climateTelemetry.avgTempBrazil}
-        maxTempState={climateTelemetry.maxTempState}
-        minTempState={climateTelemetry.minTempState}
-        climateLastUpdated={climateTelemetry.lastUpdated}
+        onOpenObservatorio={() => modes.setIsObservatorioOpen((p) => !p)}
+        isObservatorioOpen={modes.isObservatorioOpen}
+        avgTempBrazil={telemetry.climateTelemetry.avgTempBrazil}
+        maxTempState={telemetry.climateTelemetry.maxTempState}
+        minTempState={telemetry.climateTelemetry.minTempState}
+        climateLastUpdated={telemetry.latestClimateFetchTs}
         globeTextureMode={globeTextureMode}
         isGlobeAutoRotateActive={isGlobeAutoRotateActive}
         isGlobeCloudsActive={isGlobeCloudsActive}
-        onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((prev) => !prev)}
-        onResetGlobeCamera={() => setCenterMapTrigger((prev) => prev + 1)}
-        activeCartographyLayer={activeCartographyLayer}
-        onClearCartographyLayer={() => handleSelectCartographyLayer('none')}
-        onSelectCartographyLayer={handleSelectCartographyLayer}
-        selectedTerritorySubitemId={selectedTerritorySubitemId}
-        onSelectTerritorySubitem={setSelectedTerritorySubitemId}
-        isTerritorySubmenuOpen={isTerritorySubmenuOpen}
-        onToggleTerritorySubmenu={() => setIsTerritorySubmenuOpen((prev) => !prev)}
-        onToggleRadio={() => {
-          const next = !isRadioOpen;
-          setIsRadioOpen(next);
-          if (next) {
-            setIsObservatorioOpen(false);
-            setIsBiodiversityPanelOpen(false);
-            setIsGeopoliticaPanelOpen(false);
-            setIsGlobeTelemetryOpen(false);
-          }
-        }}
+        onToggleGlobeAutoRotate={() => setIsGlobeAutoRotateActive((p) => !p)}
+        onResetGlobeCamera={() => modes.setCenterMapTrigger((p) => p + 1)}
+        activeCartographyLayer={territory.activeCartographyLayer}
+        onClearCartographyLayer={() => territory.handleSelectCartographyLayer('none')}
+        onSelectCartographyLayer={territory.handleSelectCartographyLayer}
+        selectedTerritorySubitemId={territory.selectedTerritorySubitemId}
+        onSelectTerritorySubitem={territory.setSelectedTerritorySubitemId}
+        isTerritorySubmenuOpen={territory.isTerritorySubmenuOpen}
+        onToggleTerritorySubmenu={() => territory.setIsTerritorySubmenuOpen((p) => !p)}
+        onToggleRadio={() => modes.setIsRadioOpen((p) => !p)}
         geopoliticaMetric={geopoliticaMetric}
-        onOpenBrQuestHub={() => setIsBrQuestHubOpen(true)}
-        selectedRegionFilter={selectedRegionFilter}
-        onSelectRegionFilter={setSelectedRegionFilter}
+        onOpenBrQuestHub={() => modals.openBrQuestHub()}
+        selectedRegionFilter={modes.selectedRegionFilter}
+        onSelectRegionFilter={modes.setSelectedRegionFilter}
+      />
+
+      {/* 5. Modais do Sistema Gerenciados pelo Container */}
+      <AppModalsContainer
+        modals={modals}
+        progress={progress}
+        dailyTipsController={dailyTips}
+        userLocation={territory.userLocation}
+        onSelectGuardian={handleSelectGuardian}
+        onGainXp={handleGainXp}
+        onBrQuestComplete={handleBrQuestComplete}
+        onTeleportToState={territory.handleTeleportFromDailyTip}
       />
     </div>
   );

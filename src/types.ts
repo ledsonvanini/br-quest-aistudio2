@@ -73,6 +73,8 @@ export interface GuardianData {
   insigniaIcon: string;
 }
 
+export type StateGuardian = GuardianData;
+
 export interface UserProgress {
   xp: number;
   level: number;

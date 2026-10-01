@@ -1,4 +1,16 @@
 import { BrazilBiome, BiodiversityKingdom } from '../../../types';
+import { Trees, TreePine, Sun, Droplets, Compass, Waves, Sprout } from 'lucide-react';
+import React from 'react';
+
+export const BIOME_ICONS: Record<BrazilBiome, React.ComponentType<{ className?: string }>> = {
+  'Amazônia': Trees,
+  'Cerrado': Sprout,
+  'Mata Atlântica': TreePine,
+  'Caatinga': Sun,
+  'Pantanal': Droplets,
+  'Pampa': Compass,
+  'Marinho Costeiro': Waves,
+};
 
 export const SPECIMEN_EMOJIS: Record<string, string> = {
   // Fauna

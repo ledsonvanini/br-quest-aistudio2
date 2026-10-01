@@ -7,3 +7,5 @@ dist
 data/*.db
 test-results/
 playwright-report/
+.aistudio/
+

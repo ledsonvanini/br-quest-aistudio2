@@ -100,7 +100,7 @@ export const ApiStatusModal: React.FC<ApiStatusModalProps> = ({
   );
 
   return (
-    <div className="container-modal-api-status modal-status-api-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200 pointer-events-auto">
+    <div className="container-modal-api-status modal-status-api-backdrop fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200 pointer-events-auto">
       <div className="card-painel-status-api w-full max-w-3xl bg-slate-950 border-2 border-amber-500/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-100 font-sans">
         
         {/* Modal Header */}

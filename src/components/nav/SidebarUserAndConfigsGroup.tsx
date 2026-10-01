@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Settings } from 'lucide-react';
+import { User, Settings, Sparkles } from 'lucide-react';
 import { audioEngine } from '../../lib/audioSynth';
 
 export interface SidebarUserAndConfigsGroupProps {
@@ -12,6 +12,8 @@ export interface SidebarUserAndConfigsGroupProps {
   showFps?: boolean;
   onOpenApiStatus?: () => void;
   apiCallsCount?: number;
+  onOpenDailyTips?: () => void;
+  dailyTipsUnreadCount?: number;
   setHoveredMenuTooltip: (val: null) => void;
   setOpenFlyoutMode: (val: null) => void;
   bindTooltip: (config: {
@@ -25,13 +27,15 @@ export interface SidebarUserAndConfigsGroupProps {
 /**
  * SidebarUserAndConfigsGroup
  * Grupo fixo inferior compacto da barra lateral de navegação:
- * Ordem: 1. Saiba Mais ('Saiba+') | 2. Usuário (Perfil) | 3. Configurações Gerais
+ * Ordem: 1. Dicas do Dia | 2. Saiba Mais ('Saiba+') | 3. Usuário (Perfil) | 4. Configurações Gerais
  */
 export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProps> = ({
   playerLevel,
   onOpenUserProfile,
   onOpenSettings,
   onOpenAboutInfo,
+  onOpenDailyTips,
+  dailyTipsUnreadCount = 0,
   setHoveredMenuTooltip,
   setOpenFlyoutMode,
   bindTooltip,
@@ -41,7 +45,37 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
       id="container-grupo-usuario-configs"
       className="container-grupo-usuario-configs flex flex-col items-center gap-1 p-1 rounded-2xl bg-slate-900/90 border border-slate-700/60 shadow-lg shrink-0 mt-0.5"
     >
-      {/* 1. SAIBA MAIS & CRÉDITOS ('Saiba+') */}
+      {/* 1. DICAS DO DIA (VOCÊ SABIA?) */}
+      {onOpenDailyTips && (
+        <button
+          id="btn-sidebar-dicas-do-dia"
+          type="button"
+          onClick={() => {
+            audioEngine.playSfx('click');
+            setHoveredMenuTooltip(null);
+            setOpenFlyoutMode(null);
+            onOpenDailyTips();
+          }}
+          {...bindTooltip({
+            title: '5 Dicas do Dia • Você Sabia?',
+            badge: dailyTipsUnreadCount > 0 ? `${dailyTipsUnreadCount} Novas` : 'Diário',
+            badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-400/40',
+            description:
+              'Pílulas diárias de inteligência geográfica oficial (IBGE, INMET, INPE, ICMBio), curiosidades e bônus de XP.',
+          })}
+          className="btn-sidebar-dicas-do-dia relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900/90 border border-amber-500/40 hover:border-amber-400 text-amber-400 hover:text-amber-200 flex items-center justify-center transition-all cursor-pointer shadow-md group"
+          aria-label="5 Dicas do Dia"
+        >
+          <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 group-hover:scale-110 transition-transform" />
+          {dailyTipsUnreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-slate-950 font-mono font-black text-[9px] flex items-center justify-center ring-2 ring-slate-950 animate-pulse shadow-sm">
+              {dailyTipsUnreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* 2. SAIBA MAIS & CRÉDITOS ('Saiba+') */}
       {onOpenAboutInfo && (
         <button
           id="btn-sidebar-saiba-mais"
@@ -59,7 +93,7 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
             description:
               'Filosofia pedagógica do projeto, fontes oficiais de dados (IBGE, Open-Meteo, CartoDB) e direitos autorais.',
           })}
-          className="btn-sidebar-saiba-mais relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-amber-500/40 hover:border-amber-400 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center justify-center shadow-sm"
+          className="btn-sidebar-saiba-mais relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl border border-slate-700/80 hover:border-amber-400 bg-slate-900/90 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center justify-center shadow-sm"
           aria-label="Saiba Mais"
         >
           <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-mono font-black text-[11px] sm:text-xs">
@@ -68,7 +102,7 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
         </button>
       )}
 
-      {/* 2. USUÁRIO / PERFIL DO EXPLORADOR */}
+      {/* 3. USUÁRIO / PERFIL DO EXPLORADOR */}
       {onOpenUserProfile && (
         <button
           id="btn-perfil-usuario-sidebar"
@@ -93,7 +127,7 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
         </button>
       )}
 
-      {/* 3. CONFIGURAÇÕES GERAIS */}
+      {/* 4. CONFIGURAÇÕES GERAIS */}
       {onOpenSettings && (
         <button
           id="btn-configuracoes-sidebar"
@@ -120,5 +154,3 @@ export const SidebarUserAndConfigsGroup: React.FC<SidebarUserAndConfigsGroupProp
     </div>
   );
 };
-
-

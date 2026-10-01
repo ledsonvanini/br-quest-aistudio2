@@ -2,20 +2,24 @@ import React, { useState } from 'react';
 import { useAuth } from '../../services/auth/AuthContext';
 import {
   X,
-  Sparkles,
-  Star,
-  TrendingUp,
-  Settings,
-  Shield,
   Compass,
-  User,
+  Target,
+  TreePine,
+  MapPin,
+  Layers,
+  Sparkles,
+  TrendingUp,
   Zap,
   Award,
-  Calendar,
-  Layers,
-  ChevronRight,
-  Info,
+  Settings,
+  Volume2,
+  Eye,
+  User,
+  Shield,
+  Cloud,
+  KeyRound,
 } from 'lucide-react';
+import { UserProfileSidebar } from './UserProfileSidebar';
 import { ExplorerOverviewTab } from './tabs/ExplorerOverviewTab';
 import { ExplorerFavoritesTab } from './tabs/ExplorerFavoritesTab';
 import { ExplorerHistoryTab } from './tabs/ExplorerHistoryTab';
@@ -36,6 +40,12 @@ interface UserProfileModalProps {
 
 export type ExplorerTabId = 'overview' | 'favorites' | 'history' | 'preferences' | 'identity';
 
+interface SubTabItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
@@ -46,7 +56,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   dailyStreak = 1,
   onNavigateToState,
 }) => {
-  const { user, isGuest, preferences, updatePreferences, vendorName } = useAuth();
+  const { user, isGuest, preferences, updatePreferences } = useAuth();
   const [activeTab, setActiveTab] = useState<ExplorerTabId>('overview');
   const [activeSubTab, setActiveSubTab] = useState<string>('all');
 
@@ -62,82 +72,70 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const list = currentFavorites.biomes.includes(biome)
       ? currentFavorites.biomes.filter((b) => b !== biome)
       : [...currentFavorites.biomes, biome];
-
-    await updatePreferences({
-      favorites: { ...currentFavorites, biomes: list },
-    });
+    await updatePreferences({ favorites: { ...currentFavorites, biomes: list } });
   };
 
   const handleToggleSpecies = async (speciesId: string) => {
     const list = currentFavorites.speciesIds.includes(speciesId)
       ? currentFavorites.speciesIds.filter((s) => s !== speciesId)
       : [...currentFavorites.speciesIds, speciesId];
-
-    await updatePreferences({
-      favorites: { ...currentFavorites, speciesIds: list },
-    });
+    await updatePreferences({ favorites: { ...currentFavorites, speciesIds: list } });
   };
 
   const handleToggleState = async (stateId: string) => {
     const list = currentFavorites.stateIds.includes(stateId)
       ? currentFavorites.stateIds.filter((st) => st !== stateId)
       : [...currentFavorites.stateIds, stateId];
-
-    await updatePreferences({
-      favorites: { ...currentFavorites, stateIds: list },
-    });
+    await updatePreferences({ favorites: { ...currentFavorites, stateIds: list } });
   };
 
-  // Switch primary category and reset subtab to 'all'
   const handleSelectTab = (tab: ExplorerTabId) => {
     setActiveTab(tab);
     setActiveSubTab('all');
   };
 
   const territorialPercent = Math.min(100, Math.round((completedStatesCount / 27) * 100));
-  const xpNeededForNextLevel = playerLevel * 500;
   const currentLevelProgressPercent = Math.min(100, Math.round(((playerXp % 500) / 500) * 100));
 
-  // Sub-tabs configuration for Column 2 based on activeTab
-  const getSubTabs = () => {
+  const getSubTabs = (): SubTabItem[] => {
     switch (activeTab) {
       case 'overview':
         return [
-          { id: 'all', label: 'Tudo' },
-          { id: 'destaque', label: '🎯 Destino Recomendado' },
-          { id: 'afinidades', label: '🌿 Biomas & Espécies' },
-          { id: 'estados', label: '🗺️ Estados Favoritos' },
+          { id: 'all', label: 'Tudo', icon: Compass },
+          { id: 'destaque', label: 'Destino Recomendado', icon: Target },
+          { id: 'afinidades', label: 'Biomas & Espécies', icon: TreePine },
+          { id: 'estados', label: 'Estados Favoritos', icon: MapPin },
         ];
       case 'favorites':
         return [
-          { id: 'all', label: 'Todas as Coleções' },
-          { id: 'biomes', label: `🌿 Biomas (${currentFavorites.biomes.length}/7)` },
-          { id: 'species', label: `🐆 Espécies (${currentFavorites.speciesIds.length})` },
-          { id: 'states', label: `🗺️ Estados (${currentFavorites.stateIds.length}/27)` },
+          { id: 'all', label: 'Todas as Coleções', icon: Layers },
+          { id: 'biomes', label: `Biomas (${currentFavorites.biomes.length}/7)`, icon: TreePine },
+          { id: 'species', label: `Espécies (${currentFavorites.speciesIds.length})`, icon: Sparkles },
+          { id: 'states', label: `Estados (${currentFavorites.stateIds.length}/27)`, icon: MapPin },
         ];
       case 'history':
         return [
-          { id: 'all', label: 'Visão Completa' },
-          { id: 'metrics', label: '⚡ Métricas & XP' },
-          { id: 'progress', label: '🗺️ Domínio Territorial' },
-          { id: 'history', label: '📜 Histórico de Desafios' },
+          { id: 'all', label: 'Visão Completa', icon: TrendingUp },
+          { id: 'metrics', label: 'Métricas & XP', icon: Zap },
+          { id: 'progress', label: 'Domínio Territorial', icon: Compass },
+          { id: 'history', label: 'Histórico de Desafios', icon: Award },
         ];
       case 'preferences':
         return [
-          { id: 'all', label: 'Todos os Ajustes' },
-          { id: 'audio', label: '🔊 Áudio & Hinos' },
-          { id: 'visual', label: '🗺️ Modo de Mapa' },
-          { id: 'access', label: '👁️ Acessibilidade' },
+          { id: 'all', label: 'Todos os Ajustes', icon: Settings },
+          { id: 'audio', label: 'Áudio & Hinos', icon: Volume2 },
+          { id: 'visual', label: 'Modo de Mapa', icon: Compass },
+          { id: 'access', label: 'Acessibilidade', icon: Eye },
         ];
       case 'identity':
         return [
-          { id: 'all', label: 'Geral' },
-          { id: 'profile', label: '👤 Identidade' },
-          { id: 'cloud', label: '☁️ Nuvem Firestore' },
-          { id: 'auth', label: '🔐 Acesso & Contas' },
+          { id: 'all', label: 'Geral', icon: User },
+          { id: 'profile', label: 'Identidade', icon: Shield },
+          { id: 'cloud', label: 'Nuvem Firestore', icon: Cloud },
+          { id: 'auth', label: 'Acesso & Contas', icon: KeyRound },
         ];
       default:
-        return [{ id: 'all', label: 'Todos' }];
+        return [{ id: 'all', label: 'Todos', icon: Compass }];
     }
   };
 
@@ -146,12 +144,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   return (
     <div
       id="modal-auth-backdrop"
-      className="modal-auth-backdrop modal-perfil-usuario fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200 select-none overflow-hidden"
+      className="modal-auth-backdrop modal-perfil-usuario fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200 select-none overflow-hidden"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
         id="modal-auth-container"
-        className="modal-auth-container painel-explorador-unificado painel-perfil-usuario-container relative w-[98vw] sm:w-[95vw] md:w-[92vw] lg:w-[90vw] max-w-6xl h-[95vh] sm:h-[94vh] max-h-[96vh] flex flex-col bg-gradient-to-b from-slate-950 via-[#0a1122] to-slate-950 border-2 border-amber-500/60 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_35px_rgba(245,158,11,0.25)] text-slate-100 my-auto overflow-hidden"
+        className="modal-auth-container painel-explorador-unificado painel-perfil-usuario-container relative w-[96vw] max-w-7xl 2xl:max-w-[1540px] h-[92vh] max-h-[920px] flex flex-col bg-gradient-to-b from-slate-950 via-[#0a1122] to-slate-950 border-2 border-amber-500/60 rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-5 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_35px_rgba(245,158,11,0.25)] text-slate-100 my-auto overflow-hidden"
       >
         {/* Cantos Ornamentais RPG */}
         <div className="ornamento-canto-tl absolute -top-1.5 -left-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
@@ -159,7 +157,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <div className="ornamento-canto-bl absolute -bottom-1.5 -left-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
         <div className="ornamento-canto-br absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-amber-400 border border-yellow-200 rotate-45 pointer-events-none shadow z-30 ring-1 ring-amber-500/80" />
 
-        {/* Cabeçalho Compacto do Modal */}
+        {/* Cabeçalho do Modal */}
         <div className="cabecalho-modal-perfil flex items-center justify-between pb-3 border-b border-amber-500/30 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/50 text-amber-400 shadow-sm">
@@ -191,223 +189,43 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* CORPO PRINCIPAL EM 2 COLUNAS (Wide-Screen Optimized) */}
-        <div className="corpo-duas-colunas flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 pt-3 overflow-hidden">
-          {/* ========================================================================= */}
-          {/* COLUNA 1 (Esquerda): Perfil do Usuário & Categorias Principais Empilhadas */}
-          {/* ========================================================================= */}
-          <aside className="coluna-lateral-perfil w-full md:w-72 lg:w-80 shrink-0 flex flex-col gap-2.5 overflow-y-auto custom-scrollbar-gold pr-0.5">
-            {/* 1.1 Card de Perfil Resumido & XP */}
-            <div className="card-perfil-resumo p-3 sm:p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-sm space-y-2.5">
-              <div className="flex items-center gap-3">
-                <div className="relative shrink-0">
-                  {user?.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.displayName}
-                      referrerPolicy="no-referrer"
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-amber-400 shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-slate-950 font-black text-lg shadow-sm">
-                      {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="w-6 h-6" />}
-                    </div>
-                  )}
-                  <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-amber-500 text-slate-950 shadow-xs border border-slate-900">
-                    N.{playerLevel}
-                  </span>
-                </div>
+        <div className="corpo-duas-colunas flex-1 min-h-0 flex flex-col md:flex-row gap-3 sm:gap-4 md:gap-5 pt-3 overflow-hidden">
+          {/* Coluna 1: Sidebar de Perfil & Navegação Principal */}
+          <UserProfileSidebar
+            user={user}
+            isGuest={isGuest}
+            playerLevel={playerLevel}
+            playerXp={playerXp}
+            unlockedInsigniaCount={unlockedInsigniaCount}
+            territorialPercent={territorialPercent}
+            dailyStreak={dailyStreak}
+            currentLevelProgressPercent={currentLevelProgressPercent}
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+          />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-100 truncate">{user?.displayName || 'Explorador'}</span>
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono shrink-0 ${
-                      isGuest ? 'bg-slate-800 text-slate-400' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                    }`}>
-                      {isGuest ? 'Convidado' : 'Google'}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-amber-300/90 font-medium truncate">
-                    {playerLevel >= 10 ? 'Guardião Supremo' : playerLevel >= 5 ? 'Cartógrafo Sênior' : 'Navegador Aprendiz'}
-                  </div>
-                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    {playerXp.toLocaleString('pt-BR')} XP Total
-                  </div>
-                </div>
-              </div>
-
-              {/* Barra de Progresso de Nível */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                  <span>Nv. {playerLevel}</span>
-                  <span className="text-amber-400">{currentLevelProgressPercent}% até Nv. {playerLevel + 1}</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.max(5, currentLevelProgressPercent)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Mini Pílulas de Estatísticas */}
-              <div className="grid grid-cols-3 gap-1.5 pt-1 text-center font-mono">
-                <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <div className="text-[11px] font-bold text-emerald-400">{unlockedInsigniaCount}/27</div>
-                  <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Insígnias</div>
-                </div>
-                <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <div className="text-[11px] font-bold text-sky-400">{territorialPercent}%</div>
-                  <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Domínio</div>
-                </div>
-                <div className="p-1.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <div className="text-[11px] font-bold text-rose-400">{dailyStreak}d</div>
-                  <div className="text-[8px] text-slate-400 uppercase tracking-tighter">Ofensiva</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 1.2 Categorias Principais Empilhadas (Vertical Nav List) */}
-            <div className="categorias-empilhadas flex flex-col gap-1.5 p-1.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 shadow-sm">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-0.5">
-                Navegação Principal
-              </span>
-
-              <button
-                type="button"
-                onClick={() => handleSelectTab('overview')}
-                className={`btn-aba-visao-geral w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                  activeTab === 'overview'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Compass className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold leading-tight">Visão Geral</div>
-                    <div className={`text-[10px] leading-tight ${activeTab === 'overview' ? 'text-slate-900' : 'text-slate-400'}`}>
-                      Painel central da expedição
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'overview' ? 'text-slate-950' : 'text-slate-500'}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectTab('favorites')}
-                className={`btn-aba-favoritos w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                  activeTab === 'favorites'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Star className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold leading-tight">Fauna, Flora & UFs</div>
-                    <div className={`text-[10px] leading-tight ${activeTab === 'favorites' ? 'text-slate-900' : 'text-slate-400'}`}>
-                      Afinidades & coleções
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'favorites' ? 'text-slate-950' : 'text-slate-500'}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectTab('history')}
-                className={`btn-aba-historico w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                  activeTab === 'history'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <TrendingUp className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold leading-tight">Jornada & XP</div>
-                    <div className={`text-[10px] leading-tight ${activeTab === 'history' ? 'text-slate-900' : 'text-slate-400'}`}>
-                      Progresso e histórico
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'history' ? 'text-slate-950' : 'text-slate-500'}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectTab('preferences')}
-                className={`btn-aba-preferencias w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                  activeTab === 'preferences'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold leading-tight">Ajustes & Som</div>
-                    <div className={`text-[10px] leading-tight ${activeTab === 'preferences' ? 'text-slate-900' : 'text-slate-400'}`}>
-                      Áudio e cartografia
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'preferences' ? 'text-slate-950' : 'text-slate-500'}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectTab('identity')}
-                className={`btn-aba-identidade w-full p-2.5 rounded-xl flex items-center justify-between text-left transition cursor-pointer ${
-                  activeTab === 'identity'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-4 h-4 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold leading-tight">Minha Conta</div>
-                    <div className={`text-[10px] leading-tight ${activeTab === 'identity' ? 'text-slate-900' : 'text-slate-400'}`}>
-                      Sincronia Firebase
-                    </div>
-                  </div>
-                </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'identity' ? 'text-slate-950' : 'text-slate-500'}`} />
-              </button>
-            </div>
-
-            {/* Dica do Explorador (Card Auto-contido) */}
-            <div className="p-3 rounded-2xl bg-amber-950/20 border border-amber-500/20 text-[11px] text-amber-200/90 flex items-start gap-2 mt-auto">
-              <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span>Conquiste os 27 Guardiões estaduais no BrQuest para desbloquear o brasão nacional completo!</span>
-            </div>
-          </aside>
-
-          {/* ========================================================================= */}
-          {/* COLUNA 2 (Direita): SubTabs no Topo & Conteúdo Principal Expandido        */}
-          {/* ========================================================================= */}
+          {/* Coluna 2: SubTabs no Topo & Conteúdo Principal */}
           <main className="coluna-conteudo-principal flex-1 min-w-0 flex flex-col min-h-0 bg-slate-950/70 rounded-2xl border border-amber-500/30 p-3 sm:p-4 overflow-hidden shadow-inner">
-            {/* Barra de SubTabs Contextuais no Topo da Coluna 2 */}
+            {/* Barra de SubTabs Contextuais com Ícones Profissionais */}
             <div className="subtabs-topo flex items-center gap-1.5 pb-2.5 mb-3 border-b border-slate-800 overflow-x-auto custom-scrollbar-gold shrink-0">
-              {subTabs.map((st) => (
+              {subTabs.map(({ id, label, icon: SubIcon }) => (
                 <button
-                  key={st.id}
+                  key={id}
                   type="button"
-                  onClick={() => setActiveSubTab(st.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    activeSubTab === st.id
+                  onClick={() => setActiveSubTab(id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    activeSubTab === id
                       ? 'bg-amber-500 text-slate-950 shadow-xs'
                       : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                   }`}
                 >
-                  {st.label}
+                  <SubIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Conteúdo Principal com Scroll Suave */}
+            {/* Conteúdo da Aba */}
             <div className="conteudo-aba-scroll flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar-gold">
               {activeTab === 'overview' && (
                 <ExplorerOverviewTab

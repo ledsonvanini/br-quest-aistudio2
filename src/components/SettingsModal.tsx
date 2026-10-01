@@ -82,7 +82,7 @@ export const SettingsModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="modal-configuracoes relative w-full max-w-2xl max-h-[85vh] sm:max-h-[500px] flex flex-col bg-slate-950/95 border-2 border-amber-500/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 shadow-[0_20px_60px_rgba(0,0,0,0.95)] text-slate-100 font-sans my-auto">
         
         {/* Header Compacto */}

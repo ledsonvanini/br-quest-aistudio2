@@ -7,10 +7,6 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      react: path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
-    },
     dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
@@ -21,6 +17,7 @@ export default defineConfig({
     port: 3000,
   },
   test: {
+    environment: 'jsdom',
     include: ['src/test/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },

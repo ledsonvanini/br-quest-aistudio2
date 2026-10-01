@@ -27,7 +27,7 @@ export const AboutInfoModal: React.FC<Props> = ({ isOpen, onClose }) => {
   return (
     <div
       id="modal-saiba-mais-brquest"
-      className="modal-saiba-mais fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+      className="modal-saiba-mais fixed inset-0 z-[100000] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           audioEngine.playSfx('click');

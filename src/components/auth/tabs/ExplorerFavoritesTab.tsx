@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { BrazilBiome, BiodiversitySpecimen } from '../../../types';
 import { ALL_BRAZIL_SPECIMENS } from '../../../data/brazilBiodiversityData';
 import { BRAZIL_STATES_REGISTRY, BrazilStateInfo } from '../../../data/brazilStatesRegistry';
-import { BIOME_VISUAL_REGISTRY } from '../common/specimenVisualMap';
+import { BIOME_VISUAL_REGISTRY, BIOME_ICONS } from '../common/specimenVisualMap';
 import { SpecimenAvatar } from '../common/SpecimenAvatar';
 import { TreePine, Fish, MapPin, Heart, Check, Star, Search, Filter } from 'lucide-react';
 
@@ -81,6 +81,7 @@ export const ExplorerFavoritesTab: React.FC<ExplorerFavoritesTabProps> = ({
             {AVAILABLE_BIOMES.map((biome) => {
               const isFav = favoriteBiomes.includes(biome);
               const visual = BIOME_VISUAL_REGISTRY[biome];
+              const BiomeIcon = BIOME_ICONS[biome] || TreePine;
               return (
                 <button
                   key={biome}
@@ -93,9 +94,11 @@ export const ExplorerFavoritesTab: React.FC<ExplorerFavoritesTabProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="text-xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                      {visual?.icon || '🌿'}
-                    </span>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-transform group-hover:scale-105 ${
+                      isFav ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-slate-950/80 border-slate-800 text-slate-400 group-hover:text-emerald-400'
+                    }`}>
+                      <BiomeIcon className="w-4 h-4" />
+                    </div>
                     {isFav ? (
                       <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" />
                     ) : (

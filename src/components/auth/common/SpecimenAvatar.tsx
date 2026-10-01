@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BiodiversityKingdom } from '../../../types';
-import { SPECIMEN_EMOJIS, KINGDOM_DEFAULT_EMOJIS } from './specimenVisualMap';
+import { PawPrint, TreePine, Sparkles } from 'lucide-react';
 
 interface SpecimenAvatarProps {
   specimenId: string;
@@ -12,7 +12,6 @@ interface SpecimenAvatarProps {
 }
 
 export const SpecimenAvatar: React.FC<SpecimenAvatarProps> = ({
-  specimenId,
   namePt,
   kingdom,
   imageUrl,
@@ -22,12 +21,16 @@ export const SpecimenAvatar: React.FC<SpecimenAvatarProps> = ({
   const [hasError, setHasError] = useState<boolean>(false);
   const candidateUrl = thumbnailUrl || imageUrl;
 
-  const fallbackEmoji = SPECIMEN_EMOJIS[specimenId] || KINGDOM_DEFAULT_EMOJIS[kingdom] || '🌿';
-
   const sizeClasses = {
-    sm: 'w-8 h-8 text-base rounded-lg',
-    md: 'w-11 h-11 text-xl rounded-xl',
-    lg: 'w-14 h-14 text-2xl rounded-2xl',
+    sm: 'w-8 h-8 rounded-lg',
+    md: 'w-11 h-11 rounded-xl',
+    lg: 'w-14 h-14 rounded-2xl',
+  }[size];
+
+  const iconSizes = {
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-7 h-7',
   }[size];
 
   const kingdomBg = {
@@ -36,20 +39,26 @@ export const SpecimenAvatar: React.FC<SpecimenAvatarProps> = ({
     fungi_micro: 'bg-purple-950/40 border-purple-500/30 text-purple-300',
   }[kingdom];
 
+  const KingdomIcon = {
+    fauna: PawPrint,
+    flora: TreePine,
+    fungi_micro: Sparkles,
+  }[kingdom] || TreePine;
+
   if (!candidateUrl || hasError) {
     return (
       <div
         className={`avatar-especie-biodiversidade flex items-center justify-center flex-shrink-0 border select-none transition shadow-inner ${sizeClasses} ${kingdomBg}`}
         title={namePt}
       >
-        <span>{fallbackEmoji}</span>
+        <KingdomIcon className={iconSizes} />
       </div>
     );
   }
 
   return (
     <div
-      className={`avatar-especie-biodiversidade relative flex-shrink-0 overflow-hidden border border-stone-700/60 shadow-sm ${sizeClasses} bg-stone-800`}
+      className={`avatar-especie-biodiversidade relative flex-shrink-0 overflow-hidden border border-slate-700/80 shadow-sm ${sizeClasses} bg-slate-900`}
     >
       <img
         src={candidateUrl}
@@ -59,9 +68,6 @@ export const SpecimenAvatar: React.FC<SpecimenAvatarProps> = ({
         onError={() => setHasError(true)}
         className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
       />
-      <span className="absolute bottom-0.5 right-0.5 text-[10px] leading-none opacity-80 drop-shadow">
-        {fallbackEmoji}
-      </span>
     </div>
   );
 };

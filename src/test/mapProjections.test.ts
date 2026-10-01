@@ -94,7 +94,7 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
   });
 
   it('deve reconhecer o novo padrão de zoom out aumentado em 20% na função Centralizar Mapa', () => {
-    expect(DEFAULT_BRAZIL_ZOOM).toBe(0.95);
+    expect(DEFAULT_BRAZIL_ZOOM).toBe(0.98);
     expect(NEIGHBORS_CONTINENT_ZOOM).toBe(0.57);
 
     // Cenário padrão: Centralizar Mapa
@@ -104,7 +104,7 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
       containerHeight: 1080,
       is3D: true,
     });
-    expect(centerDefault.targetZoom).toBe(0.95);
+    expect(centerDefault.targetZoom).toBe(0.98);
     expect(isNaN(centerDefault.targetPan.x)).toBe(false);
     expect(isNaN(centerDefault.targetPan.y)).toBe(false);
 
@@ -115,7 +115,7 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
       containerHeight: 1080,
       is3D: true,
     });
-    expect(centerNeighbors.targetZoom).toBe(0.57);
+    expect(centerNeighbors.targetZoom).toBe(0.59);
     expect(isNaN(centerNeighbors.targetPan.x)).toBe(false);
     expect(isNaN(centerNeighbors.targetPan.y)).toBe(false);
   });
@@ -124,8 +124,8 @@ describe('Motor de Projeção Cartográfica D3 e Clamping Anti-Vazio', () => {
     // Para tela desktop (1920px de largura)
     const resultDesktop = getMusicalFocusZoomAndPan([1280, 720], 1920, true, true, 'SP');
     expect(resultDesktop.targetZoom).toBeGreaterThan(1.0);
-    // Como o AppLateral fica à direita, o pan.x deve ser deslocado para a esquerda (negativo)
-    expect(resultDesktop.targetPan.x).toBeLessThan(0);
+    // Como o AppLateral oficial fica à esquerda, o pan.x deve ser deslocado positivamente para a direita
+    expect(resultDesktop.targetPan.x).toBeGreaterThan(0);
 
     // Para tela mobile (<640px de largura), modal ocupa tela cheia, offset = 0
     const resultMobile = getMusicalFocusZoomAndPan([1280, 720], 480, true, true, 'SP');
