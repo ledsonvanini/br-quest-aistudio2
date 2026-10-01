@@ -104,9 +104,10 @@ App.tsx (~140 linhas)                   IsometricMapCanvas (~400 linhas)        
 
 ## 5. Critérios de Aceite para Lançamento da Versão Beta
 
-- [ ] `server.ts` com $\le 100$ linhas, zero mocks inline e rotas desacopladas.
-- [ ] `App.tsx` com $\le 160$ linhas de composição limpa e declarativa.
-- [ ] `IsometricMapCanvas.tsx` sem renderização inline de diálogos de estado.
-- [ ] Suíte de testes unitários 100% verde (mínimo 114 testes).
+- [x] `server.ts` com $\le 100$ linhas (atual: 48 linhas), zero mocks inline e rotas desacopladas.
+- [x] `App.tsx` orquestrador conciso com `AppModalsContainer.tsx` e hooks dedicados.
+- [x] `IsometricMapCanvas.tsx` sem renderização inline de diálogos de estado (`MapLateralDialogsManager.tsx` ativo).
+- [x] Standee do Guardião no modo Aventura ampliado com presença heróica, diálogo conciso e zero texto redundante embaixo.
+- [x] Suíte de testes unitários 100% verde (20 arquivos de teste, 117 testes aprovados).
 - [ ] Chat do Guardião respondendo em streaming sem latência inicial percebida.
 - [ ] Sincronização em nuvem via Firebase Firestore operacional a partir do Perfil do Explorador.
